@@ -35,9 +35,9 @@ export function SiteFooter() {
             <h3 className="text-sm font-semibold text-foreground mb-3">Platform</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/applications" className="hover:text-foreground transition-colors">Başvurular</Link></li>
-              <li><Link href="/is" className="hover:text-foreground transition-colors">Kurumsal Abonelik</Link></li>
+              <li><Link href="/kurumsal" className="hover:text-foreground transition-colors">Kurumsal Abonelik</Link></li>
               <li><Link href="/about" className="hover:text-foreground transition-colors">Hakkımızda</Link></li>
-              <li><Link href="/c" className="hover:text-foreground transition-colors">İletişim</Link></li>
+              <li><Link href="/contact" className="hover:text-foreground transition-colors">İletişim</Link></li>
             </ul>
           </div>
 

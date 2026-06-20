@@ -1,0 +1,18 @@
+# Hassas / büyük dosyalar — Vercel'e yüklenmesin
+database-dump/
+*.sql
+*.sql.gz
+reports/
+acarinde_yeniacarindex*
+
+# Yerel geliştirme
+.env.local
+.env*.local
+
+# Build artifacts (Vercel zaten bunları yok sayar ama açıkça belirt)
+.next/
+node_modules/
+
+# ETL / geçici scriptler
+scripts/run-migrations.ts
+scripts/run-trgm.ts
