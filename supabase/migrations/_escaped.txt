@@ -1,0 +1,999 @@
+﻿-- ─────────────────────────────────────────────────────────────────────────────
+-- 001 — categories + journals + issues
+--
+-- MySQL kaynak:
+--   kategoriler  → categories
+--   dergiler     → journals   (+ bot_dergiler MERGE)
+--   dergi_arsiv  → issues     (+ bot_dergi_arsiv MERGE)
+--
+-- Kolon eşleme (MySQL → Supabase):
+--   DergiID         → id (PK korunur)
+--   DergiBASLIK     → title_tr
+--   Issn            → issn
+--   Eissn           → eissn
+--   YayinARALIGI    → frequency
+--   Baslangic       → start_year
+--   Yayinci         → publisher  (+ dergiler.publisher yeni alan)
+--   Aciklama        → description
+--   Amac            → aim (amaç metni; aim_and_scope ile birleştir)
+--   Kapsam          → scope (kapsam metni; aim_and_scope ile birleştir)
+--   aim_and_scope   → aim_and_scope (bot/yeni sistem alanı; öncelikli)
+--   YazimKURALLARI  → writing_rules
+--   DergiKUNYESI    → colophon
+--   EditorKURULU    → editorial_board
+--   editor          → editor_in_chief (yeni alan)
+--   Iletisim        → contact_text
+--   contact (json)  → contact_json
+--   about           → about
+--   policy          → policy
+--   indexes         → indexes_text
+--   price_policy    → price_policy
+--   topics          → topics
+--   publish_language→ publish_language
+--   years_indexed   → years_indexed
+--   subject_category→ subject_category
+--   publication_format → publication_format
+--   old_name        → old_name
+--   KategoriID      → category_id
+--   Resim           → cover_path
+--   Aktif           → status (1=published, 0=draft)
+--   Hit             → hit_count
+--   Link            → legacy_link
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Kategoriler
+CREATE TABLE IF NOT EXISTS categories (
+  id          bigint PRIMARY KEY,   -- MySQL KategoriID korunur
+  legacy_id   bigint UNIQUE,
+  name_tr     text,                 -- KategoriBASLIKTR
+  name_en     text,                 -- KategoriBASLIKEN
+  slug        text,                 -- KategoriURL
+  active      boolean NOT NULL DEFAULT true,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+-- Dergiler
+CREATE TABLE IF NOT EXISTS journals (
+  -- Kimlik
+  id              bigint PRIMARY KEY,    -- MySQL DergiID (canonical URL için korunur)
+  legacy_id       bigint UNIQUE,         -- ETL doğrulama alanı
+
+  -- URL
+  slug            text NOT NULL,         -- urlYap(DergiBASLIK)
+
+  -- Başlık
+  title_tr        text,                  -- DergiBASLIK
+  title_en        text,                  -- (eski sistemde yok; yeni içerik için)
+  old_name        text,                  -- old_name (eski dergi adları)
+
+  -- Yayın kimliği
+  issn            text,                  -- Issn
+  eissn           text,                  -- Eissn
+
+  -- Yayıncı bilgileri
+  publisher       text,                  -- Yayinci / publisher (yeni alan öncelikli)
+  frequency       text,                  -- YayinARALIGI
+  start_year      text,                  -- Baslangic (yayın başlangıç yılı)
+  publication_format text,               -- publication_format (print/online/both)
+  publish_language text,                 -- publish_language
+  subject_category text,                 -- subject_category
+  topics          text,                  -- topics
+
+  -- Editoryal
+  editor_in_chief text,                  -- editor (baş editör adı/bilgisi)
+  editorial_board text,                  -- EditorKURULU
+  colophon        text,                  -- DergiKUNYESI (künyesi)
+
+  -- İçerik tanımı
+  description     text,                  -- Aciklama (kısa açıklama)
+  about           text,                  -- about (zengin açıklama; bot/yeni alan)
+  aim_and_scope   text,                  -- aim_and_scope öncelikli; yoksa Amac||Kapsam
+
+  -- Politikalar
+  policy          text,                  -- policy (hakem/yayın politikası)
+  writing_rules   text,                  -- YazimKURALLARI
+  price_policy    text,                  -- price_policy (açık erişim / abonelik)
+
+  -- Dizinleme
+  indexes_text    text,                  -- indexes (hangi dizinlerde yer aldığı)
+  years_indexed   text,                  -- years_indexed
+
+  -- İletişim
+  contact_text    text,                  -- Iletisim (eski düz metin)
+  contact_json    jsonb,                 -- contact (yeni JSON formatı)
+
+  -- Görsel ve bağlantı
+  cover_path      text,                  -- Resim (legacy CDN path; /img/... formatı)
+  legacy_link     text,                  -- Link (harici dergi website URL)
+
+  -- Sınıflandırma
+  category_id     bigint REFERENCES categories(id) ON DELETE SET NULL,
+
+  -- Durum ve sayaçlar
+  status          text NOT NULL DEFAULT 'published'
+                  CHECK (status IN ('published', 'draft', 'archived')),
+  hit_count       int NOT NULL DEFAULT 0,
+
+  -- Zaman damgaları
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_journals_slug        ON journals (slug);
+CREATE INDEX IF NOT EXISTS idx_journals_issn        ON journals (issn)        WHERE issn IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_journals_eissn       ON journals (eissn)       WHERE eissn IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_journals_status      ON journals (status);
+CREATE INDEX IF NOT EXISTS idx_journals_category    ON journals (category_id) WHERE category_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_journals_hit         ON journals (hit_count DESC);
+
+-- Dergi sayıları / arşiv
+-- ─────────────────────────────────────────────────────────────────────────────
+-- MySQL kaynak: dergi_arsiv
+--   ArsivID   → id (PK korunur)
+--   DergiID   → journal_id
+--   Yil       → year (varchar → int)
+--   Sayi      → issue_number
+--   issue_id  → dergipark_issue_id (DergiPark external ID)
+--   Aktif     → status
+--   Hit       → hit_count
+--
+-- NOT: dergi_arsiv'de "Cilt" (volume) kolonu YOK.
+--      Volume bilgisi varsa Sayi alanı "Cilt X Sayı Y" formatında olabilir.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS issues (
+  id                  bigint PRIMARY KEY,   -- MySQL ArsivID korunur
+  legacy_id           bigint UNIQUE,
+  journal_id          bigint NOT NULL REFERENCES journals(id) ON DELETE CASCADE,
+
+  year                int,                  -- Yil (varchar → int parse)
+  issue_number        text,                 -- Sayi (tam sayı değeri: "1", "2", "3-4" vb.)
+  volume              text,                 -- Cilt (varsa parse edilir; dergi_arsiv'de yok)
+  issue_label         text,                 -- ETL'de üretilen görünen etiket: "2023/1"
+
+  dergipark_issue_id  bigint,               -- issue_id (DergiPark external reference)
+
+  status              text NOT NULL DEFAULT 'published'
+                      CHECK (status IN ('published', 'draft', 'archived')),
+  hit_count           int NOT NULL DEFAULT 0,
+
+  created_at          timestamptz NOT NULL DEFAULT now(),
+  updated_at          timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_issues_journal_year      ON issues (journal_id, year DESC);
+CREATE INDEX IF NOT EXISTS idx_issues_dergipark_id      ON issues (dergipark_issue_id) WHERE dergipark_issue_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_issues_status            ON issues (status);
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 002 — articles + pdf_files
+--
+-- MySQL kaynak: makaleler (+ bot_makaleler MERGE)
+--
+-- Kolon eşleme (MySQL → Supabase):
+--   MakaleID          → id  (PK korunur; legacy URL'de kullanılır)
+--   TitleTR           → title_tr
+--   TitleEN           → title_en
+--   Yazarlar          → authors_raw  (CSV; normalize ETL-04)
+--   OzetTR            → abstract_tr
+--   OzetEN            → abstract_en
+--   KeywordsTR        → keywords_tr
+--   KeywordsEN        → keywords_en
+--   Kaynakca          → references_raw
+--   kaynakgoster      → citation_format  (nasıl atıf yapılır)
+--   BirinciDIL        → language  (primary_language: tr/en/...)
+--   document_language → document_language  (yeni alan)
+--   Konular           → subject_area
+--   Bolum             → section  (makale bölümü/türü)
+--   YazarlarKAYNAKCA  → authors_citation  (kaynakça yazar formatı)
+--   Tarihler          → submission_dates  (gönderim/kabul tarihleri ham string)
+--   ArsivID           → issue_id
+--   DergiID           → journal_id
+--   Hit               → hit_count
+--   Indirme           → download_count
+--   YazarID           → legacy_author_ids  (ham ID string; normalize Faz-3)
+--   Kurum             → institution_raw
+--   PdfLINK           → → pdf_files.legacy_pdf_path
+--   document_type     → document_type
+--   article_type      → article_type
+--   access_type       → access_type
+--   Aktif             → status (1=published, 0=draft)
+--   doi               → doi
+--   issue_id (DergiPark) → dergipark_issue_id
+--   IlkSAYFA          → page_start  (varchar → int)
+--   SonSAYFA          → page_end    (varchar → int)
+--   Tarih             → published_at (date)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS articles (
+  -- Kimlik
+  id                    bigint PRIMARY KEY,   -- MySQL MakaleID (canonical URL için korunur)
+  legacy_id             bigint UNIQUE,        -- ETL doğrulama
+
+  -- URL segmentleri (ETL snapshot; PHP urlYap() ile üretilir; DEĞİŞMEZ)
+  slug                  text NOT NULL,        -- urlYap(TitleTR)
+  legacy_journal_slug   text NOT NULL,        -- URL 1. segment: dergi slug snapshot
+
+  -- İlişkiler
+  journal_id            bigint NOT NULL REFERENCES journals(id) ON DELETE RESTRICT,
+  issue_id              bigint REFERENCES issues(id) ON DELETE SET NULL,
+
+  -- Başlık
+  title_tr              text,                 -- TitleTR
+  title_en              text,                 -- TitleEN
+
+  -- Yazar ve kurum
+  authors_raw           text,                 -- Yazarlar (virgülle ayrılmış)
+  authors_citation      text,                 -- YazarlarKAYNAKCA (atıf formatı)
+  legacy_author_ids     text,                 -- YazarID (ham; normalize Faz-3)
+  institution_raw       text,                 -- Kurum (ham string)
+
+  -- Özetler
+  abstract_tr           text,                 -- OzetTR
+  abstract_en           text,                 -- OzetEN
+
+  -- Anahtar kelimeler
+  keywords_tr           text,                 -- KeywordsTR
+  keywords_en           text,                 -- KeywordsEN
+
+  -- Kaynakça ve atıf
+  references_raw        text,                 -- Kaynakca
+  citation_format       text,                 -- kaynakgoster
+
+  -- Sayfa bilgisi (varchar → int; parsePages() ile dönüştürülür)
+  page_start            int,                  -- IlkSAYFA
+  page_end              int,                  -- SonSAYFA
+
+  -- Tarih
+  published_at          date,                 -- Tarih
+  published_year        int,                  -- EXTRACT(YEAR FROM Tarih) veya Tarih yılı
+  submission_dates      text,                 -- Tarihler (ham; gönderim/kabul/yayın tarihleri)
+
+  -- Dil ve sınıflandırma
+  language              text,                 -- BirinciDIL (primary language: tr/en)
+  document_language     text,                 -- document_language (yeni alan; öncelikli)
+  document_type         text,                 -- document_type
+  article_type          text,                 -- article_type
+  access_type           text DEFAULT 'open',  -- access_type
+  section               text,                 -- Bolum (Review Article, Research Article vb.)
+  subject_area          text,                 -- Konular
+
+  -- Tanımlayıcılar
+  doi                   text,                 -- doi
+  dergipark_issue_id    bigint,               -- issue_id (DergiPark makale issue referansı)
+
+  -- Sayaçlar
+  hit_count             int NOT NULL DEFAULT 0,       -- Hit
+  download_count        int NOT NULL DEFAULT 0,       -- Indirme
+
+  -- Durum
+  status                text NOT NULL DEFAULT 'published'
+                        CHECK (status IN ('published', 'draft', 'review', 'archived')),
+
+  -- Full-text search vektörü (Faz-3'te Meilisearch ile desteklenecek)
+  search_vector tsvector GENERATED ALWAYS AS (
+    to_tsvector('simple',
+      coalesce(title_tr, '')       || ' ' ||
+      coalesce(title_en, '')       || ' ' ||
+      coalesce(authors_raw, '')    || ' ' ||
+      coalesce(keywords_tr, '')    || ' ' ||
+      coalesce(keywords_en, '')    || ' ' ||
+      coalesce(abstract_tr, '')    || ' ' ||
+      coalesce(abstract_en, '')
+    )
+  ) STORED,
+
+  -- Zaman damgaları
+  created_at            timestamptz NOT NULL DEFAULT now(),
+  updated_at            timestamptz NOT NULL DEFAULT now()
+);
+
+-- Indeksler
+CREATE INDEX IF NOT EXISTS idx_articles_journal_year
+  ON articles (journal_id, published_year DESC);
+
+CREATE INDEX IF NOT EXISTS idx_articles_issue
+  ON articles (issue_id) WHERE issue_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_articles_slug_id
+  ON articles (legacy_journal_slug, slug, id);
+
+CREATE INDEX IF NOT EXISTS idx_articles_status
+  ON articles (status);
+
+CREATE INDEX IF NOT EXISTS idx_articles_year
+  ON articles (published_year DESC);
+
+CREATE INDEX IF NOT EXISTS idx_articles_doi
+  ON articles (doi) WHERE doi IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_articles_dergipark
+  ON articles (dergipark_issue_id) WHERE dergipark_issue_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_articles_search
+  ON articles USING gin (search_vector);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PDF dosya metadata
+-- Faz-1: legacy path (PdfLINK → legacy_pdf_path)
+-- Faz-2: cloud storage (R2 / S3 / Supabase Storage)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS pdf_files (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  article_id        bigint UNIQUE NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+
+  legacy_pdf_path   text,                    -- PdfLINK ham değeri
+  storage_key       text,                    -- Faz-2: cloud storage object key
+  cdn_url           text,                    -- Faz-2: CDN URL
+
+  file_size_bytes   bigint,
+  page_count        int,
+  checksum_sha256   text,
+
+  file_status       text NOT NULL DEFAULT 'legacy'
+                    CHECK (file_status IN ('legacy', 'available', 'missing', 'migrated')),
+
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  updated_at        timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pdf_files_status  ON pdf_files (file_status);
+CREATE INDEX IF NOT EXISTS idx_pdf_files_article ON pdf_files (article_id);
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 003 — authors + article_authors junction
+-- MySQL kaynak: yazarlar + makaleler.Yazarlar (string)
+--
+-- NOT: Bu migration sadece ham veriyi alır.
+-- Normalize ETL (authors_raw parse) Faz-2 job'ında yapılacak.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS authors (
+  id          bigint PRIMARY KEY,  -- MySQL yazarlar.id (korunur)
+  legacy_id   bigint UNIQUE,
+  slug        text,                -- urlYap(yazar) snapshot
+  name        text NOT NULL,       -- yazarlar.yazar
+  title       text,                -- unvan (Prof. Dr. vb.)
+  institution text,                -- kurum
+  bio         text,                -- kısa biyografi
+  orcid       text,
+  email       text,
+
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_authors_slug ON authors (slug);
+-- Trigram index (Faz-3'te pg_trgm ile aktif edilecek)
+-- CREATE INDEX idx_authors_name_trgm ON authors USING gin (name gin_trgm_ops);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Makale ↔ Yazar (N:M)
+-- ETL: authors_raw string parse sonrası doldurulur
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS article_authors (
+  article_id  bigint NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+  author_id   bigint NOT NULL REFERENCES authors(id)  ON DELETE CASCADE,
+  position    int,      -- sıra (1 = ilk yazar)
+  raw_name    text,     -- parse öncesi kaynak string (doğrulama için)
+
+  PRIMARY KEY (article_id, author_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_article_authors_author   ON article_authors (author_id);
+CREATE INDEX IF NOT EXISTS idx_article_authors_article  ON article_authors (article_id);
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 004 — RLS policies + platform_stats view + url_aliases
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ─── Row Level Security ───────────────────────────────────────────────────────
+
+ALTER TABLE categories       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE journals         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE issues           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE articles         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pdf_files        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE authors          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE article_authors  ENABLE ROW LEVEL SECURITY;
+
+-- Public read: yayınlanmış içerik herkese açık
+CREATE POLICY "public read journals"
+  ON journals FOR SELECT USING (status = 'published');
+
+CREATE POLICY "public read issues"
+  ON issues FOR SELECT USING (status = 'published');
+
+CREATE POLICY "public read articles"
+  ON articles FOR SELECT USING (status = 'published');
+
+CREATE POLICY "public read pdf_files"
+  ON pdf_files FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM articles a
+      WHERE a.id = pdf_files.article_id AND a.status = 'published'
+    )
+  );
+
+CREATE POLICY "public read authors"
+  ON authors FOR SELECT USING (true);
+
+CREATE POLICY "public read article_authors"
+  ON article_authors FOR SELECT USING (true);
+
+CREATE POLICY "public read categories"
+  ON categories FOR SELECT USING (active = true);
+
+-- Write: sadece service_role (ETL + admin API)
+-- service_role tüm RLS'i bypass eder; ek policy gerekmez.
+
+-- ─── URL Aliases ─────────────────────────────────────────────────────────────
+-- Legacy URL → canonical eşleme tablosu
+-- ETL'de tüm makale + dergi URL'leri doldurulur
+-- http_status=200: serve (canonical kendisi); 301: redirect
+
+CREATE TABLE IF NOT EXISTS url_aliases (
+  legacy_path     text PRIMARY KEY,   -- /turkish-studies/.../makale-809939
+  canonical_path  text NOT NULL,      -- genellikle aynı (makale için)
+  entity_type     text,               -- article / journal / author / redirect
+  entity_id       bigint,
+  http_status     int NOT NULL DEFAULT 200,
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_url_aliases_entity ON url_aliases (entity_type, entity_id);
+
+ALTER TABLE url_aliases ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public read url_aliases"
+  ON url_aliases FOR SELECT USING (true);
+
+-- ─── Platform Stats ───────────────────────────────────────────────────────────
+-- Tek kaynak: ana sayfa + /istatistikler aynı view'ı okur
+-- PHP'deki tutarsızlık (aktif filtre farkı) giderildi: hepsi status='published'
+
+CREATE OR REPLACE VIEW platform_stats AS
+SELECT
+  (SELECT COUNT(*) FROM journals WHERE status = 'published')                   AS journal_count,
+  (SELECT COUNT(*) FROM articles WHERE status = 'published')                   AS article_count,
+  (SELECT COUNT(*) FROM pdf_files WHERE file_status != 'missing')              AS pdf_count,
+  (SELECT COALESCE(SUM(hit_count), 0) FROM articles WHERE status = 'published') AS total_hits,
+  (SELECT COUNT(*) FROM authors)                                                AS author_count,
+  0::bigint                                                                     AS institution_count,
+  now()                                                                         AS refreshed_at;
+
+-- Performans için materialized view (ETL sonrası aktif et)
+-- CREATE MATERIALIZED VIEW platform_stats_cache AS SELECT * FROM platform_stats;
+-- CREATE UNIQUE INDEX ON platform_stats_cache ((1));
+-- Refresh: REFRESH MATERIALIZED VIEW CONCURRENTLY platform_stats_cache;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 005 — authors: bigserial id + UNIQUE(name)
+--
+-- Sorun: 003'te id bigint PRIMARY KEY, ama DEFAULT yok ve name UNIQUE değil.
+-- Bu migration:
+--   1) authors.id için sequence oluşturur → DB üretir (ETL'de id vermek gerekmez)
+--   2) authors.name UNIQUE constraint ekler → upsert onConflict: 'name' çalışır
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- 1) Sequence oluştur
+CREATE SEQUENCE IF NOT EXISTS authors_id_seq;
+
+-- 2) Mevcut tabloda max id'den sequence'ı başlat (tablo doluysa)
+SELECT setval(
+  'authors_id_seq',
+  COALESCE((SELECT MAX(id) FROM authors), 0) + 1,
+  false
+);
+
+-- 3) id sütununa default ata
+ALTER TABLE authors
+  ALTER COLUMN id SET DEFAULT nextval('authors_id_seq');
+
+-- 4) legacy_id opsiyonel olsun (makaleler.Yazarlar'dan parse edilen yazarların legacy_id'si yok)
+-- Zaten NULL kabul ediyor, sadece doğrulama
+
+-- 5) name UNIQUE constraint
+ALTER TABLE authors
+  ADD CONSTRAINT authors_name_unique UNIQUE (name);
+
+-- 6) Slug için GIN index (ileride prefix search için)
+CREATE INDEX IF NOT EXISTS idx_authors_name_lower ON authors (lower(name));
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 006 — pg_trgm extension + GIN trigram indexes
+--
+-- Amaç: ILIKE '%query%' sorgularını leading-wildcard dahil hızlandırmak.
+-- Supabase'de pg_trgm varsayılan olarak yüklüdür; sadece aktive etmek gerekir.
+--
+-- Performans beklentisi (50K makale @ %query%):
+--   Index öncesi : ~300-800ms
+--   Index sonrası: ~10-50ms  (trigram similarity score > 0.3)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- ─── articles ────────────────────────────────────────────────────────────────
+
+CREATE INDEX IF NOT EXISTS idx_articles_title_tr_trgm
+  ON articles USING gin (title_tr gin_trgm_ops)
+  WHERE title_tr IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_articles_title_en_trgm
+  ON articles USING gin (title_en gin_trgm_ops)
+  WHERE title_en IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_articles_authors_raw_trgm
+  ON articles USING gin (authors_raw gin_trgm_ops)
+  WHERE authors_raw IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_articles_keywords_tr_trgm
+  ON articles USING gin (keywords_tr gin_trgm_ops)
+  WHERE keywords_tr IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_articles_keywords_en_trgm
+  ON articles USING gin (keywords_en gin_trgm_ops)
+  WHERE keywords_en IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_articles_abstract_tr_trgm
+  ON articles USING gin (abstract_tr gin_trgm_ops)
+  WHERE abstract_tr IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_articles_abstract_en_trgm
+  ON articles USING gin (abstract_en gin_trgm_ops)
+  WHERE abstract_en IS NOT NULL;
+
+-- ─── journals ────────────────────────────────────────────────────────────────
+
+CREATE INDEX IF NOT EXISTS idx_journals_title_tr_trgm
+  ON journals USING gin (title_tr gin_trgm_ops)
+  WHERE title_tr IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_journals_title_en_trgm
+  ON journals USING gin (title_en gin_trgm_ops)
+  WHERE title_en IS NOT NULL;
+
+-- ─── authors ─────────────────────────────────────────────────────────────────
+
+CREATE INDEX IF NOT EXISTS idx_authors_name_trgm
+  ON authors USING gin (name gin_trgm_ops);
+
+-- ─── Meilisearch geçişi için adapter notu ────────────────────────────────────
+-- Sprint 3 sonunda Meilisearch/Typesense entegrasyonu planlanmakta.
+-- lib/search/search.ts içindeki buildSearchCondition() + searchArticles() fonksiyonları
+-- bir adapter interface arkasına alınacak:
+--
+--   interface SearchAdapter {
+--     searchArticles(params: SearchParams): Promise<{data: ArticleResult[]; total: number}>
+--     searchJournals(q: string, page: number, perPage: number): Promise<...>
+--     searchAuthors(q: string, page: number, perPage: number): Promise<...>
+--   }
+--
+-- PostgresAdapter (mevcut) ve MeilisearchAdapter implementasyonları olacak.
+-- Geçiş: SEARCH_PROVIDER=meilisearch env değişkeniyle kontrol edilecek.
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 007 — institutions + article_institutions
+--
+-- MySQL kaynak: kurumlar
+--   id            → legacy_id
+--   baslik        → name   (utf32_turkish_ci; dikkat: encoding dönüşümü)
+--   mail_adresleri → email_list
+--
+-- article_institutions: makaleler.Kurum ham string → institution FK (Faz-3)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS institutions (
+  id            bigserial PRIMARY KEY,
+  legacy_id     bigint UNIQUE,              -- kurumlar.id
+  name          text NOT NULL,              -- baslik (normalize edilmiş)
+  name_en       text,
+  email_list    text,                       -- mail_adresleri
+  slug          text,
+  country       text DEFAULT 'TR',
+  city          text,
+  website       text,
+
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_institutions_name ON institutions (lower(name));
+CREATE INDEX IF NOT EXISTS idx_institutions_slug ON institutions (slug) WHERE slug IS NOT NULL;
+
+-- Makale ↔ Kurum (N:M)
+-- ETL: institution_raw string parse + eşleştirme (Faz-3)
+CREATE TABLE IF NOT EXISTS article_institutions (
+  article_id      bigint NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+  institution_id  bigint NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+  author_id       bigint REFERENCES authors(id) ON DELETE SET NULL,  -- hangi yazara ait
+  raw_name        text,                    -- parse öncesi kaynak string
+
+  PRIMARY KEY (article_id, institution_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_article_institutions_institution ON article_institutions (institution_id);
+CREATE INDEX IF NOT EXISTS idx_article_institutions_author      ON article_institutions (author_id) WHERE author_id IS NOT NULL;
+
+ALTER TABLE institutions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public read institutions" ON institutions FOR SELECT USING (true);
+CREATE POLICY "public read article_institutions" ON article_institutions FOR SELECT USING (true);
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 008 — user_profiles
+--
+-- MySQL kaynak: uyeler
+--   UyeID       → legacy_id
+--   UyeAD       → first_name
+--   UyeSOYAD    → last_name
+--   UyeTELEFON  → phone
+--   UyeMAIL     → email (Supabase Auth'da)
+--   UyeSIFRE    → KESİNLİKLE TAŞINMAZ (plain/bcrypt → Supabase Auth reset akışı)
+--   UyeUNVAN    → title
+--   UyeKURUM    → institution
+--   UyeORCID    → orcid
+--   UlkeID      → country_id
+--   KurumUYELIGI → membership_type
+--   MailONAY    → email_verified
+--
+-- Strateji: Kullanıcılar Supabase Auth'a çekilir (email invite veya sıfırlama).
+--           Profil verisi bu tabloda tutulur.
+--           id = Supabase Auth UUID (auth.users.id)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS user_profiles (
+  id              uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  legacy_id       bigint UNIQUE,      -- uyeler.UyeID (ETL mapping için)
+
+  first_name      text,               -- UyeAD
+  last_name       text,               -- UyeSOYAD
+  full_name       text GENERATED ALWAYS AS (
+    trim(coalesce(first_name, '') || ' ' || coalesce(last_name, ''))
+  ) STORED,
+
+  title           text,               -- UyeUNVAN (Prof. Dr. vb.)
+  institution     text,               -- UyeKURUM
+  orcid           text,               -- UyeORCID (format: 0000-0000-0000-0000)
+  phone           text,               -- UyeTELEFON
+  country_id      int,                -- UlkeID
+  membership_type int DEFAULT 1,      -- KurumUYELIGI (1=bireysel, 2=kurumsal)
+  email_verified  boolean DEFAULT false, -- MailONAY
+
+  -- Kullanıcı tercihleri
+  preferred_language text DEFAULT 'tr',
+  notification_email boolean DEFAULT true,
+
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_profiles_legacy ON user_profiles (legacy_id) WHERE legacy_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_user_profiles_orcid  ON user_profiles (orcid)     WHERE orcid IS NOT NULL;
+
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Kullanıcı kendi profilini okuyabilir
+CREATE POLICY "users read own profile"
+  ON user_profiles FOR SELECT
+  USING (auth.uid() = id);
+
+-- Kullanıcı kendi profilini güncelleyebilir
+CREATE POLICY "users update own profile"
+  ON user_profiles FOR UPDATE
+  USING (auth.uid() = id);
+
+-- Favoriler (kullanıcı ↔ makale)
+CREATE TABLE IF NOT EXISTS user_favorites (
+  user_id     uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  article_id  bigint NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+
+  PRIMARY KEY (user_id, article_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_favorites_user    ON user_favorites (user_id);
+CREATE INDEX IF NOT EXISTS idx_user_favorites_article ON user_favorites (article_id);
+
+ALTER TABLE user_favorites ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "users manage own favorites"
+  ON user_favorites FOR ALL
+  USING (auth.uid() = user_id);
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 009 — keywords + article_keywords
+--
+-- MySQL kaynak: makaleler.KeywordsTR ve makaleler.KeywordsEN alanlarından
+-- parse edilecek. Ayrı bir keywords tablosu MySQL'de yok.
+--
+-- ETL stratejisi (Faz-3):
+--   1) KeywordsTR ve KeywordsEN CSV parse → tekil kelimeler
+--   2) Her unique kelime keywords tablosuna upsert
+--   3) article_keywords junction tablosu doldurulur
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS keywords (
+  id          bigserial PRIMARY KEY,
+  text_tr     text,                   -- normalize edilmiş Türkçe kelime
+  text_en     text,                   -- normalize edilmiş İngilizce kelime
+  slug        text,                   -- urlYap(text_tr veya text_en)
+  language    text,                   -- 'tr' | 'en' | 'both'
+
+  CONSTRAINT keywords_text_tr_unique UNIQUE (text_tr),
+  CONSTRAINT keywords_text_en_unique UNIQUE (text_en)
+);
+
+-- text_tr veya text_en'den en az biri dolu olmalı
+ALTER TABLE keywords
+  ADD CONSTRAINT keywords_at_least_one_text
+  CHECK (text_tr IS NOT NULL OR text_en IS NOT NULL);
+
+CREATE INDEX IF NOT EXISTS idx_keywords_slug    ON keywords (slug) WHERE slug IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_keywords_lang    ON keywords (language);
+
+-- Makale ↔ Anahtar kelime (N:M)
+CREATE TABLE IF NOT EXISTS article_keywords (
+  article_id  bigint NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+  keyword_id  bigint NOT NULL REFERENCES keywords(id) ON DELETE CASCADE,
+  language    text,                   -- bu ilişkinin dili: 'tr' | 'en'
+  raw_text    text,                   -- parse öncesi ham string
+
+  PRIMARY KEY (article_id, keyword_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_article_keywords_keyword ON article_keywords (keyword_id);
+
+ALTER TABLE keywords        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE article_keywords ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "public read keywords"         ON keywords         FOR SELECT USING (true);
+CREATE POLICY "public read article_keywords" ON article_keywords FOR SELECT USING (true);
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 010 — journal_applications
+--
+-- MySQL kaynak: dergibasvuru
+--   BasvuruID       → legacy_id
+--   dergiadi        → journal_name_tr
+--   dergiadieng     → journal_name_en
+--   dergikisaadi    → journal_abbr
+--   dergikurumu     → institution_name
+--   dergituru       → journal_type
+--   yayinplatformu  → platform
+--   dergiinternetsitesi → website
+--   issn            → issn
+--   periyod         → frequency
+--   kacyilyayin     → years_active
+--   aylar           → publication_months
+--   adres           → address
+--   alanlar         → subject_areas
+--   anahtarkelimeler → keywords_raw
+--   makalesayisi    → article_count_range
+--   editorisim      → editor_name
+--   editoremail     → editor_email
+--   iletisimkisi    → contact_name
+--   iletisimemail   → contact_email
+--   iletisimtel     → contact_phone
+--   iletisimcep     → contact_mobile
+--   dergikapak      → cover_path
+--   uyeid           → applicant_legacy_user_id
+--   durum           → status (0=pending, 1=approved, 2=rejected)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS journal_applications (
+  id                    bigserial PRIMARY KEY,
+  legacy_id             bigint UNIQUE,          -- dergibasvuru.BasvuruID
+
+  -- Dergi bilgileri
+  journal_name_tr       text NOT NULL,           -- dergiadi
+  journal_name_en       text,                    -- dergiadieng
+  journal_abbr          text,                    -- dergikisaadi
+  institution_name      text,                    -- dergikurumu
+  journal_type          text,                    -- dergituru
+  platform              text,                    -- yayinplatformu (DergiPark, Dergiserver vb.)
+  website               text,                    -- dergiinternetsitesi
+  issn                  text,                    -- issn
+  frequency             text,                    -- periyod
+  years_active          text,                    -- kacyilyayin
+  publication_months    text,                    -- aylar
+  address               text,                    -- adres
+  subject_areas         text,                    -- alanlar
+  keywords_raw          text,                    -- anahtarkelimeler
+  article_count_range   text,                    -- makalesayisi
+
+  -- Editör / iletişim
+  editor_name           text,                    -- editorisim
+  editor_email          text,                    -- editoremail
+  contact_name          text,                    -- iletisimkisi
+  contact_email         text,                    -- iletisimemail
+  contact_phone         text,                    -- iletisimtel
+  contact_mobile        text,                    -- iletisimcep
+
+  -- Görsel
+  cover_path            text,                    -- dergikapak
+
+  -- Başvuran
+  applicant_legacy_user_id bigint,               -- uyeid (legacy mapping)
+  applicant_user_id     uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+
+  -- Durum: 'pending' | 'approved' | 'rejected' | 'info_requested'
+  status                text NOT NULL DEFAULT 'pending'
+                        CHECK (status IN ('pending', 'approved', 'rejected', 'info_requested')),
+
+  reviewer_notes        text,                    -- admin inceleme notu
+  reviewed_at           timestamptz,
+  approved_journal_id   bigint REFERENCES journals(id) ON DELETE SET NULL,
+
+  created_at            timestamptz NOT NULL DEFAULT now(),
+  updated_at            timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_journal_apps_status      ON journal_applications (status);
+CREATE INDEX IF NOT EXISTS idx_journal_apps_applicant   ON journal_applications (applicant_user_id) WHERE applicant_user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_journal_apps_journal     ON journal_applications (approved_journal_id) WHERE approved_journal_id IS NOT NULL;
+
+ALTER TABLE journal_applications ENABLE ROW LEVEL SECURITY;
+
+-- Başvuru sahibi kendi başvurularını görür
+CREATE POLICY "applicant read own"
+  ON journal_applications FOR SELECT
+  USING (auth.uid() = applicant_user_id);
+
+-- Başvuru sahibi yeni başvuru ekleyebilir
+CREATE POLICY "applicant insert"
+  ON journal_applications FOR INSERT
+  WITH CHECK (auth.uid() = applicant_user_id);
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 011 — legacy_raw schema (arşiv stratejisi)
+--
+-- Amaç: MySQL'den taşınmayan veya veri kalitesi şüpheli tablolar için
+--        ayrı bir schema altında ham veri saklamak.
+--
+-- Kapsam:
+--   legacy_raw.dergilerdeneme   — test kopyası
+--   legacy_raw.dergiler_orj     — orijinal yedek
+--   legacy_raw.makaleler2       — kopya 2
+--   legacy_raw.makaleler3       — kopya 3
+--   legacy_raw.makaleler_eski   — eski format
+--   legacy_raw.dergi_arsiv_eski — eski arşiv
+--   legacy_raw.uyeler_yedek     — kullanıcı yedeği
+--
+-- Bu dosya sadece schema oluşturur ve yetki verir.
+-- Gerçek veri aktarımı ETL'de \`pg_dump | psql legacy_raw\` ile yapılır.
+--
+-- Erişim: sadece service_role (admin/ETL); public erişim YOK.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE SCHEMA IF NOT EXISTS legacy_raw;
+
+-- service_role tüm izinlere sahip
+GRANT ALL ON SCHEMA legacy_raw TO service_role;
+
+-- anon ve authenticated schema'yı göremez
+REVOKE ALL ON SCHEMA legacy_raw FROM anon;
+REVOKE ALL ON SCHEMA legacy_raw FROM authenticated;
+
+-- Arşiv log tablosu: hangi MySQL tablosu ne zaman taşındı
+CREATE TABLE IF NOT EXISTS legacy_raw.migration_log (
+  id              bigserial PRIMARY KEY,
+  table_name      text NOT NULL,          -- MySQL tablo adı
+  row_count       bigint,                 -- aktarılan satır sayısı
+  migrated_at     timestamptz DEFAULT now(),
+  notes           text
+);
+
+-- ─── Açıklama yorumları ────────────────────────────────────────────────────
+COMMENT ON SCHEMA legacy_raw IS
+  'MySQL''den taşınan ham/arşiv verileri. Üretim kodu bu schema''ya erişmez.';
+
+COMMENT ON TABLE legacy_raw.migration_log IS
+  'ETL çalıştırma kayıtları. Her tablo için ne kadar veri taşındığı izlenir.';
+
+-- ─── Arşivleme kararları ───────────────────────────────────────────────────
+-- Bu tabloların içeriği MySQL dump üzerinden COPY/INSERT ile aktarılır:
+--
+--   legacy_raw.journals_orj       ← MySQL: dergiler_orj (1.1 arşiv kopyası)
+--   legacy_raw.journals_deneme    ← MySQL: dergilerdeneme (test)
+--   legacy_raw.articles_2         ← MySQL: makaleler2
+--   legacy_raw.articles_3         ← MySQL: makaleler3
+--   legacy_raw.articles_old       ← MySQL: makaleler_eski
+--   legacy_raw.issues_old         ← MySQL: dergi_arsiv_eski
+--   legacy_raw.issues_orj         ← MySQL: dergi_arsiv_orj
+--   legacy_raw.issues_yilsiz      ← MySQL: dergi_arsiv_yilsiz (yıl=NULL kayıtlar)
+--   legacy_raw.users_backup       ← MySQL: uyeler1 + uyeler_deneme
+--
+-- ETL script: scripts/etl/99-archive-raw.ts
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 012 — ETL Audit Log
+--
+-- etl_runs  : Her ETL script çalıştırmasının özeti
+-- etl_errors: Kayıt başına hata detayı
+--
+-- Erişim: sadece service_role (ETL process); public erişim YOK.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ETL çalıştırma özeti
+CREATE TABLE IF NOT EXISTS etl_runs (
+  id              bigserial PRIMARY KEY,
+
+  -- Kimlik
+  run_id          text NOT NULL UNIQUE,        -- "{script}-{timestamp}" örn: "01-journals-20260620T0300"
+  script          text NOT NULL,               -- "01-journals" | "02-issues" | ...
+  mode            text NOT NULL DEFAULT 'full' -- 'full' | 'pilot' | 'dry-run'
+                  CHECK (mode IN ('full', 'pilot', 'dry-run')),
+
+  -- Parametreler
+  source_table    text,                        -- MySQL kaynak tablo
+  target_table    text,                        -- Supabase hedef tablo
+  limit_rows      int,                         -- pilot mod için LIMIT değeri (null=tüm veri)
+  offset_rows     int DEFAULT 0,
+
+  -- Sayaçlar
+  rows_read       int NOT NULL DEFAULT 0,
+  rows_inserted   int NOT NULL DEFAULT 0,
+  rows_updated    int NOT NULL DEFAULT 0,
+  rows_skipped    int NOT NULL DEFAULT 0,
+  rows_error      int NOT NULL DEFAULT 0,
+
+  -- Zamanlama
+  started_at      timestamptz NOT NULL DEFAULT now(),
+  finished_at     timestamptz,
+  duration_ms     int GENERATED ALWAYS AS (
+    CASE
+      WHEN finished_at IS NOT NULL
+      THEN EXTRACT(EPOCH FROM (finished_at - started_at))::int * 1000
+      ELSE NULL
+    END
+  ) STORED,
+
+  -- Sonuç
+  status          text NOT NULL DEFAULT 'running'
+                  CHECK (status IN ('running', 'success', 'partial', 'failed')),
+  error_summary   text,                        -- kısa hata özeti (status=failed ise)
+  notes           text                         -- serbest not
+);
+
+CREATE INDEX IF NOT EXISTS idx_etl_runs_script    ON etl_runs (script, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_etl_runs_status    ON etl_runs (status);
+CREATE INDEX IF NOT EXISTS idx_etl_runs_started   ON etl_runs (started_at DESC);
+
+-- ETL kayıt başına hata detayı
+CREATE TABLE IF NOT EXISTS etl_errors (
+  id              bigserial PRIMARY KEY,
+  run_id          text NOT NULL REFERENCES etl_runs(run_id) ON DELETE CASCADE,
+
+  -- Kaynak kayıt
+  source_table    text,
+  source_id       bigint,                      -- MySQL PK değeri
+  source_row      jsonb,                       -- hata veren kayıt (kısmi)
+
+  -- Hata detayı
+  error_type      text NOT NULL,               -- 'validation' | 'constraint' | 'mapping' | 'network'
+  error_message   text NOT NULL,
+  field_name      text,                        -- hata veren alan adı (varsa)
+
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_etl_errors_run     ON etl_errors (run_id);
+CREATE INDEX IF NOT EXISTS idx_etl_errors_type    ON etl_errors (error_type);
+CREATE INDEX IF NOT EXISTS idx_etl_errors_source  ON etl_errors (source_table, source_id);
+
+-- RLS: service_role okur/yazar; anon/authenticated erişemez
+ALTER TABLE etl_runs   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE etl_errors ENABLE ROW LEVEL SECURITY;
+
+COMMENT ON TABLE etl_runs   IS 'ETL script çalıştırma özeti. Her run için 1 satır.';
+COMMENT ON TABLE etl_errors IS 'ETL kayıt başına hata log. etl_runs ile ilişkili.';
+

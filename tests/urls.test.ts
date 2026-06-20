@@ -1,0 +1,151 @@
+/**
+ * URL Parity Testleri
+ * PHP urlYap() vs TypeScript urlYap() — birebir eşleşmeli
+ *
+ * Çalıştır: npx vitest run tests/urls.test.ts
+ */
+
+import { describe, it, expect } from 'vitest'
+import { urlYap } from '../lib/urls/slug'
+import { parseArticlePath, extractArticleId, buildArticleUrl } from '../lib/urls/article'
+import { parseJournalSegment, buildJournalPathSegment } from '../lib/urls/journal'
+import { buildLegacyPdfUrl, hasPdf } from '../lib/pdf/legacy-url'
+
+// ─── urlYap parity ───────────────────────────────────────────────────────────
+describe('urlYap', () => {
+  it('Türkçe karakterleri dönüştürür', () => {
+    expect(urlYap('Türkçe Başlık')).toBe('turkce-baslik')
+    expect(urlYap('Şeker Fabrikası')).toBe('seker-fabrikasi')
+    expect(urlYap('Ğırlık')).toBe('girlik')
+    expect(urlYap('İstanbul Üniversitesi')).toBe('istanbul-universitesi')
+  })
+
+  it('Noktalama ve özel karakterleri kaldırır', () => {
+    expect(urlYap('Merhaba, Dünya!')).toBe('merhaba-dunya')
+    expect(urlYap("Yazar'ın Makalesi")).toBe('yazarin-makalesi')
+    expect(urlYap('A & B')).toBe('a-b')
+  })
+
+  it('Fazla boşluk ve tireleri tekilleştirir', () => {
+    expect(urlYap('  çok   boşluklu   ')).toBe('cok-bosluklu')
+    expect(urlYap('tire--tire')).toBe('tire-tire')
+    expect(urlYap('-baştaki-tire-')).toBe('bastaki-tire')
+  })
+
+  it('Boş/null girdide boş string döner', () => {
+    expect(urlYap('')).toBe('')
+    expect(urlYap(null)).toBe('')
+    expect(urlYap(undefined)).toBe('')
+  })
+
+  it('Sadece rakamlar korunur', () => {
+    expect(urlYap('123')).toBe('123')
+    expect(urlYap('2024 Yılı')).toBe('2024-yili')
+  })
+
+  it('Gerçek makale başlığı örnekleri', () => {
+    expect(urlYap('Millî Mücadele Döneminde Türk Basını')).toBe(
+      'milli-mucadele-doneminde-turk-basini',
+    )
+    expect(urlYap('Hz. Peygamber\'in Şehit Aileleriyle Münasebetleri')).toBe(
+      'hz-peygamberin-sehit-aileleriyle-munasebetleri',
+    )
+  })
+})
+
+// ─── parseArticlePath ────────────────────────────────────────────────────────
+describe('parseArticlePath', () => {
+  it('Geçerli makale path\'ini parse eder', () => {
+    const result = parseArticlePath('turkish-studies', 'milli-mucadele-809939')
+    expect(result).toEqual({
+      journalSlug: 'turkish-studies',
+      articleSlug: 'milli-mucadele',
+      articleId: 809939,
+    })
+  })
+
+  it('ID olmayan path\'i reddeder', () => {
+    expect(parseArticlePath('turkish-studies', 'makale-adi')).toBeNull()
+    expect(parseArticlePath('turkish-studies', '')).toBeNull()
+  })
+
+  it('Sıfır veya negatif ID reddeder', () => {
+    expect(parseArticlePath('j', 'slug-0')).toBeNull()
+  })
+})
+
+// ─── extractArticleId ────────────────────────────────────────────────────────
+describe('extractArticleId', () => {
+  it('Son sayısal segmenti çıkarır', () => {
+    expect(extractArticleId('milli-mucadele-809939')).toBe(809939)
+    expect(extractArticleId('a-1')).toBe(1)
+  })
+
+  it('Sayı olmayan son segmentte null döner', () => {
+    expect(extractArticleId('sadece-slug')).toBeNull()
+    expect(extractArticleId('')).toBeNull()
+  })
+})
+
+// ─── buildArticleUrl ─────────────────────────────────────────────────────────
+describe('buildArticleUrl', () => {
+  it('Canonical URL üretir', () => {
+    expect(
+      buildArticleUrl('turkish-studies', 'Millî Mücadele Döneminde Türk Basını', 809939),
+    ).toBe('/turkish-studies/milli-mucadele-doneminde-turk-basini-809939')
+  })
+})
+
+// ─── parseJournalSegment ─────────────────────────────────────────────────────
+describe('parseJournalSegment', () => {
+  it('Dergi segment parse eder', () => {
+    expect(parseJournalSegment('turkish-studies-123')).toEqual({
+      journalSlug: 'turkish-studies',
+      journalId: 123,
+    })
+  })
+
+  it('Geçersiz segmentte null döner', () => {
+    expect(parseJournalSegment('sadece-slug')).toBeNull()
+    expect(parseJournalSegment('')).toBeNull()
+  })
+})
+
+// ─── buildJournalPathSegment ─────────────────────────────────────────────────
+describe('buildJournalPathSegment', () => {
+  it('Segment üretir', () => {
+    expect(buildJournalPathSegment('Turkish Studies Dergisi', 456)).toBe(
+      'turkish-studies-dergisi-456',
+    )
+  })
+})
+
+// ─── buildLegacyPdfUrl ───────────────────────────────────────────────────────
+describe('buildLegacyPdfUrl', () => {
+  it('Relative path\'e base URL ekler', () => {
+    const url = buildLegacyPdfUrl('dosyalar/makale/acarindex-123.pdf')
+    expect(url).toBe('https://www.acarindex.com/dosyalar/makale/acarindex-123.pdf')
+  })
+
+  it('Harici URL olduğu gibi döner', () => {
+    expect(buildLegacyPdfUrl('https://example.com/file.pdf')).toBe(
+      'https://example.com/file.pdf',
+    )
+  })
+
+  it('Eksik / boş / sentinel değerlerde null döner', () => {
+    expect(buildLegacyPdfUrl(null)).toBeNull()
+    expect(buildLegacyPdfUrl('')).toBeNull()
+    expect(buildLegacyPdfUrl('pdf-bulunamadi')).toBeNull()
+  })
+})
+
+describe('hasPdf', () => {
+  it('PDF varsa true döner', () => {
+    expect(hasPdf('dosyalar/makale/file.pdf')).toBe(true)
+  })
+  it('PDF yoksa false döner', () => {
+    expect(hasPdf('pdf-bulunamadi')).toBe(false)
+    expect(hasPdf(null)).toBe(false)
+  })
+})

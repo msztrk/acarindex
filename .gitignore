@@ -1,5 +1,14 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# AcarIndex — Gizli dosyalar
+.env.local
+.env.production
+.env.staging
+# ETL çıktıları
+scripts/etl/output/
+scripts/etl/*.json
+reports/etl-dry-run-*.json
+
 # dependencies
 /node_modules
 /.pnp
@@ -39,3 +48,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ETL / database dumps (hassas + büyük dosyalar)
+database-dump/
+*.sql.gz
+*.sql
+reports/
+
+# Laragon / local DB
+acarinde_yeniacarindex*
