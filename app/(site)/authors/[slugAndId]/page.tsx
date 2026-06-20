@@ -37,14 +37,14 @@ async function getAuthorArticles(authorId: number) {
   const { data } = await sb
     .from('article_authors')
     .select(`
-      position,
+      author_position,
       article:articles (
         id, slug, legacy_journal_slug, title_tr, title_en, published_year, authors_raw,
         journal:journals!journal_id ( id, slug, title_tr )
       )
     `)
     .eq('author_id', authorId)
-    .order('position', { ascending: true })
+    .order('author_position', { ascending: true })
     .limit(100)
 
   return (data ?? []).map((row: Record<string, unknown>) => row.article as Partial<Article> & {

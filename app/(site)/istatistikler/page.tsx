@@ -11,9 +11,13 @@ export const metadata: Metadata = {
 export const revalidate = 3600
 
 async function getStats(): Promise<PlatformStats | null> {
-  const sb = await createClient()
-  const { data } = await sb.from('platform_stats').select('*').single()
-  return (data as PlatformStats | null) ?? null
+  try {
+    const sb = await createClient()
+    const { data } = await sb.from('platform_stats').select('*').single()
+    return (data as PlatformStats | null) ?? null
+  } catch {
+    return null
+  }
 }
 
 async function getTopJournals(limit = 10) {
@@ -47,43 +51,61 @@ async function getArticlesByYear() {
     .slice(-20) // son 20 yıl
 }
 
+async function getAuthorCount(): Promise<number> {
+  const sb = await createClient()
+  const { count } = await sb.from('authors').select('*', { count: 'exact', head: true })
+  return count ?? 0
+}
+
 export default async function IstatistiklerPage() {
-  const [stats, topJournals, yearlyData] = await Promise.all([
+  const [stats, topJournals, yearlyData, authorCount] = await Promise.all([
     getStats(),
     getTopJournals(),
     getArticlesByYear(),
+    getAuthorCount(),
   ])
 
+  const displayAuthorCount = authorCount > 0 ? authorCount : (stats?.author_count ?? 0)
+
+  // Sayaçlar: yaklaşık değer uyarısı
   const counters = [
     {
       label: 'Akademik Makale',
+      sublabel: 'yaklaşık',
       value: stats?.article_count ?? 0,
       icon: FileText,
       color: 'text-primary',
       bg: 'bg-primary/10',
+      show: true,
     },
     {
       label: 'Dergi',
+      sublabel: 'yaklaşık',
       value: stats?.journal_count ?? 0,
       icon: BookOpen,
       color: 'text-accent',
       bg: 'bg-accent/10',
+      show: true,
     },
     {
       label: 'Yazar',
-      value: stats?.author_count ?? 0,
+      sublabel: displayAuthorCount > 0 ? 'pilot veri' : '',
+      value: displayAuthorCount,
       icon: Users,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
+      show: displayAuthorCount > 0,
     },
     {
       label: 'Kurum',
+      sublabel: '',
       value: stats?.institution_count ?? 0,
       icon: Building2,
       color: 'text-orange-600',
       bg: 'bg-orange-50',
+      show: (stats?.institution_count ?? 0) > 0,
     },
-  ]
+  ].filter(c => c.show)
 
   // Bar chart ölçeklendirme
   const maxCount = Math.max(...yearlyData.map(d => d.count), 1)
@@ -91,17 +113,22 @@ export default async function IstatistiklerPage() {
   return (
     <div className="content-width py-8">
       <h1 className="font-serif text-3xl font-bold mb-2">Platform İstatistikleri</h1>
-      <p className="text-muted-foreground mb-10">Saatte bir güncellenir.</p>
+      <p className="text-muted-foreground mb-10">
+        Makale ve dergi sayıları PostgreSQL tablo istatistiklerinden (yaklaşık). Saatte bir güncellenir.
+      </p>
 
       {/* Sayaçlar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-        {counters.map(({ label, value, icon: Icon, color, bg }) => (
+        {counters.map(({ label, sublabel, value, icon: Icon, color, bg }) => (
           <div key={label} className="rounded-xl border border-border bg-card p-5">
             <div className={`inline-flex items-center justify-center h-10 w-10 rounded-lg ${bg} mb-3`}>
               <Icon className={`h-5 w-5 ${color}`} />
             </div>
             <p className="text-2xl font-bold tabular-nums">{value.toLocaleString('tr-TR')}</p>
-            <p className="text-sm text-muted-foreground mt-0.5">{label}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {label}
+              {sublabel && <span className="text-xs"> ({sublabel})</span>}
+            </p>
           </div>
         ))}
       </div>
@@ -133,7 +160,8 @@ export default async function IstatistiklerPage() {
         {/* En fazla makale olan dergiler */}
         {topJournals.length > 0 && (
           <section>
-            <h2 className="text-lg font-serif font-semibold mb-5">En Çok Görüntülenen Dergiler</h2>
+            <h2 className="text-lg font-serif font-semibold mb-1">En Çok Görüntülenen Dergiler</h2>
+            <p className="text-xs text-muted-foreground mb-4">Dergi sayfası görüntülenme sayısı (hit_count)</p>
             <ol className="space-y-2">
               {topJournals.map((j, i) => {
                 const journal = j as { id: number; slug: string; title_tr: string | null; hit_count: number }

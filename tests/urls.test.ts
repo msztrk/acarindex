@@ -20,6 +20,13 @@ describe('urlYap', () => {
     expect(urlYap('İstanbul Üniversitesi')).toBe('istanbul-universitesi')
   })
 
+  it('Türkçe yazar ve kurum adlarından slug üretir (önce ASCII, sonra lowercase)', () => {
+    expect(urlYap('İsmail Şentürk')).toBe('ismail-senturk')
+    expect(urlYap('Işık Üniversitesi')).toBe('isik-universitesi')
+    expect(urlYap('Çağlayan Öztürk')).toBe('caglayan-ozturk')
+    expect(urlYap('Özcan Tunahan')).toBe('ozcan-tunahan')
+  })
+
   it('Noktalama ve özel karakterleri kaldırır', () => {
     expect(urlYap('Merhaba, Dünya!')).toBe('merhaba-dunya')
     expect(urlYap("Yazar'ın Makalesi")).toBe('yazarin-makalesi')

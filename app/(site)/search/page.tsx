@@ -36,7 +36,10 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
   // Legacy prefix ayrıştırma: "author:xxx"
   const { q, area: parsedArea } = parsePrefixQuery(rawQ)
-  const area = (sp.area ?? parsedArea) as SearchArea
+  const areaRaw = sp.area ?? parsedArea
+  const area = (['all', 'title', 'author', 'keywords'] as const).includes(areaRaw as SearchArea)
+    ? (areaRaw as SearchArea)
+    : 'all'
 
   const language = sp.language === 'en' ? 'en' : sp.language === 'tr' ? 'tr' : undefined
   const yearFrom = sp.year_from ? parseInt(sp.year_from, 10) : undefined
@@ -121,11 +124,10 @@ export default async function SearchPage({ searchParams }: PageProps) {
               defaultValue={area}
               className="border border-border rounded-lg px-2 py-1 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="all">Tüm alanlar</option>
-              <option value="title">Başlık</option>
-              <option value="author">Yazar</option>
-              <option value="keywords">Anahtar kelime</option>
-              <option value="abstract">Özet</option>
+              <option value="all">Başlık, yazar, anahtar kelime</option>
+              <option value="title">Yalnızca başlık</option>
+              <option value="author">Yalnızca yazar</option>
+              <option value="keywords">Yalnızca anahtar kelime</option>
             </select>
             <select
               name="language"

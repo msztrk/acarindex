@@ -6,7 +6,7 @@
 import { createClient } from '@/lib/supabase/server'
 
 export type SearchType = 'article' | 'journal' | 'author'
-export type SearchArea = 'all' | 'title' | 'author' | 'keywords' | 'abstract'
+export type SearchArea = 'all' | 'title' | 'author' | 'keywords'
 
 export interface SearchParams {
   q: string
@@ -75,7 +75,6 @@ export function parsePrefixQuery(raw: string): { q: string; area: SearchArea } {
     'author': 'author',
     'title': 'title',
     'keyword': 'keywords',
-    'abstract': 'abstract',
   }
   const colonIdx = raw.indexOf(':')
   if (colonIdx > 0) {
@@ -102,9 +101,6 @@ export function buildSearchCondition(area: SearchArea, q: string): string {
       return `authors_raw.ilike.*${esc}*`
     case 'keywords':
       return `keywords_tr.ilike.*${esc}*,keywords_en.ilike.*${esc}*`
-    case 'abstract':
-      // abstract tam metin arama — sadece başlık + keyword'e fallback (timeout güvenliği)
-      return `title_tr.ilike.*${esc}*,title_en.ilike.*${esc}*,keywords_tr.ilike.*${esc}*,keywords_en.ilike.*${esc}*`
     case 'all':
     default:
       // abstract_tr/abstract_en hariç — büyük text alanları timeout'a yol açıyor
@@ -146,8 +142,7 @@ export async function searchArticles(params: SearchParams): Promise<{ data: Arti
 
   query = query.order('published_year', { ascending: false }).range(offset, offset + perPage - 1)
 
-  const { data, count, error: searchErr } = await query
-  console.log('[search] q=%s err=%s count=%s dataLen=%d', q, searchErr?.message, count, data?.length ?? 0)
+  const { data, count } = await query
 
   const results: ArticleResult[] = (data ?? []).map((row: Record<string, unknown>) => {
     const j = row.journal as { id: number; slug: string; title_tr: string | null } | null

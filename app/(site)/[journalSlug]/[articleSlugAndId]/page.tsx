@@ -107,6 +107,25 @@ async function getArticle(articleId: number): Promise<ArticleRow | null> {
   return data as unknown as ArticleRow
 }
 
+async function getArticleAuthorLinks(articleId: number) {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('article_authors')
+    .select(`
+      author_position,
+      raw_author_name,
+      author:authors ( id, slug, name )
+    `)
+    .eq('article_id', articleId)
+    .order('author_position', { ascending: true })
+
+  return (data ?? []) as Array<{
+    author_position: number | null
+    raw_author_name: string | null
+    author: { id: number; slug: string | null; name: string } | null
+  }>
+}
+
 // ─── Metadata ────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -153,6 +172,8 @@ export default async function ArticlePage({ params }: PageProps) {
 
   const article = await getArticle(articleId)
   if (!article) notFound()
+
+  const authorLinks = await getArticleAuthorLinks(articleId)
 
   // Dergi ve sayı bilgileri
   const journal = article.journal
@@ -310,21 +331,37 @@ export default async function ArticlePage({ params }: PageProps) {
             </div>
 
             {/* Yazarlar */}
-            {authorsList.length > 0 && (
+            {(authorLinks.length > 0 || authorsList.length > 0) && (
               <div className="mb-6">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                   Yazarlar
                 </h2>
                 <div className="flex flex-wrap gap-2">
-                  {authorsList.map((author, i) => (
-                    <Link
-                      key={i}
-                      href={`/search?q=${encodeURIComponent(author)}&area=author`}
-                      className="text-sm text-primary hover:text-accent"
-                    >
-                      {author}
-                    </Link>
-                  ))}
+                  {authorLinks.length > 0
+                    ? authorLinks.map((row) => {
+                        const name = row.author?.name ?? row.raw_author_name ?? 'Yazar'
+                        const href = row.author
+                          ? `/authors/${row.author.slug ?? row.author.id}-${row.author.id}`
+                          : `/search?q=${encodeURIComponent(name)}&area=author`
+                        return (
+                          <Link
+                            key={`${row.author?.id ?? name}-${row.author_position}`}
+                            href={href}
+                            className="text-sm text-primary hover:text-accent"
+                          >
+                            {name}
+                          </Link>
+                        )
+                      })
+                    : authorsList.map((author, i) => (
+                        <Link
+                          key={i}
+                          href={`/search?q=${encodeURIComponent(author)}&area=author`}
+                          className="text-sm text-primary hover:text-accent"
+                        >
+                          {author}
+                        </Link>
+                      ))}
                 </div>
               </div>
             )}

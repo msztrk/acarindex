@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Search } from 'lucide-react'
+import { BookOpen, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { cn, buttonVariants } from '@/lib/utils'
 import type { Journal, Category } from '@/types/database'
 
 export const metadata: Metadata = {
@@ -10,23 +11,30 @@ export const metadata: Metadata = {
   description: 'AcarIndex\'te indekslenmiş tüm akademik dergilere göz atın.',
 }
 
+const PER_PAGE = 60
+
 interface PageProps {
-  searchParams: Promise<{ category?: string; q?: string }>
+  searchParams: Promise<{ category?: string; q?: string; page?: string }>
 }
 
-async function getJournals(categoryId?: number, q?: string) {
+async function getJournals(categoryId?: number, q?: string, page = 1) {
   const sb = await createClient()
+  const offset = (page - 1) * PER_PAGE
+
   let query = sb
     .from('journals')
-    .select('id, slug, title_tr, title_en, issn, eissn, publisher, frequency, cover_path, hit_count, category_id')
+    .select('id, slug, title_tr, title_en, issn, eissn, publisher, frequency, cover_path, hit_count, category_id', { count: 'exact' })
     .eq('status', 'published')
     .order('title_tr', { ascending: true })
 
   if (categoryId) query = query.eq('category_id', categoryId)
   if (q) query = query.ilike('title_tr', `%${q}%`)
 
-  const { data } = await query.limit(200)
-  return (data ?? []) as Partial<Journal>[]
+  const { data, count } = await query.range(offset, offset + PER_PAGE - 1)
+  return {
+    journals: (data ?? []) as Partial<Journal>[],
+    total: count ?? 0,
+  }
 }
 
 async function getCategories() {
@@ -36,19 +44,33 @@ async function getCategories() {
 }
 
 export default async function JournalsPage({ searchParams }: PageProps) {
-  const { category, q } = await searchParams
+  const { category, q, page: pageStr } = await searchParams
   const categoryId = category ? parseInt(category, 10) : undefined
-  const [journals, categories] = await Promise.all([
-    getJournals(isNaN(categoryId ?? NaN) ? undefined : categoryId, q),
+  const page = Math.max(1, parseInt(pageStr ?? '1', 10))
+
+  const [{ journals, total }, categories] = await Promise.all([
+    getJournals(isNaN(categoryId ?? NaN) ? undefined : categoryId, q, page),
     getCategories(),
   ])
+
+  const totalPages = Math.ceil(total / PER_PAGE)
+
+  function qs(overrides: Record<string, string | undefined>) {
+    const base: Record<string, string> = {}
+    if (q) base.q = q
+    if (category) base.category = category
+    const merged = { ...base, ...overrides }
+    return '/journals?' + new URLSearchParams(
+      Object.fromEntries(Object.entries(merged).filter(([, v]) => v !== undefined)) as Record<string, string>
+    ).toString()
+  }
 
   return (
     <div className="content-width py-8">
       <div className="mb-8">
         <h1 className="font-serif text-3xl font-bold mb-2">Dergiler</h1>
         <p className="text-muted-foreground">
-          {journals.length.toLocaleString('tr-TR')} dergi listeleniyor
+          {total.toLocaleString('tr-TR')} dergi • Sayfa {page}/{totalPages}
         </p>
       </div>
 
@@ -57,6 +79,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
         <aside>
           {/* Arama */}
           <form method="GET" className="mb-6">
+            {category && <input type="hidden" name="category" value={category} />}
             <div className="flex items-center border border-border rounded-lg overflow-hidden bg-background focus-within:ring-2 focus-within:ring-ring">
               <Search className="ml-3 h-4 w-4 text-muted-foreground shrink-0" />
               <input
@@ -107,11 +130,46 @@ export default async function JournalsPage({ searchParams }: PageProps) {
               <p>Dergi bulunamadı.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {journals.map((journal) => (
-                <JournalCard key={journal.id} journal={journal} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {journals.map((journal) => (
+                  <JournalCard key={journal.id} journal={journal} />
+                ))}
+              </div>
+
+              {/* Sayfalama */}
+              {totalPages > 1 && (
+                <nav className="flex items-center justify-center gap-2 mt-8" aria-label="Sayfalama">
+                  {page > 1 && (
+                    <Link href={qs({ page: String(page - 1) })}
+                      className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Link>
+                  )}
+                  {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
+                    const p = totalPages <= 7 ? i + 1
+                      : page <= 4 ? i + 1
+                      : page >= totalPages - 3 ? totalPages - 6 + i
+                      : page - 3 + i
+                    return (
+                      <Link key={p} href={qs({ page: String(p) })}
+                        className={cn(
+                          buttonVariants({ variant: p === page ? 'default' : 'outline', size: 'sm' }),
+                          'min-w-[36px] justify-center'
+                        )}>
+                        {p}
+                      </Link>
+                    )
+                  })}
+                  {page < totalPages && (
+                    <Link href={qs({ page: String(page + 1) })}
+                      className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  )}
+                </nav>
+              )}
+            </>
           )}
         </div>
       </div>
