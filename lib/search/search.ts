@@ -103,17 +103,18 @@ export function buildSearchCondition(area: SearchArea, q: string): string {
     case 'keywords':
       return `keywords_tr.ilike.*${esc}*,keywords_en.ilike.*${esc}*`
     case 'abstract':
-      return `abstract_tr.ilike.*${esc}*,abstract_en.ilike.*${esc}*`
+      // abstract tam metin arama — sadece başlık + keyword'e fallback (timeout güvenliği)
+      return `title_tr.ilike.*${esc}*,title_en.ilike.*${esc}*,keywords_tr.ilike.*${esc}*,keywords_en.ilike.*${esc}*`
     case 'all':
     default:
+      // abstract_tr/abstract_en hariç — büyük text alanları timeout'a yol açıyor
+      // trgm index'leri yalnızca title_tr, title_en, authors_raw alanlarında var
       return [
         `title_tr.ilike.*${esc}*`,
         `title_en.ilike.*${esc}*`,
         `authors_raw.ilike.*${esc}*`,
         `keywords_tr.ilike.*${esc}*`,
         `keywords_en.ilike.*${esc}*`,
-        `abstract_tr.ilike.*${esc}*`,
-        `abstract_en.ilike.*${esc}*`,
       ].join(',')
   }
 }
@@ -145,9 +146,8 @@ export async function searchArticles(params: SearchParams): Promise<{ data: Arti
 
   query = query.order('published_year', { ascending: false }).range(offset, offset + perPage - 1)
 
-  const { data, count, error: qErr } = await query
-
-  console.log('[searchArticles] q=%s area=%s condition=%s count=%s err=%s', q, area, condition, count, qErr?.message)
+  const { data, count, error: searchErr } = await query
+  console.log('[search] q=%s err=%s count=%s dataLen=%d', q, searchErr?.message, count, data?.length ?? 0)
 
   const results: ArticleResult[] = (data ?? []).map((row: Record<string, unknown>) => {
     const j = row.journal as { id: number; slug: string; title_tr: string | null } | null
