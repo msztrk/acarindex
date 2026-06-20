@@ -145,7 +145,11 @@ export async function searchArticles(params: SearchParams): Promise<{ data: Arti
 
   query = query.order('published_year', { ascending: false }).range(offset, offset + perPage - 1)
 
-  const { data, count } = await query
+  const { data, count, error: qErr } = await query
+
+  if (qErr) {
+    console.error('[searchArticles] query error:', qErr.message, qErr.details, qErr.hint)
+  }
 
   const results: ArticleResult[] = (data ?? []).map((row: Record<string, unknown>) => {
     const j = row.journal as { id: number; slug: string; title_tr: string | null } | null
