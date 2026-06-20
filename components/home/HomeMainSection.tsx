@@ -18,7 +18,7 @@ export async function HomeMainSection({ qa }: { qa?: HomeQaMode }) {
 
   return (
     <section className="content-width py-10 md:py-12">
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-10 lg:gap-14">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-10 lg:gap-14">
         <div>
           <div className="flex items-baseline justify-between gap-4 mb-4">
             <h2 className="text-lg font-semibold text-foreground">Son eklenen makaleler</h2>

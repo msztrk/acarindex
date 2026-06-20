@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // DevTools / build indicator yalnızca development'ta; production build'de görünmez.
+  devIndicators: false,
 };
 
 export default nextConfig;

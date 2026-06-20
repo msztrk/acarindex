@@ -17,7 +17,7 @@ export function TopicAreasList({ categories }: { categories: TopicAreaItem[] }) 
           <li key={cat.id}>
             <Link
               href={`/journals?category=${cat.id}`}
-              className="inline-block text-xs px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors no-underline"
+              className="inline-block text-xs font-medium px-2.5 py-1 rounded-md border border-foreground/15 bg-muted/50 text-foreground/85 hover:text-foreground hover:border-foreground/30 hover:bg-muted transition-colors no-underline"
             >
               {cat.name_tr ?? cat.name_en ?? 'Kategori'}
             </Link>

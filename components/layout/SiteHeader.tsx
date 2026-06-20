@@ -33,22 +33,34 @@ export function SiteHeader() {
             href="/"
             className="flex items-center gap-2 shrink-0 text-foreground hover:text-foreground"
           >
-            <span className="font-serif text-xl font-bold tracking-tight text-primary">
+            <span className="font-serif text-[1.375rem] font-bold tracking-tight text-primary leading-none">
               AcarIndex
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium" aria-label="Ana menü">
-            <Link href="/journals" className="text-muted-foreground hover:text-foreground transition-colors">
+          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold" aria-label="Ana menü">
+            <Link
+              href="/journals"
+              className="text-foreground/80 hover:text-foreground transition-colors"
+            >
               Dergiler
             </Link>
-            <Link href="/search?type=article" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              href="/search?type=article"
+              className="text-foreground/80 hover:text-foreground transition-colors"
+            >
               Makaleler
             </Link>
-            <Link href="/search?type=author" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              href="/search?type=author"
+              className="text-foreground/80 hover:text-foreground transition-colors"
+            >
               Yazarlar
             </Link>
-            <Link href="/istatistikler" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              href="/istatistikler"
+              className="text-foreground/80 hover:text-foreground transition-colors"
+            >
               İstatistikler
             </Link>
           </nav>
@@ -57,7 +69,10 @@ export function SiteHeader() {
             {!isHome && <SearchBar variant="compact" className="flex-1 max-w-xs" />}
             <Link
               href="/login"
-              className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'shrink-0')}
+              className={cn(
+                buttonVariants({ variant: 'outline', size: 'sm' }),
+                'shrink-0 border-foreground/25 text-foreground font-semibold hover:bg-secondary',
+              )}
             >
               Giriş
             </Link>

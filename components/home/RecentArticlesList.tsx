@@ -43,35 +43,36 @@ export function RecentArticlesList({ articles }: { articles: RecentArticleItem[]
 
         return (
           <li key={a.id} className="group py-4 first:pt-0">
-            <Link
-              href={href}
-              className="block no-underline"
-            >
-              <span className="font-medium text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+            <Link href={href} className="block no-underline">
+              <span
+                className="text-[0.9375rem] font-normal text-foreground/90 group-hover:text-primary transition-colors leading-[1.45] line-clamp-2"
+              >
                 {title}
               </span>
             </Link>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-              {authors && <span className="truncate max-w-full">{authors}</span>}
-              {authors && a.published_year && <span aria-hidden>·</span>}
-              {a.published_year && <span>{a.published_year}</span>}
-              {a.journal?.title_tr && (
-                <>
-                  <span aria-hidden>·</span>
+            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
+                {authors && <span className="truncate max-w-full">{authors}</span>}
+                {authors && a.published_year && <span aria-hidden>·</span>}
+                {a.published_year && <span className="tabular-nums shrink-0">{a.published_year}</span>}
+              </div>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                {a.journal?.title_tr && (
                   <Link
                     href={`/journals/${a.journal.slug}-${a.journal.id}`}
-                    className="hover:text-foreground truncate max-w-[200px]"
+                    className="hover:text-foreground truncate max-w-full sm:max-w-[280px]"
                   >
                     {a.journal.title_tr}
                   </Link>
-                </>
-              )}
-              <Link
-                href={`/pdfs/${a.id}`}
-                className="text-primary hover:underline inline-flex items-center gap-0.5"
-              >
-                <FileText className="h-3 w-3" /> PDF
-              </Link>
+                )}
+                <Link
+                  href={`/pdfs/${a.id}`}
+                  className="inline-flex items-center gap-1 shrink-0 rounded-md border border-primary/25 bg-primary/5 px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/10 hover:border-primary/40 transition-colors no-underline"
+                >
+                  <FileText className="h-3 w-3" aria-hidden />
+                  PDF
+                </Link>
+              </div>
             </div>
           </li>
         )

@@ -138,7 +138,7 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
             autoComplete="off"
             placeholder={placeholder ?? (isHero ? 'Makale, yazar, dergi veya konu ara…' : 'Ara…')}
             className={cn(
-              'flex-1 bg-transparent outline-none placeholder:text-muted-foreground',
+              'flex-1 min-w-0 bg-transparent outline-none placeholder:text-muted-foreground',
               isHero ? 'px-3 py-3.5 text-base' : 'px-2 py-2 text-sm',
             )}
           />
@@ -156,10 +156,18 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
             type="submit"
             className={cn(
               'shrink-0 font-medium bg-primary text-primary-foreground transition-colors hover:bg-primary/90',
-              isHero ? 'px-5 py-3.5 text-sm' : 'px-3 py-2 text-xs',
+              isHero ? 'px-3 py-3.5 sm:px-5 text-sm min-w-[44px] sm:min-w-0' : 'px-3 py-2 text-xs',
             )}
+            aria-label={isHero ? 'Ara' : undefined}
           >
-            {isHero ? 'Ara' : <ArrowRight className="h-4 w-4" />}
+            {isHero ? (
+              <>
+                <ArrowRight className="h-5 w-5 sm:hidden" aria-hidden />
+                <span className="hidden sm:inline">Ara</span>
+              </>
+            ) : (
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            )}
           </button>
         </div>
       </form>
@@ -216,7 +224,12 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
 
       {/* Yükleniyor göstergesi */}
       {loading && (
-        <div className="absolute right-14 top-1/2 -translate-y-1/2">
+        <div
+          className={cn(
+            'absolute top-1/2 -translate-y-1/2',
+            isHero ? 'right-12 sm:right-14' : 'right-10',
+          )}
+        >
           <div className="h-3.5 w-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin" />
         </div>
       )}
