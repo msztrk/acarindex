@@ -56,6 +56,19 @@ export interface SearchResults {
   total: number
 }
 
+// ─── Türkçe karakter normalizasyonu ─────────────────────────────────────────
+// Eski MySQL verisi ğ/ş/ç/ü/ö/ı'yı ASCII'ye dönüştürerek saklamış.
+// Kullanıcının yazdığı doğru Türkçe → ASCII'ye çevrilerek arama yapılır.
+function normalizeSearchTerm(q: string): string {
+  return q
+    .replace(/[ğĞ]/g, 'g')
+    .replace(/[şŞ]/g, 's')
+    .replace(/[çÇ]/g, 'c')
+    .replace(/[üÜ]/g, 'u')
+    .replace(/[öÖ]/g, 'o')
+    .replace(/[ıİ]/g, 'i')
+}
+
 // ─── Legacy prefix desteği: "author:xxx" → area + q ayrıştır ────────────────
 export function parsePrefixQuery(raw: string): { q: string; area: SearchArea } {
   const prefixMap: Record<string, SearchArea> = {
@@ -80,27 +93,27 @@ export function parsePrefixQuery(raw: string): { q: string; area: SearchArea } {
  * Faz-3'te Meilisearch adapter değiştiğinde bu fonksiyon silinir.
  */
 export function buildSearchCondition(area: SearchArea, q: string): string {
-  const esc = q.replace(/'/g, "''")  // minimal SQL injection guard
+  // PostgREST .or() stringinde % yerine * kullanılır (URL kodlama uyumu)
+  const esc = normalizeSearchTerm(q).replace(/'/g, "''").replace(/[*?\\]/g, '\\$&')
   switch (area) {
     case 'title':
-      return `title_tr.ilike.%${esc}%,title_en.ilike.%${esc}%`
+      return `title_tr.ilike.*${esc}*,title_en.ilike.*${esc}*`
     case 'author':
-      return `authors_raw.ilike.%${esc}%`
+      return `authors_raw.ilike.*${esc}*`
     case 'keywords':
-      return `keywords_tr.ilike.%${esc}%,keywords_en.ilike.%${esc}%`
+      return `keywords_tr.ilike.*${esc}*,keywords_en.ilike.*${esc}*`
     case 'abstract':
-      return `abstract_tr.ilike.%${esc}%,abstract_en.ilike.%${esc}%`
+      return `abstract_tr.ilike.*${esc}*,abstract_en.ilike.*${esc}*`
     case 'all':
     default:
-      // Tüm alanlar — pg_trgm GIN indexleri aktifken performanslı çalışır
       return [
-        `title_tr.ilike.%${esc}%`,
-        `title_en.ilike.%${esc}%`,
-        `authors_raw.ilike.%${esc}%`,
-        `keywords_tr.ilike.%${esc}%`,
-        `keywords_en.ilike.%${esc}%`,
-        `abstract_tr.ilike.%${esc}%`,
-        `abstract_en.ilike.%${esc}%`,
+        `title_tr.ilike.*${esc}*`,
+        `title_en.ilike.*${esc}*`,
+        `authors_raw.ilike.*${esc}*`,
+        `keywords_tr.ilike.*${esc}*`,
+        `keywords_en.ilike.*${esc}*`,
+        `abstract_tr.ilike.*${esc}*`,
+        `abstract_en.ilike.*${esc}*`,
       ].join(',')
   }
 }
@@ -110,6 +123,7 @@ export async function searchArticles(params: SearchParams): Promise<{ data: Arti
   const sb = await createClient()
   const { q, area, language, journalId, yearFrom, yearTo, page, perPage } = params
   const offset = (page - 1) * perPage
+  const condition = buildSearchCondition(area, q)
 
   let query = sb
     .from('articles')
@@ -121,7 +135,7 @@ export async function searchArticles(params: SearchParams): Promise<{ data: Arti
     .eq('status', 'published')
 
   if (q) {
-    query = query.or(buildSearchCondition(area, q))
+    query = query.or(condition)
   }
 
   if (language) query = query.eq('language', language)
@@ -157,12 +171,13 @@ export async function searchArticles(params: SearchParams): Promise<{ data: Arti
 export async function searchJournals(q: string, page: number, perPage: number) {
   const sb = await createClient()
   const offset = (page - 1) * perPage
+  const nq = normalizeSearchTerm(q)
 
   const { data, count } = await sb
     .from('journals')
     .select('id, slug, title_tr, title_en, issn, publisher', { count: 'exact' })
     .eq('status', 'published')
-    .or(`title_tr.ilike.%${q}%,title_en.ilike.%${q}%,issn.ilike.%${q}%`)
+    .or(`title_tr.ilike.%${nq}%,title_en.ilike.%${nq}%,issn.ilike.%${q}%`)
     .order('title_tr', { ascending: true })
     .range(offset, offset + perPage - 1)
 
@@ -177,7 +192,7 @@ export async function searchAuthors(q: string, page: number, perPage: number) {
   const { data, count } = await sb
     .from('authors')
     .select('id, slug, name', { count: 'exact' })
-    .ilike('name', `%${q}%`)
+    .ilike('name', `%${normalizeSearchTerm(q)}%`)
     .order('name', { ascending: true })
     .range(offset, offset + perPage - 1)
 

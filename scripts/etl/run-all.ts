@@ -29,7 +29,7 @@ const scripts = [
   '01-journals.ts',
   '02-issues.ts',
   '03-articles.ts',
-  '04-authors.ts',
+  // '04-authors.ts', // SKIP: disk tasarrufu için; authors_raw article içinde mevcut
 ]
 
 console.log(`🚀 AcarIndex ETL [${isPilot ? 'PILOT' : 'FULL'}] başlıyor...\n`)

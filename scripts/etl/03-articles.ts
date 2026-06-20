@@ -14,7 +14,7 @@ import { urlYap } from '../../lib/urls/slug'
 import type mysql from 'mysql2/promise'
 
 const isPilot = process.argv.includes('--pilot')
-const PILOT_LIMIT = 1000
+const PILOT_LIMIT = 10000
 const BATCH_SIZE = 500
 
 interface LegacyMakale {
@@ -185,22 +185,30 @@ async function main() {
       })
     }
 
-    // articles upsert
-    const { error: aErr } = await sb.from('articles').upsert(articles, { onConflict: 'legacy_id' })
+    // articles upsert — timeout retry ile
+    let aErr = null
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const r = await sb.from('articles').upsert(articles, { onConflict: 'legacy_id' })
+      if (!r.error) { articlesDone += articles.length; break }
+      aErr = r.error
+      if (attempt < 2) await new Promise(res => setTimeout(res, 500 * (attempt + 1)))
+    }
     if (aErr) {
-      console.error(`  [HATA] articles batch offset ${offset}: ${aErr.message}`)
+      console.error(`\n  [HATA] articles batch offset ${offset}: ${aErr.message}`)
       totalErrors += articles.length
       errorLog.push({ sourceTable: 'makaleler', sourceId: null, errorType: 'constraint', errorMessage: aErr.message })
-    } else {
-      articlesDone += articles.length
     }
 
-    // pdf_files upsert
-    const { error: pErr } = await sb.from('pdf_files').upsert(pdfs, { onConflict: 'article_id' })
+    // pdf_files upsert — timeout retry ile
+    let pErr = null
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const r = await sb.from('pdf_files').upsert(pdfs, { onConflict: 'article_id' })
+      if (!r.error) { pdfsDone += pdfs.length; break }
+      pErr = r.error
+      if (attempt < 2) await new Promise(res => setTimeout(res, 300 * (attempt + 1)))
+    }
     if (pErr) {
-      console.error(`  [HATA] pdf_files batch offset ${offset}: ${pErr.message}`)
-    } else {
-      pdfsDone += pdfs.length
+      console.error(`\n  [HATA] pdf_files batch offset ${offset}: ${pErr.message}`)
     }
 
     allErrorLog.push(...errorLog)
