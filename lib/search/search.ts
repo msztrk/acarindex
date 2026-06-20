@@ -147,9 +147,7 @@ export async function searchArticles(params: SearchParams): Promise<{ data: Arti
 
   const { data, count, error: qErr } = await query
 
-  if (qErr) {
-    console.error('[searchArticles] query error:', qErr.message, qErr.details, qErr.hint)
-  }
+  console.log('[searchArticles] q=%s area=%s condition=%s count=%s err=%s', q, area, condition, count, qErr?.message)
 
   const results: ArticleResult[] = (data ?? []).map((row: Record<string, unknown>) => {
     const j = row.journal as { id: number; slug: string; title_tr: string | null } | null
