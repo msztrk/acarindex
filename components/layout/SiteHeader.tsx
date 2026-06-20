@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,8 @@ import { SearchBar } from '@/components/search/SearchBar'
 
 export function SiteHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const pathname = usePathname()
+  const isHome = pathname === '/'
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -41,9 +44,9 @@ export function SiteHeader() {
             </Link>
           </nav>
 
-          {/* Desktop arama + giriş */}
-          <div className="hidden md:flex items-center gap-3 flex-1 max-w-sm">
-            <SearchBar variant="compact" className="flex-1" />
+          {/* Desktop arama + giriş — ana sayfada arama yalnızca hero'da */}
+          <div className="hidden md:flex items-center gap-3 flex-1 max-w-sm justify-end">
+            {!isHome && <SearchBar variant="compact" className="flex-1 max-w-xs" />}
             <Link
               href="/login"
               className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'shrink-0')}
@@ -71,9 +74,11 @@ export function SiteHeader() {
         {/* Mobil menü */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-border py-4 space-y-2">
-            <div className="px-1 pb-2">
-              <SearchBar variant="compact" placeholder="Ara…" />
-            </div>
+            {!isHome && (
+              <div className="px-1 pb-2">
+                <SearchBar variant="compact" placeholder="Ara…" />
+              </div>
+            )}
             <MobileNavLink href="/journals" onClick={() => setMobileMenuOpen(false)}>
               Dergiler
             </MobileNavLink>
