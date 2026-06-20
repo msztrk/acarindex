@@ -55,6 +55,9 @@ database-dump/
 *.sql
 reports/
 
+# QA screenshots (local only)
+screenshots/home-qa/
+
 # Laragon / local DB
 acarinde_yeniacarindex*
 

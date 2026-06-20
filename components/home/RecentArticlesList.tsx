@@ -25,7 +25,12 @@ function formatAuthors(raw: string | null): string {
 export function RecentArticlesList({ articles }: { articles: RecentArticleItem[] }) {
   if (articles.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-6">Henüz makale bulunamadı.</p>
+      <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-8 text-center">
+        <p className="text-sm font-medium text-foreground mb-1">Henüz makale listelenmiyor</p>
+        <p className="text-sm text-muted-foreground">
+          Yeni makaleler eklendiğinde burada görünecek.
+        </p>
+      </div>
     )
   }
 

@@ -10,7 +10,16 @@ export interface FeaturedJournalItem {
 }
 
 export function FeaturedJournalsList({ journals }: { journals: FeaturedJournalItem[] }) {
-  if (journals.length === 0) return null
+  if (journals.length === 0) {
+    return (
+      <section>
+        <h2 className="text-sm font-semibold text-foreground mb-3">Öne çıkan dergiler</h2>
+        <p className="text-sm text-muted-foreground py-2">
+          Öne çıkan dergi listesi henüz hazır değil.
+        </p>
+      </section>
+    )
+  }
 
   return (
     <section>

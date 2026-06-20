@@ -2,23 +2,33 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
-import { useState } from 'react'
+import { Menu } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn, buttonVariants } from '@/lib/utils'
 import { SearchBar } from '@/components/search/SearchBar'
+import {
+  MobileNavDrawer,
+  MOBILE_NAV_DRAWER_ID,
+} from '@/components/layout/MobileNavDrawer'
 
 export function SiteHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
   const pathname = usePathname()
   const isHome = pathname === '/'
 
+  const handleMenuOpenChange = (open: boolean) => {
+    setMobileMenuOpen(open)
+    if (!open) {
+      requestAnimationFrame(() => menuButtonRef.current?.focus())
+    }
+  }
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="content-width">
         <div className="flex h-16 items-center justify-between gap-4">
-
-          {/* Logo */}
           <Link
             href="/"
             className="flex items-center gap-2 shrink-0 text-foreground hover:text-foreground"
@@ -28,8 +38,7 @@ export function SiteHeader() {
             </span>
           </Link>
 
-          {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium" aria-label="Ana menü">
             <Link href="/journals" className="text-muted-foreground hover:text-foreground transition-colors">
               Dergiler
             </Link>
@@ -44,7 +53,6 @@ export function SiteHeader() {
             </Link>
           </nav>
 
-          {/* Desktop arama + giriş — ana sayfada arama yalnızca hero'da */}
           <div className="hidden md:flex items-center gap-3 flex-1 max-w-sm justify-end">
             {!isHome && <SearchBar variant="compact" className="flex-1 max-w-xs" />}
             <Link
@@ -55,70 +63,29 @@ export function SiteHeader() {
             </Link>
           </div>
 
-          {/* Mobil sağ alan */}
-          <div className="flex md:hidden items-center gap-1">
-
-            {/* Mobil menü toggle */}
+          <div className="flex md:hidden items-center">
             <Button
+              ref={menuButtonRef}
               variant="ghost"
               size="icon"
               className="md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label="Menüyü aç/kapat"
+              onClick={() => handleMenuOpenChange(true)}
+              aria-expanded={mobileMenuOpen}
+              aria-controls={MOBILE_NAV_DRAWER_ID}
+              aria-haspopup="dialog"
+              aria-label="Menüyü aç"
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              <Menu className="h-5 w-5" />
             </Button>
           </div>
         </div>
-
-        {/* Mobil menü */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-border py-4 space-y-2">
-            {!isHome && (
-              <div className="px-1 pb-2">
-                <SearchBar variant="compact" placeholder="Ara…" />
-              </div>
-            )}
-            <MobileNavLink href="/journals" onClick={() => setMobileMenuOpen(false)}>
-              Dergiler
-            </MobileNavLink>
-            <MobileNavLink href="/search?type=article" onClick={() => setMobileMenuOpen(false)}>
-              Makaleler
-            </MobileNavLink>
-            <MobileNavLink href="/search?type=author" onClick={() => setMobileMenuOpen(false)}>
-              Yazarlar
-            </MobileNavLink>
-            <MobileNavLink href="/istatistikler" onClick={() => setMobileMenuOpen(false)}>
-              İstatistikler
-            </MobileNavLink>
-            <div className="pt-2 border-t border-border mt-2">
-              <MobileNavLink href="/login" onClick={() => setMobileMenuOpen(false)}>
-                Giriş Yap
-              </MobileNavLink>
-            </div>
-          </div>
-        )}
       </div>
-    </header>
-  )
-}
 
-function MobileNavLink({
-  href,
-  onClick,
-  children,
-}: {
-  href: string
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className="block px-2 py-2 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-    >
-      {children}
-    </Link>
+      <MobileNavDrawer
+        open={mobileMenuOpen}
+        onOpenChange={handleMenuOpenChange}
+        showSearch={!isHome}
+      />
+    </header>
   )
 }
