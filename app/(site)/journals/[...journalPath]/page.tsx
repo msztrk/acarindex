@@ -12,6 +12,7 @@ import { BookOpen, FileText, ChevronRight, ExternalLink } from 'lucide-react'
 import { JsonLd } from '@/components/seo/JsonLd'
 import type { Journal, Issue, Article } from '@/types/database'
 import type { ReactNode } from 'react'
+import { cache } from 'react'
 
 // ─── URL çözümleme ───────────────────────────────────────────────────────────
 
@@ -64,7 +65,7 @@ async function getIssues(journalId: number) {
   return (data ?? []) as Issue[]
 }
 
-async function getIssueArticles(issueId: number) {
+async function getIssueArticlesUncached(issueId: number) {
   const sb = await createClient()
   const { data } = await sb
     .from('articles')
@@ -74,6 +75,21 @@ async function getIssueArticles(issueId: number) {
     .order('page_start', { ascending: true })
   return (data ?? []) as Partial<Article>[]
 }
+
+const getIssueArticles = cache(getIssueArticlesUncached)
+
+async function getIssueUncached(issueId: number) {
+  const sb = await createClient()
+  const { data } = await sb
+    .from('issues')
+    .select('*')
+    .eq('id', issueId)
+    .eq('status', 'published')
+    .single()
+  return data as Issue | null
+}
+
+const getIssue = cache(getIssueUncached)
 
 async function getLatestArticles(journalId: number, limit = 10) {
   const sb = await createClient()
@@ -88,6 +104,85 @@ async function getLatestArticles(journalId: number, limit = 10) {
 }
 
 // ─── Metadata ────────────────────────────────────────────────────────────────
+
+function parseIssueCitationParts(issue: Issue): {
+  volumeLabel: string | null
+  issueNumLabel: string | null
+  year: number | null
+} {
+  const year = issue.year ?? null
+  let volumeLabel = issue.volume?.trim() || null
+  let issueNumLabel: string | null = null
+  const raw = issue.issue_number?.trim()
+
+  if (raw) {
+    const ciltMatch = raw.match(/Cilt:\s*([^,-]+)/i)
+    const sayiMatch = raw.match(/Sayı:\s*(\S+)/i)
+    if (ciltMatch) volumeLabel = ciltMatch[1].trim()
+    if (sayiMatch) issueNumLabel = sayiMatch[1].trim()
+    if (!sayiMatch && !ciltMatch) issueNumLabel = raw
+  }
+
+  return { volumeLabel, issueNumLabel, year }
+}
+
+function buildIssueMetadataTitle(journalTitle: string, issue: Issue): string {
+  const { volumeLabel, issueNumLabel, year } = parseIssueCitationParts(issue)
+  const detailParts: string[] = []
+
+  if (volumeLabel && issueNumLabel) {
+    detailParts.push(`Cilt ${volumeLabel}, Sayı ${issueNumLabel}`)
+  } else if (issueNumLabel) {
+    detailParts.push(`Sayı ${issueNumLabel}`)
+  } else if (volumeLabel) {
+    detailParts.push(`Cilt ${volumeLabel}`)
+  } else if (issue.issue_label?.trim()) {
+    detailParts.push(issue.issue_label.trim())
+  }
+
+  if (detailParts.length === 0) {
+    return year ? `${journalTitle} (${year})` : journalTitle
+  }
+
+  return year
+    ? `${journalTitle} — ${detailParts[0]} (${year})`
+    : `${journalTitle} — ${detailParts[0]}`
+}
+
+function buildIssueMetadataDescription(
+  journalTitle: string,
+  issue: Issue,
+  articleCount: number,
+): string | undefined {
+  const { volumeLabel, issueNumLabel, year } = parseIssueCitationParts(issue)
+  const issueBits: string[] = []
+  if (volumeLabel) issueBits.push(`Cilt ${volumeLabel}`)
+  if (issueNumLabel) issueBits.push(`Sayı ${issueNumLabel}`)
+  const issueStr = issueBits.join(' ') || issue.issue_label?.trim()
+
+  if (!issueStr && !year) return undefined
+
+  let desc = journalTitle
+  if (issueStr) desc += `, ${issueStr}`
+  if (year) desc += ` (${year})`
+  desc += ' içinde yayımlanan'
+  if (articleCount > 0) {
+    desc += ` ${articleCount} akademik makaleyi inceleyin.`
+  } else {
+    desc += ' akademik makaleleri inceleyin.'
+  }
+  return desc.slice(0, 160)
+}
+
+function buildJournalCanonicalPath(
+  resolved: ResolvedPath,
+  journalPath: string[],
+): string {
+  if (resolved.subPage === 'home') {
+    return `/journals/${resolved.journalSegment}`
+  }
+  return `/journals/${journalPath.join('/')}`
+}
 
 export async function generateMetadata({
   params,
@@ -104,13 +199,33 @@ export async function generateMetadata({
   const journal = await getJournal(parsed.journalId)
   if (!journal) return {}
 
-  const title = journal.title_tr ?? journal.title_en ?? 'Dergi'
+  const journalTitle = journal.title_tr ?? journal.title_en ?? 'Dergi'
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
-  const subSuffix = resolved.subPage !== 'home' ? `/${resolved.subPage}` : ''
-  const canonicalUrl = `${canonicalBase}/journals/${resolved.journalSegment}${subSuffix}`
+  const canonicalPath = buildJournalCanonicalPath(resolved, journalPath)
+  const canonicalUrl = `${canonicalBase}${canonicalPath}`
+
+  if (resolved.subPage === 'sayi' && resolved.issueId) {
+    const issue = await getIssue(resolved.issueId)
+    if (!issue) return { title: 'Sayı bulunamadı' }
+
+    const articles = await getIssueArticles(resolved.issueId)
+    const pageTitle = buildIssueMetadataTitle(journalTitle, issue)
+    const description = buildIssueMetadataDescription(journalTitle, issue, articles.length)
+
+    return {
+      title: pageTitle,
+      description,
+      alternates: { canonical: canonicalUrl },
+      openGraph: {
+        title: pageTitle,
+        description,
+        url: canonicalPath,
+      },
+    }
+  }
 
   return {
-    title,
+    title: journalTitle,
     description: journal.description?.slice(0, 160) ?? undefined,
     alternates: { canonical: canonicalUrl },
   }
@@ -543,8 +658,7 @@ async function JournalSayi({
   issueId: number
   segment: string
 }) {
-  const sb = await createClient()
-  const { data: issue } = await sb.from('issues').select('*').eq('id', issueId).single()
+  const issue = await getIssue(issueId)
   const articles = await getIssueArticles(issueId)
 
   if (!issue) {
@@ -555,7 +669,7 @@ async function JournalSayi({
     )
   }
 
-  const issueRow = issue as Issue
+  const issueRow = issue
   const journalTitle = journal.title_tr ?? journal.title_en ?? 'Dergi'
   const journalHref = `/journals/${segment}`
   const arsivHref = `${journalHref}/arsiv`
