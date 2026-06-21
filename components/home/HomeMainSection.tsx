@@ -17,16 +17,16 @@ export async function HomeMainSection({ qa }: { qa?: HomeQaMode }) {
   ])
 
   return (
-    <section className="content-width py-10 md:py-12">
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-10 lg:gap-14">
+    <section className="content-width py-8 md:py-10">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-8 lg:gap-10">
         <div>
-          <div className="flex items-baseline justify-between gap-4 mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-5">
             <h2 className="text-lg font-semibold text-foreground">Son eklenen makaleler</h2>
             <Link
               href="/search?type=article"
-              className="text-xs text-primary hover:underline shrink-0"
+              className="text-sm font-semibold text-primary hover:text-primary/80 hover:underline underline-offset-2 shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              Tüm makaleler →
+              Tüm makaleleri görüntüle →
             </Link>
           </div>
           <RecentArticlesList articles={recentArticles} />

@@ -36,22 +36,24 @@ export function HomeHero({
 
   return (
     <section className="border-b border-border bg-background">
-      <div className="content-width py-8 md:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-8 lg:gap-14">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+      <div className="content-width py-7 md:py-9">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-8 lg:gap-10">
+          <div className="min-w-0 lg:max-w-[52rem]">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2.5">
               Akademik arama ve keşif
             </p>
-            <h1 className="font-serif text-xl sm:text-2xl lg:text-[2rem] font-semibold text-foreground tracking-tight leading-[1.3] sm:leading-snug mb-5 lg:mb-6">
-              Türkçe akademik makale, dergi ve yazarları tek yerden ara
+            <h1
+              className="font-serif text-xl sm:text-2xl lg:text-[1.875rem] font-semibold text-foreground tracking-tight text-balance leading-[1.35] sm:leading-[1.32] mb-4 lg:mb-5 max-w-[40rem] xl:max-w-[44rem]"
+            >
+              Türkçe akademik makale, dergi ve yazarları tek yerden keşfedin
             </h1>
 
             <SearchBar
               variant="hero"
               placeholder="Makale, yazar veya anahtar kelime…"
-              className="w-full max-w-[820px]"
+              className="w-full max-w-[840px]"
             />
-            <p className="mt-2 text-xs text-muted-foreground leading-relaxed max-w-[820px]">
+            <p className="mt-2 text-[0.8125rem] text-muted-foreground leading-relaxed max-w-[840px]">
               <span className="sm:hidden">Başlık, yazar ve anahtar kelime.</span>
               <span className="hidden sm:inline">
                 Arama kapsamı: başlık, yazar ve anahtar kelime. Özet araması sonraki sürümde.
@@ -59,54 +61,62 @@ export function HomeHero({
             </p>
 
             {statsError ? (
-              <p className="mt-5 text-sm text-muted-foreground" role="status">
+              <p className="mt-4 text-sm text-muted-foreground" role="status">
                 Platform istatistikleri geçici olarak yüklenemedi.
               </p>
             ) : (
-              <div className="mt-5">
+              <div className="mt-4 md:mt-5">
                 <div
-                  className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted-foreground max-w-md md:max-w-none md:flex md:flex-wrap md:items-center md:gap-x-3 md:gap-y-1"
+                  className="flex flex-wrap items-baseline justify-center md:justify-start gap-x-5 gap-y-2 text-[0.8125rem] text-muted-foreground"
                   role="list"
                 >
                   <Link
                     href="/journals"
-                    className="hover:text-foreground transition-colors"
+                    className="inline-flex items-baseline gap-1.5 hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     role="listitem"
                   >
-                    <span className="tabular-nums font-medium text-foreground">{fmt(journalCount)}</span>{' '}
-                    dergi
+                    <span className="tabular-nums text-base font-semibold text-foreground">
+                      {fmt(journalCount)}
+                    </span>
+                    <span>dergi</span>
                   </Link>
                   <Link
                     href="/search?type=article"
-                    className="hover:text-foreground transition-colors"
+                    className="inline-flex items-baseline gap-1.5 hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     role="listitem"
                   >
-                    <span className="tabular-nums font-medium text-foreground">{fmt(articleCount)}</span>{' '}
-                    makale
+                    <span className="tabular-nums text-base font-semibold text-foreground">
+                      {fmt(articleCount)}
+                    </span>
+                    <span>makale</span>
                   </Link>
                   <span
-                    className="col-span-2 flex justify-center md:col-span-1 md:justify-start"
+                    className="inline-flex items-baseline gap-1.5 justify-center md:justify-start"
                     role="listitem"
                   >
-                    <span className="tabular-nums font-medium text-foreground">{fmt(pdfCount)}</span> tam
-                    metin
+                    <span className="tabular-nums text-base font-semibold text-foreground">
+                      {fmt(pdfCount)}
+                    </span>
+                    <span>tam metin</span>
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">({approxNote})</p>
+                <p className="text-[0.6875rem] text-muted-foreground mt-1.5 text-center md:text-left">
+                  ({approxNote})
+                </p>
               </div>
             )}
           </div>
 
-          <aside className="hidden lg:block lg:pt-10">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+          <aside className="hidden lg:block lg:pt-7">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-foreground/70 mb-3">
               Popüler aramalar
             </h2>
-            <ul className="space-y-1.5">
+            <ul className="space-y-2">
               {POPULAR_SEARCHES.map((item) => (
                 <li key={item.label}>
                   <Link
                     href={item.href}
-                    className="text-sm text-foreground/80 hover:text-primary transition-colors no-underline"
+                    className="text-[0.9375rem] text-foreground/85 hover:text-primary hover:underline underline-offset-2 transition-colors no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     {item.label}
                   </Link>

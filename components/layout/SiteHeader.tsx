@@ -33,33 +33,33 @@ export function SiteHeader() {
             href="/"
             className="flex items-center gap-2 shrink-0 text-foreground hover:text-foreground"
           >
-            <span className="font-serif text-[1.375rem] font-bold tracking-tight text-primary leading-none">
+            <span className="font-serif text-[1.5rem] font-bold tracking-tight text-primary leading-none">
               AcarIndex
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold" aria-label="Ana menü">
+          <nav className="hidden md:flex items-center gap-6 text-[0.9375rem] font-semibold" aria-label="Ana menü">
             <Link
               href="/journals"
-              className="text-foreground/80 hover:text-foreground transition-colors"
+              className="text-foreground/85 hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Dergiler
             </Link>
             <Link
               href="/search?type=article"
-              className="text-foreground/80 hover:text-foreground transition-colors"
+              className="text-foreground/85 hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Makaleler
             </Link>
             <Link
               href="/search?type=author"
-              className="text-foreground/80 hover:text-foreground transition-colors"
+              className="text-foreground/85 hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Yazarlar
             </Link>
             <Link
               href="/istatistikler"
-              className="text-foreground/80 hover:text-foreground transition-colors"
+              className="text-foreground/85 hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               İstatistikler
             </Link>
@@ -71,7 +71,7 @@ export function SiteHeader() {
               href="/login"
               className={cn(
                 buttonVariants({ variant: 'outline', size: 'sm' }),
-                'shrink-0 border-foreground/25 text-foreground font-semibold hover:bg-secondary',
+                'shrink-0 border-foreground/30 text-foreground font-semibold hover:bg-secondary hover:border-foreground/45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               )}
             >
               Giriş

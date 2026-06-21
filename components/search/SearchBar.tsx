@@ -136,6 +136,7 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
             onFocus={() => q.length >= 2 && results.length > 0 && setOpen(true)}
             type="search"
             autoComplete="off"
+            aria-label={placeholder ?? (isHero ? 'Makale, yazar veya anahtar kelime' : 'Ara')}
             placeholder={placeholder ?? (isHero ? 'Makale, yazar, dergi veya konu ara…' : 'Ara…')}
             className={cn(
               'flex-1 min-w-0 bg-transparent outline-none placeholder:text-muted-foreground',
