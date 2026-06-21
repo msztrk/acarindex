@@ -8,7 +8,6 @@ import { cn, buttonVariants } from '@/lib/utils'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { CitationMeta } from '@/components/seo/CitationMeta'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -160,6 +159,83 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
+// ─── Yardımcılar ─────────────────────────────────────────────────────────────
+
+const linkFocusClass =
+  'rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+
+function parseKeywords(raw: string | null): string[] {
+  if (!raw) return []
+  return raw
+    .replace(/anahtar kelimeler[:;]?/i, '')
+    .replace(/keywords[:;]?/i, '')
+    .split(/[,;]/)
+    .map((kw) => kw.trim())
+    .filter(Boolean)
+}
+
+function formatPageRange(start: number | null, end: number | null): string | null {
+  if (start && end) return `${start}–${end}`
+  if (start) return String(start)
+  if (end) return String(end)
+  return null
+}
+
+function MetadataItem({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="text-sm text-foreground mt-0.5 min-w-0">{children}</dd>
+    </div>
+  )
+}
+
+function AuthorLinks({
+  authorLinks,
+  authorsList,
+}: {
+  authorLinks: Awaited<ReturnType<typeof getArticleAuthorLinks>>
+  authorsList: string[]
+}) {
+  const entries =
+    authorLinks.length > 0
+      ? authorLinks.map((row) => {
+          const name = row.author?.name ?? row.raw_author_name ?? 'Yazar'
+          const href = row.author
+            ? `/authors/${row.author.slug ?? row.author.id}-${row.author.id}`
+            : `/search?q=${encodeURIComponent(name)}&area=author`
+          return { key: `${row.author?.id ?? name}-${row.author_position}`, name, href }
+        })
+      : authorsList.map((name, i) => ({
+          key: `raw-${i}-${name}`,
+          name,
+          href: `/search?q=${encodeURIComponent(name)}&area=author`,
+        }))
+
+  if (entries.length === 0) return null
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-1 gap-y-1 min-w-0">
+      {entries.map((entry, index) => (
+        <span key={entry.key} className="inline-flex items-center gap-1 min-w-0">
+          <Link
+            href={entry.href}
+            className={cn(
+              'text-sm font-medium text-primary hover:text-accent transition-colors no-underline',
+              linkFocusClass,
+            )}
+          >
+            {entry.name}
+          </Link>
+          {index < entries.length - 1 && (
+            <span className="text-muted-foreground" aria-hidden>,</span>
+          )}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 // ─── Sayfa ───────────────────────────────────────────────────────────────────
 
 export default async function ArticlePage({ params }: PageProps) {
@@ -175,7 +251,6 @@ export default async function ArticlePage({ params }: PageProps) {
 
   const authorLinks = await getArticleAuthorLinks(articleId)
 
-  // Dergi ve sayı bilgileri
   const journal = article.journal
   const issue = article.issue
   const pdf = article.pdf
@@ -188,24 +263,42 @@ export default async function ArticlePage({ params }: PageProps) {
     titleOtherRaw.trim() !== title.trim()
       ? titleOtherRaw
       : null
-  const abstract = article.abstract_tr ?? article.abstract_en
-  const journalTitle = journal?.title_tr ?? journal?.title_en ?? ''
 
-  // Yazar listesi (ham string parse)
+  const abstractTr = article.abstract_tr?.trim() || null
+  const abstractEn =
+    article.abstract_en?.trim() &&
+    article.abstract_en.trim() !== '-' &&
+    article.abstract_en.trim() !== abstractTr
+      ? article.abstract_en.trim()
+      : null
+
+  const journalTitle = journal?.title_tr ?? journal?.title_en ?? ''
+  const journalHref = journal ? `/journals/${journal.slug}-${journal.id}` : null
+  const issueHref =
+    journal && issue
+      ? `/journals/${journal.slug}-${journal.id}/sayi/${issue.id}`
+      : null
+
   const authorsList: string[] = article.authors_raw
     ? article.authors_raw
-        .split(',')
+        .split(/[,;]+/)
         .map((a) => a.trim())
         .filter(Boolean)
     : []
 
-  // PDF
   const legacyPdfPath = pdf?.legacy_pdf_path ?? null
   const pdfAvailable = hasPdf(legacyPdfPath)
   const pdfDirectUrl = buildLegacyPdfUrl(legacyPdfPath)
   const pdfViewerUrl = buildPdfViewerUrl(article.id)
 
-  // JSON-LD
+  const pageRange = formatPageRange(article.page_start, article.page_end)
+  const keywords = [
+    ...new Set([
+      ...parseKeywords(article.keywords_tr),
+      ...parseKeywords(article.keywords_en),
+    ]),
+  ]
+
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
   const canonicalUrl = `${canonicalBase}/${article.legacy_journal_slug}/${article.slug}-${article.id}`
   const journalUrl = journal ? `${canonicalBase}/journals/${journal.slug}-${journal.id}` : undefined
@@ -215,8 +308,8 @@ export default async function ArticlePage({ params }: PageProps) {
     '@type': 'ScholarlyArticle',
     headline: title,
     alternativeHeadline: titleOther ?? undefined,
-    description: abstract?.slice(0, 300) ?? undefined,
-    abstract: abstract ?? undefined,
+    description: (abstractTr ?? abstractEn)?.slice(0, 300) ?? undefined,
+    abstract: abstractTr ?? abstractEn ?? undefined,
     author: authorsList.map((name) => ({ '@type': 'Person', name })),
     publisher: {
       '@type': 'Organization',
@@ -250,9 +343,22 @@ export default async function ArticlePage({ params }: PageProps) {
     ],
   }
 
+  const breadcrumbTitle =
+    title.length > 48 ? `${title.slice(0, 45).trimEnd()}…` : title
+
+  const hasAuthors = authorLinks.length > 0 || authorsList.length > 0
+  const hasPublicationMeta =
+    journalTitle ||
+    article.published_year ||
+    issue?.volume ||
+    issue?.issue_number ||
+    issue?.issue_label ||
+    pageRange ||
+    article.language ||
+    article.doi
+
   return (
     <>
-      {/* SEO Head */}
       <CitationMeta
         title={title}
         authors={authorsList}
@@ -270,273 +376,303 @@ export default async function ArticlePage({ params }: PageProps) {
       />
       <JsonLd data={[articleSchema, breadcrumbSchema]} />
 
-      <div className="content-width py-6 lg:py-10">
-        {/* Breadcrumb */}
-        <Breadcrumb className="mb-6">
-          <BreadcrumbList>
+      <div className="content-width py-6 lg:py-10 min-w-0">
+        <Breadcrumb className="mb-5 md:mb-6 min-w-0" aria-label="Gezinme yolu">
+          <BreadcrumbList className="min-w-0">
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">Ana Sayfa</BreadcrumbLink>
+              <BreadcrumbLink href="/" className={linkFocusClass}>Ana Sayfa</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
-            {journal && (
+            {journal && journalHref && (
               <>
-                <BreadcrumbItem>
-                  <BreadcrumbLink href={`/journals/${journal.slug}-${journal.id}`}>
+                <BreadcrumbItem className="min-w-0 max-w-[40%] sm:max-w-[50%]">
+                  <BreadcrumbLink
+                    href={journalHref}
+                    className={cn('line-clamp-1', linkFocusClass)}
+                    title={journalTitle}
+                  >
                     {journalTitle}
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
               </>
             )}
-            <BreadcrumbItem>
-              <BreadcrumbPage className="truncate max-w-[200px] sm:max-w-none">
-                {title}
+            <BreadcrumbItem className="min-w-0 max-w-[45%] sm:max-w-xs md:max-w-sm">
+              <BreadcrumbPage className="line-clamp-1" title={title}>
+                {breadcrumbTitle}
               </BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-8">
-          {/* Ana içerik */}
-          <article>
-            {/* Başlık */}
-            <header className="mb-6">
-              <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground leading-tight mb-2">
-                {title}
-              </h1>
-              {titleOther && (
-                <p className="text-base text-muted-foreground italic">{titleOther}</p>
-              )}
-            </header>
-
-            {/* Meta bant */}
-            <div className="flex flex-wrap items-center gap-2 mb-6">
-              {article.published_year && (
-                <Badge variant="secondary">{article.published_year}</Badge>
-              )}
-              {article.language && (
-                <Badge variant="outline" className="uppercase text-xs">
-                  {article.language}
-                </Badge>
-              )}
-              {article.page_start && article.page_end && (
-                <span className="text-sm text-muted-foreground">
-                  ss. {article.page_start}–{article.page_end}
-                </span>
-              )}
-              {article.doi && (
-                <a
-                  href={`https://doi.org/${article.doi}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-accent hover:underline flex items-center gap-1"
-                >
-                  DOI <ExternalLink className="h-3 w-3" />
-                </a>
-              )}
-            </div>
-
-            {/* Yazarlar */}
-            {(authorLinks.length > 0 || authorsList.length > 0) && (
-              <div className="mb-6">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Yazarlar
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {authorLinks.length > 0
-                    ? authorLinks.map((row) => {
-                        const name = row.author?.name ?? row.raw_author_name ?? 'Yazar'
-                        const href = row.author
-                          ? `/authors/${row.author.slug ?? row.author.id}-${row.author.id}`
-                          : `/search?q=${encodeURIComponent(name)}&area=author`
-                        return (
-                          <Link
-                            key={`${row.author?.id ?? name}-${row.author_position}`}
-                            href={href}
-                            className="text-sm text-primary hover:text-accent"
-                          >
-                            {name}
-                          </Link>
-                        )
-                      })
-                    : authorsList.map((author, i) => (
-                        <Link
-                          key={i}
-                          href={`/search?q=${encodeURIComponent(author)}&area=author`}
-                          className="text-sm text-primary hover:text-accent"
-                        >
-                          {author}
-                        </Link>
-                      ))}
-                </div>
-              </div>
-            )}
-
-            {/* Kurum */}
-            {article.institution_raw && (
-              <div className="mb-6">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                  Kurum
-                </h2>
-                <p className="text-sm text-muted-foreground">{article.institution_raw}</p>
-              </div>
-            )}
-
-            <Separator className="my-6" />
-
-            {/* Özet */}
-            {abstract && (
-              <section className="mb-8">
-                <h2 className="text-lg font-serif font-semibold mb-3">Özet</h2>
-                <p className="text-base leading-relaxed text-foreground/90 reading-width">
-                  {abstract}
-                </p>
-                {/* İngilizce özet */}
-                {article.abstract_en && article.abstract_tr && article.abstract_en !== abstract && (
-                  <details className="mt-4">
-                    <summary className="text-sm text-muted-foreground cursor-pointer hover:text-foreground">
-                      Abstract (English)
-                    </summary>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground italic">
-                      {article.abstract_en}
-                    </p>
-                  </details>
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-8 lg:gap-10 min-w-0">
+          <article className="min-w-0">
+            <header className="mb-6 md:mb-8 space-y-4">
+              <div className="space-y-2 min-w-0">
+                <h1 className="text-2xl sm:text-[1.75rem] font-serif font-bold text-foreground leading-snug">
+                  {title}
+                </h1>
+                {titleOther && (
+                  <p className="text-[0.9375rem] sm:text-base text-muted-foreground leading-snug">
+                    {titleOther}
+                  </p>
                 )}
-              </section>
-            )}
+              </div>
 
-            {/* Anahtar kelimeler */}
-            {(article.keywords_tr || article.keywords_en) && (
-              <section className="mb-8">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Anahtar Kelimeler
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {(article.keywords_tr ?? article.keywords_en ?? '')
-                    .replace(/anahtar kelimeler[:;]?/i, '')
-                    .replace(/keywords[:;]?/i, '')
-                    .split(/[,;]/)
-                    .map((kw) => kw.trim())
-                    .filter(Boolean)
-                    .map((kw, i) => (
+              {hasAuthors && (
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Yazarlar</p>
+                  <AuthorLinks authorLinks={authorLinks} authorsList={authorsList} />
+                </div>
+              )}
+
+              {hasPublicationMeta && (
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 pt-1 min-w-0">
+                  {journalTitle && journalHref && (
+                    <MetadataItem label="Dergi">
                       <Link
-                        key={i}
-                        href={`/search?q=${encodeURIComponent(kw)}&area=keywords`}
-                        className="no-underline"
+                        href={journalHref}
+                        className={cn(
+                          'text-primary hover:text-accent transition-colors no-underline line-clamp-2',
+                          linkFocusClass,
+                        )}
+                        title={journalTitle}
                       >
-                        <Badge
-                          variant="outline"
-                          className="hover:bg-secondary cursor-pointer transition-colors"
-                        >
-                          {kw}
-                        </Badge>
+                        {journalTitle}
                       </Link>
-                    ))}
-                </div>
-              </section>
-            )}
+                    </MetadataItem>
+                  )}
+                  {article.published_year && (
+                    <MetadataItem label="Yayın yılı">
+                      {article.published_year}
+                    </MetadataItem>
+                  )}
+                  {issue?.volume && (
+                    <MetadataItem label="Cilt">
+                      {issueHref ? (
+                        <Link
+                          href={issueHref}
+                          className={cn('text-primary hover:text-accent no-underline', linkFocusClass)}
+                        >
+                          {issue.volume}
+                        </Link>
+                      ) : (
+                        issue.volume
+                      )}
+                    </MetadataItem>
+                  )}
+                  {(issue?.issue_number || issue?.issue_label) && (
+                    <MetadataItem label="Sayı">
+                      {issueHref ? (
+                        <Link
+                          href={issueHref}
+                          className={cn(
+                            'text-primary hover:text-accent no-underline line-clamp-2',
+                            linkFocusClass,
+                          )}
+                          title={issue.issue_label ?? issue.issue_number ?? undefined}
+                        >
+                          {issue.issue_number ?? issue.issue_label}
+                        </Link>
+                      ) : (
+                        <span className="line-clamp-2">{issue.issue_number ?? issue.issue_label}</span>
+                      )}
+                    </MetadataItem>
+                  )}
+                  {pageRange && (
+                    <MetadataItem label="Sayfalar">
+                      <span className="tabular-nums">{pageRange}</span>
+                    </MetadataItem>
+                  )}
+                  {article.language && (
+                    <MetadataItem label="Dil">
+                      {article.language.toUpperCase()}
+                    </MetadataItem>
+                  )}
+                  {article.doi && (
+                    <MetadataItem label="DOI">
+                      <a
+                        href={`https://doi.org/${article.doi}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          'inline-flex items-center gap-1 text-primary hover:text-accent break-all no-underline',
+                          linkFocusClass,
+                        )}
+                      >
+                        {article.doi}
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      </a>
+                    </MetadataItem>
+                  )}
+                </dl>
+              )}
 
-            {/* Kaynakça */}
-            {article.references_raw && (
-              <section>
-                <h2 className="text-lg font-serif font-semibold mb-3">Kaynakça</h2>
-                <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {article.references_raw}
-                </div>
-              </section>
-            )}
-          </article>
-
-          {/* Sidebar */}
-          <aside className="space-y-4">
-            {/* PDF Erişim */}
-            <div className="rounded-lg border border-border p-4 bg-card">
-              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <FileText className="h-4 w-4 text-accent" />
-                Tam Metin
-              </h3>
-              {pdfAvailable ? (
-                <div className="space-y-2">
+              {pdfAvailable && (
+                <div className="flex flex-wrap items-center gap-3 pt-1">
                   <Link
                     href={pdfViewerUrl}
-                    className={cn(buttonVariants({ size: 'sm' }), 'w-full justify-center')}
+                    aria-label={`${title} — PDF görüntüle`}
+                    className={cn(
+                      buttonVariants(),
+                      'inline-flex items-center gap-2 min-h-[44px] px-5 no-underline',
+                      linkFocusClass,
+                    )}
                   >
-                    Görüntüle
+                    <FileText className="h-4 w-4 shrink-0" aria-hidden />
+                    PDF Görüntüle
                   </Link>
                   {pdfDirectUrl && (
                     <a
                       href={pdfDirectUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'w-full justify-center')}
+                      className={cn(
+                        buttonVariants({ variant: 'outline' }),
+                        'inline-flex items-center gap-2 min-h-[44px] px-4 no-underline',
+                        linkFocusClass,
+                      )}
+                      aria-label={`${title} — PDF indir`}
                     >
                       PDF İndir
                     </a>
                   )}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Bu makale için tam metin mevcut değil.
-                </p>
               )}
-            </div>
+            </header>
 
-            {/* Dergi bilgisi */}
-            {journal && (
-              <div className="rounded-lg border border-border p-4 bg-card">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-accent" />
+            {abstractTr && (
+              <section className="mb-8 min-w-0">
+                <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Özet</h2>
+                <div className="text-base leading-relaxed text-foreground/90 max-w-3xl whitespace-pre-line">
+                  {abstractTr}
+                </div>
+              </section>
+            )}
+
+            {abstractEn && (
+              <section className="mb-8 min-w-0">
+                <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Abstract</h2>
+                <div className="text-base leading-relaxed text-foreground/85 max-w-3xl whitespace-pre-line">
+                  {abstractEn}
+                </div>
+              </section>
+            )}
+
+            {keywords.length > 0 && (
+              <section className="mb-8 min-w-0">
+                <h2 className="text-sm font-medium text-muted-foreground mb-2">Anahtar kelimeler</h2>
+                <div className="flex flex-wrap gap-1.5">
+                  {keywords.map((kw) => (
+                    <Link
+                      key={kw}
+                      href={`/search?q=${encodeURIComponent(kw)}&area=keywords`}
+                      className={cn('no-underline max-w-full', linkFocusClass)}
+                    >
+                      <Badge
+                        variant="outline"
+                        className="text-[0.6875rem] text-muted-foreground hover:bg-secondary cursor-pointer transition-colors max-w-full truncate"
+                      >
+                        {kw}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {article.institution_raw?.trim() && (
+              <section className="mb-8 min-w-0">
+                <h2 className="text-sm font-medium text-muted-foreground mb-1.5">Kurum</h2>
+                <p className="text-sm text-foreground/80 leading-relaxed">{article.institution_raw}</p>
+              </section>
+            )}
+
+            {article.references_raw?.trim() && (
+              <section className="min-w-0">
+                <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Kaynakça</h2>
+                <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line max-w-3xl">
+                  {article.references_raw}
+                </div>
+              </section>
+            )}
+          </article>
+
+          <aside className="space-y-5 min-w-0 lg:pt-1">
+            {pdfAvailable && (
+              <div className="rounded-lg border border-border/80 p-4 bg-muted/20 min-w-0">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary shrink-0" aria-hidden />
+                  Tam metin
+                </h3>
+                <div className="space-y-2">
+                  <Link
+                    href={pdfViewerUrl}
+                    aria-label={`${title} — PDF görüntüle`}
+                    className={cn(
+                      buttonVariants({ size: 'sm' }),
+                      'w-full justify-center min-h-[40px] no-underline',
+                      linkFocusClass,
+                    )}
+                  >
+                    PDF Görüntüle
+                  </Link>
+                  {pdfDirectUrl && (
+                    <a
+                      href={pdfDirectUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${title} — PDF indir`}
+                      className={cn(
+                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                        'w-full justify-center min-h-[40px] no-underline',
+                        linkFocusClass,
+                      )}
+                    >
+                      PDF İndir
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {journal && journalHref && (
+              <div className="rounded-lg border border-border/80 p-4 bg-muted/20 min-w-0">
+                <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-primary shrink-0" aria-hidden />
                   Dergi
                 </h3>
                 <Link
-                  href={`/journals/${journal.slug}-${journal.id}`}
-                  className="text-sm font-medium text-primary hover:text-accent leading-snug"
+                  href={journalHref}
+                  className={cn(
+                    'text-sm font-medium text-primary hover:text-accent leading-snug line-clamp-3 no-underline',
+                    linkFocusClass,
+                  )}
+                  title={journalTitle}
                 >
                   {journalTitle}
                 </Link>
                 {journal.issn && (
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-2 tabular-nums">
                     ISSN: {journal.issn}
-                    {journal.eissn && ` / E-ISSN: ${journal.eissn}`}
+                    {journal.eissn && ` · E-ISSN: ${journal.eissn}`}
                   </p>
                 )}
                 {journal.publisher && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{journal.publisher}</p>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{journal.publisher}</p>
                 )}
-                {issue && (
-                  <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-border">
-                    {issue.issue_label ?? `${issue.year ?? ''}`}
+                {issue && (issue.issue_label || issue.issue_number) && issueHref && (
+                  <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/80">
+                    <Link
+                      href={issueHref}
+                      className={cn('text-primary hover:text-accent no-underline', linkFocusClass)}
+                    >
+                      {issue.issue_label ?? issue.issue_number}
+                    </Link>
                   </p>
                 )}
               </div>
             )}
-
-            {/* Makale bilgisi */}
-            <div className="rounded-lg border border-border p-4 bg-card text-xs text-muted-foreground space-y-1">
-              <p><span className="font-medium text-foreground">Makale ID:</span> {article.id}</p>
-              {article.published_year && (
-                <p><span className="font-medium text-foreground">Yıl:</span> {article.published_year}</p>
-              )}
-              {article.page_start && (
-                <p>
-                  <span className="font-medium text-foreground">Sayfalar:</span>{' '}
-                  {article.page_start}–{article.page_end}
-                </p>
-              )}
-              {article.doi && (
-                <p>
-                  <span className="font-medium text-foreground">DOI:</span>{' '}
-                  <a
-                    href={`https://doi.org/${article.doi}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:underline break-all"
-                  >
-                    {article.doi}
-                  </a>
-                </p>
-              )}
-            </div>
           </aside>
         </div>
       </div>
