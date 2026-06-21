@@ -38,7 +38,7 @@ export function SiteHeader() {
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6 text-[0.9375rem] font-semibold" aria-label="Ana menü">
+          <nav className="hidden lg:flex items-center gap-6 text-[0.9375rem] font-semibold" aria-label="Ana menü">
             <Link
               href="/journals"
               className="text-foreground/85 hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -65,7 +65,7 @@ export function SiteHeader() {
             </Link>
           </nav>
 
-          <div className="hidden md:flex items-center gap-3 flex-1 max-w-sm justify-end">
+          <div className="hidden lg:flex items-center gap-3 flex-1 max-w-sm justify-end">
             {!isHome && <SearchBar variant="compact" className="flex-1 max-w-xs" />}
             <Link
               href="/login"
@@ -78,12 +78,12 @@ export function SiteHeader() {
             </Link>
           </div>
 
-          <div className="flex md:hidden items-center">
+          <div className="flex lg:hidden items-center">
             <Button
               ref={menuButtonRef}
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="lg:hidden"
               onClick={() => handleMenuOpenChange(true)}
               aria-expanded={mobileMenuOpen}
               aria-controls={MOBILE_NAV_DRAWER_ID}
