@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Search, BookOpen, User, FileText } from 'lucide-react'
+import { Search, User, FileText } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { cn, buttonVariants } from '@/lib/utils'
 import {
   searchArticles, searchJournals, searchAuthors,
@@ -28,13 +27,22 @@ interface PageProps {
 
 const PER_PAGE = 20
 
+function formatAuthors(raw: string | null, max = 4): string {
+  if (!raw) return ''
+  return raw
+    .split(/[,;]+/)
+    .map((a) => a.trim())
+    .filter(Boolean)
+    .slice(0, max)
+    .join(', ')
+}
+
 export default async function SearchPage({ searchParams }: PageProps) {
   const sp = await searchParams
   const rawQ = (sp.q ?? '').trim()
   const type = (sp.type ?? 'article') as SearchType
   const page = Math.max(1, parseInt(sp.page ?? '1', 10))
 
-  // Legacy prefix ayrıştırma: "author:xxx"
   const { q, area: parsedArea } = parsePrefixQuery(rawQ)
   const areaRaw = sp.area ?? parsedArea
   const area = (['all', 'title', 'author', 'keywords'] as const).includes(areaRaw as SearchArea)
@@ -45,7 +53,6 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const yearFrom = sp.year_from ? parseInt(sp.year_from, 10) : undefined
   const yearTo = sp.year_to ? parseInt(sp.year_to, 10) : undefined
 
-  // Arama çalıştır
   let articleResults = { data: [] as Awaited<ReturnType<typeof searchArticles>>['data'], total: 0 }
   let journalResults = { data: [] as Awaited<ReturnType<typeof searchJournals>>['data'], total: 0 }
   let authorResults = { data: [] as Awaited<ReturnType<typeof searchAuthors>>['data'], total: 0 }
@@ -62,7 +69,6 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const totalPages = Math.ceil(total / PER_PAGE)
   const hasResults = total > 0
 
-  // Query string builder (filtre değişince sayfa 1'e dön)
   function qs(overrides: Record<string, string | undefined>) {
     const base: Record<string, string> = {}
     if (rawQ) base.q = rawQ
@@ -77,151 +83,191 @@ export default async function SearchPage({ searchParams }: PageProps) {
     ).toString()
   }
 
-  return (
-    <div className="content-width py-8">
-      {/* Arama formu */}
-      <form method="GET" className="mb-8">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="flex-1 flex items-center border border-border rounded-xl overflow-hidden bg-background focus-within:ring-2 focus-within:ring-ring">
-            <Search className="ml-4 h-5 w-5 text-muted-foreground shrink-0" />
-            <input
-              name="q"
-              defaultValue={rawQ}
-              type="search"
-              placeholder="Makale, yazar, dergi veya konu ara…"
-              className="flex-1 px-3 py-3 text-base bg-transparent outline-none"
-              autoFocus={!rawQ}
-            />
-          </div>
-          <button type="submit" className={cn(buttonVariants(), 'shrink-0 px-6')}>
-            Ara
-          </button>
-        </div>
+  const typeLabel = type === 'article' ? 'Makaleler' : type === 'journal' ? 'Dergiler' : 'Yazarlar'
 
-        {/* Tip seçimi */}
-        <div className="flex flex-wrap gap-2 mt-3">
-          {(['article', 'journal', 'author'] as SearchType[]).map((t) => (
-            <Link
-              key={t}
-              href={qs({ type: t, page: '1' })}
+  return (
+    <div className="content-width py-6 md:py-8 min-w-0">
+      <header className="mb-6 md:mb-8">
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground mb-5 md:mb-6">
+          Arama
+        </h1>
+
+        <form method="GET" className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 min-w-0">
+            <div
               className={cn(
-                'text-sm px-3 py-1 rounded-full border transition-colors',
-                type === t
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30',
+                'flex-1 min-w-0 flex items-center border border-border rounded-xl overflow-hidden bg-background',
+                'focus-within:ring-2 focus-within:ring-ring focus-within:border-ring',
               )}
             >
-              {t === 'article' ? 'Makaleler' : t === 'journal' ? 'Dergiler' : 'Yazarlar'}
-            </Link>
-          ))}
-        </div>
-
-        {/* Makale filtreleri */}
-        {type === 'article' && (
-          <div className="flex flex-wrap gap-3 mt-3 text-sm">
-            <select
-              name="area"
-              defaultValue={area}
-              className="border border-border rounded-lg px-2 py-1 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              <Search className="ml-3 sm:ml-4 h-5 w-5 text-muted-foreground shrink-0" aria-hidden />
+              <input
+                name="q"
+                defaultValue={rawQ}
+                type="search"
+                aria-label="Arama sorgusu"
+                placeholder="Makale, yazar, dergi veya konu ara…"
+                className="flex-1 min-w-0 px-3 py-3 sm:py-3.5 text-base bg-transparent outline-none placeholder:text-muted-foreground"
+                autoFocus={!rawQ}
+              />
+            </div>
+            <button
+              type="submit"
+              className={cn(
+                buttonVariants(),
+                'shrink-0 px-5 sm:px-6 min-h-[44px] font-medium',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              )}
+              aria-label="Arama yap"
             >
-              <option value="all">Başlık, yazar, anahtar kelime</option>
-              <option value="title">Yalnızca başlık</option>
-              <option value="author">Yalnızca yazar</option>
-              <option value="keywords">Yalnızca anahtar kelime</option>
-            </select>
-            <select
-              name="language"
-              defaultValue={language ?? ''}
-              className="border border-border rounded-lg px-2 py-1 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Tüm diller</option>
-              <option value="tr">Türkçe</option>
-              <option value="en">English</option>
-            </select>
-            <input
-              name="year_from"
-              type="number"
-              defaultValue={sp.year_from}
-              placeholder="Yıldan"
-              min="1900"
-              max="2030"
-              className="border border-border rounded-lg px-2 py-1 text-sm w-24 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <span className="self-center text-muted-foreground">–</span>
-            <input
-              name="year_to"
-              type="number"
-              defaultValue={sp.year_to}
-              placeholder="Yıla"
-              min="1900"
-              max="2030"
-              className="border border-border rounded-lg px-2 py-1 text-sm w-24 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            {/* type gizli input (select onClick yerine) */}
-            <input type="hidden" name="type" value={type} />
+              Ara
+            </button>
           </div>
-        )}
-      </form>
 
-      {/* Sonuçlar */}
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Sonuç türü">
+            {(['article', 'journal', 'author'] as SearchType[]).map((t) => (
+              <Link
+                key={t}
+                href={qs({ type: t, page: '1' })}
+                className={cn(
+                  'text-sm px-3 py-1.5 min-h-[36px] inline-flex items-center rounded-full border transition-colors no-underline',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  type === t
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30',
+                )}
+                aria-current={type === t ? 'true' : undefined}
+              >
+                {t === 'article' ? 'Makaleler' : t === 'journal' ? 'Dergiler' : 'Yazarlar'}
+              </Link>
+            ))}
+          </div>
+
+          {type === 'article' && (
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm min-w-0">
+              <label className="sr-only" htmlFor="search-area">Arama alanı</label>
+              <select
+                id="search-area"
+                name="area"
+                defaultValue={area}
+                className="border border-border rounded-lg px-2.5 py-2 text-sm bg-background text-foreground min-h-[36px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="all">Başlık, yazar, anahtar kelime</option>
+                <option value="title">Yalnızca başlık</option>
+                <option value="author">Yalnızca yazar</option>
+                <option value="keywords">Yalnızca anahtar kelime</option>
+              </select>
+              <label className="sr-only" htmlFor="search-language">Dil</label>
+              <select
+                id="search-language"
+                name="language"
+                defaultValue={language ?? ''}
+                className="border border-border rounded-lg px-2.5 py-2 text-sm bg-background text-foreground min-h-[36px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">Tüm diller</option>
+                <option value="tr">Türkçe</option>
+                <option value="en">English</option>
+              </select>
+              <label className="sr-only" htmlFor="search-year-from">Yıl başlangıç</label>
+              <input
+                id="search-year-from"
+                name="year_from"
+                type="number"
+                defaultValue={sp.year_from}
+                placeholder="Yıldan"
+                min="1900"
+                max="2030"
+                className="border border-border rounded-lg px-2.5 py-2 text-sm w-24 min-h-[36px] bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <span className="text-muted-foreground" aria-hidden>–</span>
+              <label className="sr-only" htmlFor="search-year-to">Yıl bitiş</label>
+              <input
+                id="search-year-to"
+                name="year_to"
+                type="number"
+                defaultValue={sp.year_to}
+                placeholder="Yıla"
+                min="1900"
+                max="2030"
+                className="border border-border rounded-lg px-2.5 py-2 text-sm w-24 min-h-[36px] bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <input type="hidden" name="type" value={type} />
+            </div>
+          )}
+        </form>
+      </header>
+
       {!q ? (
         <EmptySearch />
       ) : !hasResults ? (
         <NoResults q={q} />
       ) : (
         <>
-          <div className="flex items-center justify-between mb-4">
+          <div
+            className="mb-4 md:mb-5 pb-4 border-b border-border/80"
+            id="search-results-heading"
+          >
             <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{q}</span> için{' '}
-              <span className="font-medium text-foreground">{total.toLocaleString('tr-TR')}</span> sonuç
+              <span className="font-semibold text-foreground tabular-nums">
+                {total.toLocaleString('tr-TR')}
+              </span>
+              {' sonuç bulundu'}
+              <span className="hidden sm:inline"> — </span>
+              <span className="block sm:inline mt-0.5 sm:mt-0">
+                <span className="text-muted-foreground">Sorgu: </span>
+                <span className="font-medium text-foreground">&ldquo;{q}&rdquo;</span>
+                <span className="text-muted-foreground"> ({typeLabel})</span>
+              </span>
             </p>
           </div>
 
-          {/* Makale sonuçları */}
           {type === 'article' && (
-            <div className="space-y-3">
+            <ul className="divide-y divide-border/80 min-w-0">
               {articleResults.data.map((a) => (
-                <ArticleCard key={a.id} article={a} q={q} />
+                <ArticleResultItem key={a.id} article={a} />
               ))}
-            </div>
+            </ul>
           )}
 
-          {/* Dergi sonuçları */}
           {type === 'journal' && (
-            <div className="space-y-3">
+            <ul className="divide-y divide-border/80 min-w-0">
               {journalResults.data.map((j) => (
-                <div key={j.id} className="p-4 rounded-xl border border-border hover:border-accent/40 transition-colors">
-                  <Link href={`/journals/${j.slug}-${j.id}`} className="font-medium text-primary hover:text-accent">
+                <li key={j.id} className="py-4 first:pt-0 last:pb-0">
+                  <Link
+                    href={`/journals/${j.slug}-${j.id}`}
+                    className="font-medium text-foreground hover:text-primary transition-colors no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
                     {j.title_tr ?? j.title_en}
                   </Link>
-                  <div className="flex gap-2 mt-1">
+                  <div className="flex flex-wrap gap-2 mt-1.5 text-xs text-muted-foreground">
                     {j.issn && <Badge variant="outline" className="text-xs">ISSN: {j.issn}</Badge>}
-                    {j.publisher && <span className="text-xs text-muted-foreground">{j.publisher}</span>}
+                    {j.publisher && <span>{j.publisher}</span>}
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
 
-          {/* Yazar sonuçları */}
           {type === 'author' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 min-w-0">
               {authorResults.data.map((a) => (
-                <Link
-                  key={a.id}
-                  href={`/authors/${a.slug ?? a.id}-${a.id}`}
-                  className="flex items-center gap-3 p-3 rounded-xl border border-border hover:border-accent/40 transition-colors no-underline"
-                >
-                  <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <span className="text-sm font-medium text-foreground">{a.name}</span>
-                </Link>
+                <li key={a.id}>
+                  <Link
+                    href={`/authors/${a.slug ?? a.id}-${a.id}`}
+                    className="flex items-center gap-3 py-2 min-h-[44px] no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group"
+                  >
+                    <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                      <User className="h-4 w-4 text-muted-foreground" aria-hidden />
+                    </div>
+                    <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                      {a.name}
+                    </span>
+                  </Link>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
 
-          {/* Sayfalama */}
           {totalPages > 1 && (
             <Pagination page={page} totalPages={totalPages} qs={qs} />
           )}
@@ -231,23 +277,14 @@ export default async function SearchPage({ searchParams }: PageProps) {
   )
 }
 
-// ─── Alt bileşenler ───────────────────────────────────────────────────────────
-
-function ArticleCard({
+function ArticleResultItem({
   article,
-  q,
 }: {
   article: Awaited<ReturnType<typeof searchArticles>>['data'][number]
-  q: string
 }) {
   const title = article.title_tr ?? article.title_en ?? 'Başlıksız'
   const href = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
-
-  const authors = article.authors_raw
-    ?.split(',')
-    .slice(0, 4)
-    .map((a) => a.trim())
-    .join('; ') ?? ''
+  const authors = formatAuthors(article.authors_raw)
 
   const keywords = article.keywords_tr
     ?.replace(/anahtar kelimeler[:;]?/i, '')
@@ -257,37 +294,71 @@ function ArticleCard({
     .slice(0, 5) ?? []
 
   return (
-    <div className="p-4 rounded-xl border border-border hover:border-accent/40 hover:bg-secondary/30 transition-all">
-      <Link href={href} className="font-serif text-base font-semibold text-primary hover:text-accent leading-snug block mb-1">
-        {title}
+    <li className="group py-4 first:pt-0 last:pb-0 min-w-0">
+      <Link
+        href={href}
+        className="block no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <h2 className="text-base font-medium text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-3">
+          {title}
+        </h2>
       </Link>
-      {authors && (
-        <p className="text-sm text-muted-foreground mb-1">{authors}</p>
-      )}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mb-2">
-        {article.journal_title && (
-          <Link href={`/journals/${article.journal_slug}-${article.journal_id}`} className="hover:text-foreground truncate max-w-[200px]">
-            <BookOpen className="inline h-3 w-3 mr-0.5" />
-            {article.journal_title}
-          </Link>
+
+      <div className="mt-2.5 space-y-1.5 min-w-0">
+        {(authors || article.published_year) && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-[0.8125rem] text-foreground/70">
+            {authors && <span className="min-w-0">{authors}</span>}
+            {authors && article.published_year && (
+              <span className="text-muted-foreground" aria-hidden>·</span>
+            )}
+            {article.published_year && (
+              <span className="tabular-nums shrink-0 text-muted-foreground">
+                {article.published_year}
+              </span>
+            )}
+          </div>
         )}
-        {article.published_year && <span>{article.published_year}</span>}
-        <Link href={`/pdfs/${article.id}`} className="text-accent hover:underline flex items-center gap-0.5">
-          <FileText className="h-3 w-3" /> PDF
-        </Link>
-      </div>
-      {keywords.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {keywords.map((kw, i) => (
-            <Link key={i} href={`/search?q=${encodeURIComponent(kw)}&area=keywords`} className="no-underline">
-              <Badge variant="outline" className="text-xs cursor-pointer hover:bg-secondary">
-                {kw}
-              </Badge>
+
+        <div className="flex flex-wrap items-start gap-x-3 gap-y-2 min-w-0">
+          {article.journal_title && article.journal_slug && article.journal_id && (
+            <Link
+              href={`/journals/${article.journal_slug}-${article.journal_id}`}
+              title={article.journal_title}
+              className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-foreground/75 hover:text-foreground line-clamp-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
+            >
+              {article.journal_title}
             </Link>
-          ))}
+          )}
+          <Link
+            href={`/pdfs/${article.id}`}
+            aria-label={`${title} — tam metin PDF`}
+            className="inline-flex items-center gap-1.5 shrink-0 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/15 hover:border-primary/50 transition-colors no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            PDF
+          </Link>
         </div>
-      )}
-    </div>
+
+        {keywords.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-0.5">
+            {keywords.map((kw, i) => (
+              <Link
+                key={i}
+                href={`/search?q=${encodeURIComponent(kw)}&area=keywords`}
+                className="no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <Badge
+                  variant="outline"
+                  className="text-[0.6875rem] cursor-pointer hover:bg-secondary text-muted-foreground"
+                >
+                  {kw}
+                </Badge>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </li>
   )
 }
 
@@ -305,29 +376,60 @@ function Pagination({
     return page - 3 + i
   })
 
+  const linkClass = cn(
+    buttonVariants({ variant: 'outline', size: 'sm' }),
+    'min-w-[36px] min-h-[36px] justify-center shrink-0',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+  )
+  const activeClass = cn(
+    buttonVariants({ variant: 'default', size: 'sm' }),
+    'min-w-[36px] min-h-[36px] justify-center shrink-0 pointer-events-none',
+  )
+  const disabledClass = cn(
+    buttonVariants({ variant: 'outline', size: 'sm' }),
+    'min-w-[36px] min-h-[36px] justify-center shrink-0 opacity-50 cursor-not-allowed',
+  )
+
   return (
-    <nav className="flex items-center justify-center gap-1 mt-8" aria-label="Sayfalama">
-      {page > 1 && (
-        <Link href={qs({ page: String(page - 1) })} className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
+    <nav
+      className="flex flex-wrap items-center justify-center gap-1 mt-8 max-w-full overflow-x-auto px-1"
+      aria-label="Sayfalama"
+    >
+      {page > 1 ? (
+        <Link href={qs({ page: String(page - 1) })} className={linkClass} aria-label="Önceki sayfa">
           ←
         </Link>
+      ) : (
+        <span className={disabledClass} aria-disabled="true" aria-label="Önceki sayfa">
+          ←
+        </span>
       )}
+
       {pages.map((p) => (
-        <Link
-          key={p}
-          href={qs({ page: String(p) })}
-          className={cn(
-            buttonVariants({ variant: p === page ? 'default' : 'outline', size: 'sm' }),
-            'min-w-[36px] justify-center',
-          )}
-        >
-          {p}
-        </Link>
+        p === page ? (
+          <span key={p} className={activeClass} aria-current="page">
+            {p}
+          </span>
+        ) : (
+          <Link
+            key={p}
+            href={qs({ page: String(p) })}
+            className={linkClass}
+            aria-label={`Sayfa ${p}`}
+          >
+            {p}
+          </Link>
+        )
       ))}
-      {page < totalPages && (
-        <Link href={qs({ page: String(page + 1) })} className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
+
+      {page < totalPages ? (
+        <Link href={qs({ page: String(page + 1) })} className={linkClass} aria-label="Sonraki sayfa">
           →
         </Link>
+      ) : (
+        <span className={disabledClass} aria-disabled="true" aria-label="Sonraki sayfa">
+          →
+        </span>
       )}
     </nav>
   )
@@ -335,14 +437,14 @@ function Pagination({
 
 function EmptySearch() {
   return (
-    <div className="py-16 text-center">
-      <Search className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
-      <h2 className="text-lg font-medium mb-2">Aramak istediğinizi yazın</h2>
-      <p className="text-muted-foreground text-sm max-w-md mx-auto">
+    <div className="py-10 md:py-14 text-center max-w-lg mx-auto">
+      <Search className="h-10 w-10 mx-auto text-muted-foreground/50 mb-4" aria-hidden />
+      <h2 className="text-lg font-medium text-foreground mb-2">Aramak istediğinizi yazın</h2>
+      <p className="text-muted-foreground text-sm leading-relaxed">
         Makale başlığı, yazar adı, ISSN veya anahtar kelime ile arama yapabilirsiniz.
-        <br />
-        Gelişmiş: <code className="bg-secondary px-1 rounded text-xs">author:Smith</code>{' '}
-        <code className="bg-secondary px-1 rounded text-xs">title:makale</code>
+        Gelişmiş arama için{' '}
+        <code className="bg-secondary px-1.5 py-0.5 rounded text-xs">author:Smith</code> veya{' '}
+        <code className="bg-secondary px-1.5 py-0.5 rounded text-xs">title:makale</code> kullanın.
       </p>
     </div>
   )
@@ -350,11 +452,22 @@ function EmptySearch() {
 
 function NoResults({ q }: { q: string }) {
   return (
-    <div className="py-16 text-center">
-      <p className="text-lg font-medium mb-2">
-        &ldquo;{q}&rdquo; için sonuç bulunamadı
+    <div className="py-10 md:py-14 max-w-lg mx-auto text-center">
+      <Search className="h-10 w-10 mx-auto text-muted-foreground/50 mb-4" aria-hidden />
+      <h2 className="text-lg font-medium text-foreground mb-2">
+        Sonuç bulunamadı
+      </h2>
+      <p className="text-sm text-muted-foreground mb-4">
+        <span className="font-medium text-foreground">&ldquo;{q}&rdquo;</span> için eşleşen kayıt yok.
       </p>
-      <p className="text-muted-foreground text-sm">Farklı anahtar kelimeler veya filtreler deneyin.</p>
+      <ul className="text-sm text-muted-foreground space-y-2 text-left list-disc pl-5 mx-auto max-w-sm">
+        <li>Yazımı kontrol edin (Türkçe karakterler: ğ, ü, ş, ı, ö, ç).</li>
+        <li>Daha kısa veya farklı bir anahtar kelime deneyin.</li>
+        <li>Arama alanı filtresini genişletin (ör. &ldquo;Başlık, yazar, anahtar kelime&rdquo;).</li>
+      </ul>
+      <p className="text-sm text-muted-foreground mt-5">
+        Yukarıdaki arama kutusundan yeni bir sorgu girebilirsiniz.
+      </p>
     </div>
   )
 }
