@@ -91,7 +91,9 @@ export default async function PdfViewerPage({ params }: PageProps) {
             </>
           )}
           <BreadcrumbItem>
-            <BreadcrumbLink href={articleUrl}>{title.slice(0, 50)}…</BreadcrumbLink>
+            <BreadcrumbLink href={articleUrl} className="truncate max-w-[200px] sm:max-w-xs">
+              {title.length > 50 ? `${title.slice(0, 50)}…` : title}
+            </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem><BreadcrumbPage>PDF</BreadcrumbPage></BreadcrumbItem>

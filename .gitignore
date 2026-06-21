@@ -57,6 +57,7 @@ reports/
 
 # QA screenshots (local only)
 screenshots/home-qa/
+screenshots/critical-pages-qa/
 
 # Laragon / local DB
 acarinde_yeniacarindex*

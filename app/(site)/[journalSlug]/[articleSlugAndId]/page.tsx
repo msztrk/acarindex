@@ -181,7 +181,13 @@ export default async function ArticlePage({ params }: PageProps) {
   const pdf = article.pdf
 
   const title = article.title_tr ?? article.title_en ?? 'Başlıksız'
-  const titleOther = article.title_en ?? article.title_tr
+  const titleOtherRaw = article.title_en ?? article.title_tr
+  const titleOther =
+    titleOtherRaw &&
+    titleOtherRaw.trim() !== '-' &&
+    titleOtherRaw.trim() !== title.trim()
+      ? titleOtherRaw
+      : null
   const abstract = article.abstract_tr ?? article.abstract_en
   const journalTitle = journal?.title_tr ?? journal?.title_en ?? ''
 
@@ -298,7 +304,7 @@ export default async function ArticlePage({ params }: PageProps) {
               <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground leading-tight mb-2">
                 {title}
               </h1>
-              {titleOther && titleOther !== title && (
+              {titleOther && (
                 <p className="text-base text-muted-foreground italic">{titleOther}</p>
               )}
             </header>

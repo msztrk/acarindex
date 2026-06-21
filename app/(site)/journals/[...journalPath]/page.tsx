@@ -406,10 +406,10 @@ function ArticleRow({ article }: { article: Partial<Article> }) {
   const title = article.title_tr ?? article.title_en ?? 'Başlıksız'
   const href = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
   const authors = article.authors_raw
-    ?.split(',')
-    .slice(0, 3)
-    .map((a) => a.trim())
-    .join(', ') ?? ''
+    ? [...new Set(article.authors_raw.split(',').map((a) => a.trim()).filter(Boolean))]
+        .slice(0, 3)
+        .join(', ')
+    : ''
 
   return (
     <div className="p-3 rounded-lg border border-border hover:border-accent/50 hover:bg-secondary/50 transition-colors">
