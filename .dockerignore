@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.env*
+!.env.example
+deploy/.env.production.example
+*.sql
+coverage
+.vitest
