@@ -62,6 +62,14 @@ export function buildIssueUrl(titleTr: string, journalId: number, issueId: numbe
   return `${buildJournalUrl(titleTr, journalId)}/sayi/${issueId}`
 }
 
+export function buildIssueUrlFromSegment(journalSegment: string, issueId: number): string {
+  return `/journals/${journalSegment}/sayi/${issueId}`
+}
+
+export function buildArchiveUrlFromSegment(journalSegment: string): string {
+  return `/journals/${journalSegment}/arsiv`
+}
+
 /**
  * /sayi/{segment} path segmentinden pozitif tam sayı issue ID çıkarır.
  * Geçersiz: abc, 0, -1, boş.

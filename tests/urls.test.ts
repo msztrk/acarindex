@@ -272,3 +272,76 @@ describeIssueRouteHttp('journal issue route HTTP', () => {
     expect(await fetchStatus(`${sbfJournal}/sayi/0`)).toBe(404)
   })
 })
+
+// ─── journal archive route HTTP ────────────────────────────────────────────────
+const describeArchiveRouteHttp = issueRouteBase ? describe : describe.skip
+
+describeArchiveRouteHttp('journal archive route HTTP', () => {
+  const base = issueRouteBase!
+  const sbfArchive = `${base}/journals/ankara-universitesi-sbf-dergisi-91/arsiv`
+  const otherArchive =
+    `${base}/journals/yonetim-ve-ekonomi-celal-bayar-universitesi-iktisadi-ve-idari-bilimler-fakultesi-dergisi-101/arsiv`
+  const emptyArchive =
+    `${base}/journals/international-journal-of-applied-sciences-and-computational-engineering-1128/arsiv`
+  const abantArchive =
+    `${base}/journals/abant-izzet-baysal-universitesi-ilahiyat-fakultesi-dergisi-4/arsiv`
+
+  function extractArchiveJsonLd(html: string): Record<string, unknown> | null {
+    const scripts = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    for (const match of scripts) {
+      const parsed = JSON.parse(match[1]) as Record<string, unknown>
+      const graph = parsed['@graph'] as Array<Record<string, unknown>> | undefined
+      if (graph?.some((node) => node['@type'] === 'CollectionPage')) {
+        return parsed
+      }
+    }
+    return null
+  }
+
+  it('geçerli arşiv → 200, canonical ve sayı linki', async () => {
+    const response = await fetch(sbfArchive)
+    expect(response.status).toBe(200)
+    const html = await response.text()
+    expect(html).toMatch(/rel="canonical" href="[^"]*\/arsiv"/)
+    expect(html).toContain('/sayi/2155')
+    expect(html).toContain('/sayi/37951')
+    expect(html).toContain('CollectionPage')
+    const jsonLd = extractArchiveJsonLd(html)
+    expect(jsonLd).not.toBeNull()
+    const graph = jsonLd!['@graph'] as Array<Record<string, unknown>>
+    expect(graph.some((n) => n['@type'] === 'ItemList')).toBe(true)
+  })
+
+  it('uzun dergi adlı arşiv → 200', async () => {
+    const response = await fetch(otherArchive)
+    expect(response.status).toBe(200)
+    const html = await response.text()
+    expect(html).toContain('Yönetim ve Ekonomi')
+    expect(html).toMatch(/rel="canonical" href="[^"]*\/arsiv"/)
+  })
+
+  it('yalnızca yıl etiketi arşivde tekrar üretmez', async () => {
+    const response = await fetch(abantArchive)
+    expect(response.status).toBe(200)
+    const html = await response.text()
+    expect(html).toContain('/sayi/65')
+    expect(html).not.toContain('2019 (2019)')
+  })
+
+  it('boş arşiv → 200 ve boş durum mesajı', async () => {
+    const response = await fetch(emptyArchive)
+    expect(response.status).toBe(200)
+    const html = await response.text()
+    expect(html).toContain('Bu dergi için henüz arşivlenmiş sayı bulunmuyor.')
+    const jsonLd = extractArchiveJsonLd(html)
+    if (jsonLd) {
+      const graph = jsonLd['@graph'] as Array<Record<string, unknown>>
+      expect(graph.some((n) => n['@type'] === 'ItemList')).toBe(false)
+    }
+  })
+
+  it('geçersiz dergi arşivi → 404', async () => {
+    const response = await fetch(`${base}/journals/ankara-universitesi-sbf-dergisi-99999/arsiv`)
+    expect(response.status).toBe(404)
+  })
+})

@@ -15,6 +15,12 @@ import {
   buildIssueMetadataTitle,
 } from '@/lib/journals/issue-citation'
 import { buildIssuePageJsonLd } from '@/lib/seo/issue-jsonld'
+import { buildArchivePageJsonLd } from '@/lib/seo/archive-jsonld'
+import {
+  buildArchiveIssueHref,
+  buildArchiveIssueLabel,
+  groupArchiveIssues,
+} from '@/lib/journals/archive'
 import type { Journal, Issue, Article } from '@/types/database'
 import type { ReactNode } from 'react'
 import { cache } from 'react'
@@ -61,16 +67,23 @@ async function getJournal(journalId: number) {
   return data as Journal | null
 }
 
-async function getIssues(journalId: number) {
+async function getIssuesUncached(journalId: number) {
   const sb = await createClient()
-  const { data } = await sb
+  const { data, error } = await sb
     .from('issues')
-    .select('*')
+    .select('id, journal_id, year, volume, issue_number, issue_label')
     .eq('journal_id', journalId)
     .eq('status', 'published')
     .order('year', { ascending: false })
+
+  if (error) {
+    throw error
+  }
+
   return (data ?? []) as Issue[]
 }
+
+const getIssues = cache(getIssuesUncached)
 
 async function getIssueArticlesUncached(issueId: number) {
   const sb = await createClient()
@@ -186,6 +199,22 @@ export async function generateMetadata({
     }
   }
 
+  if (resolved.subPage === 'arsiv') {
+    const archiveTitle = `${journalTitle} Arşivi`
+    const archiveDescription = `${journalTitle} dergisinin yayımlanmış sayılarını yıllara göre inceleyin.`
+
+    return {
+      title: archiveTitle,
+      description: archiveDescription,
+      alternates: { canonical: canonicalUrl },
+      openGraph: {
+        title: archiveTitle,
+        description: archiveDescription,
+        url: canonicalPath,
+      },
+    }
+  }
+
   return {
     title: journalTitle,
     description: journal.description?.slice(0, 160) ?? undefined,
@@ -289,9 +318,12 @@ export default async function JournalPage({
     url: journalBase,
   }
 
+  const showJournalPeriodicalJsonLd =
+    resolved.subPage === 'home' || resolved.subPage === 'arsiv'
+
   return (
     <>
-      <JsonLd data={schema} />
+      {showJournalPeriodicalJsonLd && <JsonLd data={schema} />}
       <div className="content-width py-6 lg:py-10 min-w-0">
         {resolved.subPage === 'sayi' && resolved.issueId ? (
           <>
@@ -352,7 +384,7 @@ export default async function JournalPage({
               <JournalHome journal={journal} journalId={parsed.journalId} segment={resolved.journalSegment} />
             )}
             {resolved.subPage === 'arsiv' && (
-              <JournalArsiv journalId={parsed.journalId} segment={resolved.journalSegment} />
+              <JournalArsiv journal={journal} segment={resolved.journalSegment} />
             )}
             {resolved.subPage === 'amac-kapsam' && (
               <CmsSection title="Amaç ve Kapsam" html={journal.aim_and_scope} />
@@ -547,52 +579,74 @@ async function JournalHome({
   )
 }
 
-async function JournalArsiv({ journalId, segment }: { journalId: number; segment: string }) {
-  const issues = await getIssues(journalId)
-
-  const byYear = issues.reduce<Record<number, Issue[]>>((acc, issue) => {
-    const year = issue.year ?? 0
-    if (!acc[year]) acc[year] = []
-    acc[year].push(issue)
-    return acc
-  }, {})
-
-  const years = Object.keys(byYear).map(Number).sort((a, b) => b - a)
+async function JournalArsiv({
+  journal,
+  segment,
+}: {
+  journal: Journal
+  segment: string
+}) {
+  const issues = await getIssues(journal.id)
+  const grouped = groupArchiveIssues(issues)
+  const journalTitle = journal.title_tr ?? journal.title_en ?? 'Dergi'
+  const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
+  const archiveTitle = `${journalTitle} Arşivi`
+  const archiveDescription = `${journalTitle} dergisinin yayımlanmış sayılarını yıllara göre inceleyin.`
+  const archiveJsonLd = buildArchivePageJsonLd({
+    canonicalBase,
+    journalSegment: segment,
+    journal,
+    issues,
+    pageTitle: archiveTitle,
+    description: archiveDescription,
+  })
 
   return (
-    <section className="min-w-0">
-      <h2 className="text-lg font-serif font-semibold text-foreground mb-4">Arşiv</h2>
-      {years.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-4">
-          Bu dergi için arşiv kaydı bulunmuyor.
-        </p>
-      ) : (
-        <div className="space-y-6 min-w-0">
-          {years.map((year) => (
-            <div key={year} className="min-w-0">
-              <h3 className="text-sm font-semibold text-foreground mb-2 pb-1 border-b border-border/80">
-                {year || 'Tarihsiz'}
-              </h3>
-              <ul className="divide-y divide-border/80 min-w-0">
-                {byYear[year].map((issue) => (
-                  <li key={issue.id}>
-                    <Link
-                      href={`/journals/${segment}/sayi/${issue.id}`}
-                      className={cn(
-                        'block py-2.5 text-sm font-medium text-primary hover:text-accent no-underline',
-                        linkFocusClass,
-                      )}
-                    >
-                      {issue.issue_label ?? (year ? String(year) : 'Sayı')}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
+    <>
+      <JsonLd data={archiveJsonLd} />
+      <section className="min-w-0">
+        <header className="mb-6 md:mb-8 space-y-2 min-w-0">
+          <h2 className="text-lg font-serif font-semibold text-foreground">Arşiv</h2>
+          <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">
+            {journalTitle} dergisinin yayımlanmış sayılarını yıllara göre inceleyin.
+          </p>
+        </header>
+
+        {grouped.totalIssues === 0 ? (
+          <p className="text-sm text-muted-foreground py-6">
+            Bu dergi için henüz arşivlenmiş sayı bulunmuyor.
+          </p>
+        ) : (
+          <div className="space-y-8 min-w-0">
+            {grouped.groups.map((group) => (
+              <div key={group.yearKey} className="min-w-0">
+                <h3 className="text-sm font-semibold text-foreground mb-3 pb-2 border-b border-border/80">
+                  {group.heading}
+                </h3>
+                <ul className="divide-y divide-border/80 min-w-0 rounded-lg border border-border/80 overflow-hidden">
+                  {group.issues.map((issue) => (
+                    <li key={issue.id}>
+                      <Link
+                        href={buildArchiveIssueHref(segment, issue.id)}
+                        className={cn(
+                          'flex items-center gap-2 min-w-0 px-3 py-3 sm:px-4 text-sm font-medium text-primary hover:text-accent hover:bg-muted/40 transition-colors no-underline',
+                          linkFocusClass,
+                        )}
+                      >
+                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                        <span className="min-w-0 line-clamp-2 leading-snug">
+                          {buildArchiveIssueLabel(issue)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </>
   )
 }
 
