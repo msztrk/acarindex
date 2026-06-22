@@ -107,6 +107,25 @@ describe('author identity', () => {
     expect(r.authors[0].sourceKey).toBe('mysql-author:42')
     expect(r.authors[0].isProvisional).toBe(false)
   })
+
+  it('aynı isimde farklı MySQL ID ayrı kalır', () => {
+    const reg = buildYazarlarRegistry([
+      { id: 11, yazar: 'Ali Veli' },
+      { id: 22, yazar: 'Ali Veli' },
+    ])
+    const r = planAuthorsForArticle({ id: 9, authors_raw: 'Ali Veli' }, reg, false)
+    expect(r.authors[0].isProvisional).toBe(true)
+    expect(r.authors[0].sourceKey).toBe(articleAuthorSourceKey(9, 1))
+  })
+
+  it('aynı makalede farklı pozisyonlar farklı provisional source key üretir', () => {
+    const reg = buildYazarlarRegistry([])
+    const r = planAuthorsForArticle({ id: 123, authors_raw: 'A Yazar, B Yazar' }, reg, false)
+    expect(r.authors.map((a) => a.sourceKey)).toEqual([
+      'article:123:position:1',
+      'article:123:position:2',
+    ])
+  })
 })
 
 describe('coverage & reconcile', () => {

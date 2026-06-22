@@ -61,7 +61,13 @@ export async function loadExistingAuthorSourceKeys(sb: SupabaseClient): Promise<
       .select('source_key')
       .not('source_key', 'is', null)
       .range(offset, offset + SIZE - 1)
-    if (error) throw new Error(`source_key state load: ${error.message}`)
+    if (error) {
+      const msg = error.message ?? ''
+      if (msg.includes('source_key') || msg.includes('column')) {
+        throw new Error(SOURCE_KEY_MIGRATION_HINT)
+      }
+      throw new Error(`source_key state load: ${msg}`)
+    }
     if (!data?.length) break
     for (const row of data) {
       if (row.source_key) keys.add(row.source_key as string)

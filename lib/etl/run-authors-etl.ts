@@ -9,7 +9,6 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { urlYap } from '../urls/slug'
 import {
   buildYazarlarRegistry,
-  parseAuthorList,
   parseAuthorTokens,
   provisionalLegacyId,
   yazarlarLegacyId,

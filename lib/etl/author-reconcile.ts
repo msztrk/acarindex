@@ -3,12 +3,11 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { parseAuthorList, parseAuthorTokens, type ArticleAuthorRow } from './author-utils'
+import { parseAuthorList, type ArticleAuthorRow } from './author-utils'
 import {
   ensureAuthorsSourceKeyColumn,
   upsertAuthorsBySourceKey,
   fetchAuthorIdsBySourceKey,
-  loadExistingAuthorSourceKeys,
 } from './author-upsert'
 import {
   planAuthorsForArticle,

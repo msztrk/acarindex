@@ -1,5 +1,5 @@
 /**
- * Migration 017 öncesi/sonrası kalite kontrolleri (Supabase REST üzerinden).
+ * Migration 017/018 öncesi/sonrası kalite kontrolleri (Supabase REST üzerinden).
  */
 import { createClient } from '@supabase/supabase-js'
 
@@ -53,6 +53,55 @@ async function main() {
     .select('*', { count: 'exact', head: true })
     .or('name.is.null,name.eq.')
 
+  let sourceKeyColumnExists = true
+  let duplicateSourceKey = 0
+  let nullCanonicalSourceKey = 0
+  let nullProvisionalSourceKey = 0
+
+  const { data: sourceRows, error: sourceErr } = await sb
+    .from('authors')
+    .select('id, is_provisional, source_key')
+    .limit(200000)
+
+  if (sourceErr) {
+    sourceKeyColumnExists = false
+  } else {
+    const seen = new Set<string>()
+    for (const row of sourceRows ?? []) {
+      const sourceKey = row.source_key as string | null
+      const provisional = row.is_provisional as boolean | null
+      if (!sourceKey) {
+        if (provisional) nullProvisionalSourceKey++
+        else nullCanonicalSourceKey++
+      } else {
+        if (seen.has(sourceKey)) duplicateSourceKey++
+        seen.add(sourceKey)
+      }
+    }
+  }
+
+  const { data: provisionalAuthors } = await sb
+    .from('authors')
+    .select('id')
+    .eq('is_provisional', true)
+    .limit(200000)
+
+  let provisionalWithoutRelation = 0
+  let provisionalMultiRelation = 0
+  const provisionalIds = new Set((provisionalAuthors ?? []).map((r) => r.id as number))
+  const relByAuthor = new Map<number, Set<number>>()
+  for (const row of rows) {
+    if (!provisionalIds.has(row.author_id)) continue
+    const set = relByAuthor.get(row.author_id) ?? new Set<number>()
+    set.add(row.article_id)
+    relByAuthor.set(row.author_id, set)
+  }
+  for (const id of provisionalIds) {
+    const rel = relByAuthor.get(id)
+    if (!rel || rel.size === 0) provisionalWithoutRelation++
+    else if (rel.size > 1) provisionalMultiRelation++
+  }
+
   console.log(JSON.stringify({
     phase: label,
     article_authors_total: rows.length,
@@ -61,6 +110,12 @@ async function main() {
     position_le_zero: badPos,
     authors_total: authorCount,
     empty_names: emptyNames,
+    source_key_column_exists: sourceKeyColumnExists,
+    duplicate_source_key: duplicateSourceKey,
+    null_source_key_canonical: nullCanonicalSourceKey,
+    null_source_key_provisional: nullProvisionalSourceKey,
+    provisional_without_relation: provisionalWithoutRelation,
+    provisional_multi_article_relations: provisionalMultiRelation,
   }, null, 2))
 }
 
