@@ -1,10 +1,9 @@
 ﻿import { Client } from 'pg';
 import * as fs from 'fs';
-
-const conn = 'postgresql://postgres:7QcSSeWS8ppGVzRs@db.yvyibenutgnocrighbmj.supabase.co:5432/postgres';
+import { requireDatabaseUrl } from './lib/database-url';
 
 async function main() {
-  const client = new Client({ connectionString: conn, ssl: { rejectUnauthorized: false } });
+  const client = new Client({ connectionString: requireDatabaseUrl(), ssl: { rejectUnauthorized: false } });
   await client.connect();
   
   // pg_trgm extension

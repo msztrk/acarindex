@@ -1,8 +1,7 @@
 ﻿import { Client } from 'pg';
 import * as fs from 'fs';
 import * as path from 'path';
-
-const conn = 'postgresql://postgres:7QcSSeWS8ppGVzRs@db.yvyibenutgnocrighbmj.supabase.co:5432/postgres';
+import { requireDatabaseUrl } from './lib/database-url';
 
 const migFiles = [
   '001_journals_issues.sql',
@@ -20,12 +19,12 @@ const migFiles = [
 ];
 
 async function main() {
-  const client = new Client({ connectionString: conn, ssl: { rejectUnauthorized: false } });
+  const client = new Client({ connectionString: requireDatabaseUrl(), ssl: { rejectUnauthorized: false } });
   await client.connect();
   console.log('Connected to Supabase!');
   
   for (const file of migFiles) {
-    const sqlPath = path.join('D:/acarindex-web/supabase/migrations', file);
+    const sqlPath = path.join(process.cwd(), 'supabase/migrations', file);
     const sql = fs.readFileSync(sqlPath, 'utf8');
     try {
       await client.query(sql);

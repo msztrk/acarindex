@@ -1,6 +1,6 @@
 import { Client } from 'pg'
 
-const conn = 'postgresql://postgres:7QcSSeWS8ppGVzRs@db.yvyibenutgnocrighbmj.supabase.co:5432/postgres'
+import { requireDatabaseUrl } from './lib/database-url'
 
 const fixes: Array<{ id: number; name_tr: string; name_en: string }> = [
   { id: 1, name_tr: 'Ekonomi',                                            name_en: 'Economics' },
@@ -14,7 +14,7 @@ const fixes: Array<{ id: number; name_tr: string; name_en: string }> = [
 ]
 
 async function main() {
-  const client = new Client({ connectionString: conn, ssl: { rejectUnauthorized: false } })
+  const client = new Client({ connectionString: requireDatabaseUrl(), ssl: { rejectUnauthorized: false } })
   await client.connect()
 
   for (const fix of fixes) {

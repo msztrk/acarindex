@@ -1,13 +1,10 @@
 import { Client } from 'pg'
 import * as fs from 'fs'
 import * as path from 'path'
-
-const conn =
-  process.env.DATABASE_URL ??
-  'postgresql://postgres:7QcSSeWS8ppGVzRs@db.yvyibenutgnocrighbmj.supabase.co:5432/postgres'
+import { requireDatabaseUrl } from './lib/database-url'
 
 async function main() {
-  const client = new Client({ connectionString: conn, ssl: { rejectUnauthorized: false } })
+  const client = new Client({ connectionString: requireDatabaseUrl(), ssl: { rejectUnauthorized: false } })
   await client.connect()
 
   const sqlPath = path.join(process.cwd(), 'supabase/migrations/016_platform_stats_accessible_pdf.sql')

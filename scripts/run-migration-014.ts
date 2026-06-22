@@ -1,13 +1,13 @@
 import { Client } from 'pg'
 import * as fs from 'fs'
-
-const conn = 'postgresql://postgres:7QcSSeWS8ppGVzRs@db.yvyibenutgnocrighbmj.supabase.co:5432/postgres'
+import * as path from 'path'
+import { requireDatabaseUrl } from './lib/database-url'
 
 async function main() {
-  const client = new Client({ connectionString: conn, ssl: { rejectUnauthorized: false } })
+  const client = new Client({ connectionString: requireDatabaseUrl(), ssl: { rejectUnauthorized: false } })
   await client.connect()
 
-  const sql = fs.readFileSync('D:/acarindex-web/supabase/migrations/014_fix_platform_stats_timeout.sql', 'utf8')
+  const sql = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/014_fix_platform_stats_timeout.sql'), 'utf8')
   try {
     await client.query(sql)
     console.log('✅ 014 uygulandı')

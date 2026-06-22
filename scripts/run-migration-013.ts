@@ -1,15 +1,14 @@
 import { Client } from 'pg'
 import * as fs from 'fs'
 import * as path from 'path'
-
-const conn = 'postgresql://postgres:7QcSSeWS8ppGVzRs@db.yvyibenutgnocrighbmj.supabase.co:5432/postgres'
+import { requireDatabaseUrl } from './lib/database-url'
 
 async function main() {
-  const client = new Client({ connectionString: conn, ssl: { rejectUnauthorized: false } })
+  const client = new Client({ connectionString: requireDatabaseUrl(), ssl: { rejectUnauthorized: false } })
   await client.connect()
 
   const sql = fs.readFileSync(
-    path.join('D:/acarindex-web/supabase/migrations/013_etl_status_interrupted.sql'),
+    path.join(process.cwd(), 'supabase/migrations/013_etl_status_interrupted.sql'),
     'utf8'
   )
 
