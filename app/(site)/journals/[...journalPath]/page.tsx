@@ -105,6 +105,10 @@ async function getLatestArticles(journalId: number, limit = 10) {
 
 // ─── Metadata ────────────────────────────────────────────────────────────────
 
+function isRedundantYearLabel(label: string, year: number | null): boolean {
+  return year !== null && label === String(year)
+}
+
 function parseIssueCitationParts(issue: Issue): {
   volumeLabel: string | null
   issueNumLabel: string | null
@@ -136,12 +140,15 @@ function buildIssueMetadataTitle(journalTitle: string, issue: Issue): string {
     detailParts.push(`Sayı ${issueNumLabel}`)
   } else if (volumeLabel) {
     detailParts.push(`Cilt ${volumeLabel}`)
-  } else if (issue.issue_label?.trim()) {
-    detailParts.push(issue.issue_label.trim())
+  } else {
+    const label = issue.issue_label?.trim()
+    if (label && !isRedundantYearLabel(label, year)) {
+      detailParts.push(label)
+    }
   }
 
   if (detailParts.length === 0) {
-    return year ? `${journalTitle} (${year})` : journalTitle
+    return year ? `${journalTitle} — ${year}` : journalTitle
   }
 
   return year
@@ -158,13 +165,20 @@ function buildIssueMetadataDescription(
   const issueBits: string[] = []
   if (volumeLabel) issueBits.push(`Cilt ${volumeLabel}`)
   if (issueNumLabel) issueBits.push(`Sayı ${issueNumLabel}`)
-  const issueStr = issueBits.join(' ') || issue.issue_label?.trim()
+  const labelFallback = issue.issue_label?.trim()
+  const issueStr =
+    issueBits.join(' ') ||
+    (labelFallback && !isRedundantYearLabel(labelFallback, year) ? labelFallback : undefined)
 
   if (!issueStr && !year) return undefined
 
   let desc = journalTitle
-  if (issueStr) desc += `, ${issueStr}`
-  if (year) desc += ` (${year})`
+  if (issueStr) {
+    desc += `, ${issueStr}`
+    if (year) desc += ` (${year})`
+  } else if (year) {
+    desc += ` (${year})`
+  }
   desc += ' içinde yayımlanan'
   if (articleCount > 0) {
     desc += ` ${articleCount} akademik makaleyi inceleyin.`
