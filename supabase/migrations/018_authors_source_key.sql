@@ -1,29 +1,18 @@
 -- ─────────────────────────────────────────────────────────────────────────────
--- 018 — authors.source_key (deterministik kimlik, bigint overflow alternatifi)
+-- 018 — authors.source_key (deterministik ETL kimliği)
 --
--- provisional: article:{id}:pos:{n}
--- canonical:   mysql_yazarlar:{id}
+-- Format:
+--   mysql-author:{legacyAuthorId}
+--   article:{articleId}:position:{authorPosition}
+--
+-- PostgREST upsert: onConflict source_key (tam unique index; çoklu NULL serbest)
 -- ─────────────────────────────────────────────────────────────────────────────
 
 ALTER TABLE authors
   ADD COLUMN IF NOT EXISTS source_key text;
 
 COMMENT ON COLUMN authors.source_key IS
-  'Deterministik ETL kimliği. Upsert ve reconciliation için.';
+  'Deterministik ETL kimliği. Upsert onConflict source_key. İsim içermez.';
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_authors_source_key_unique
-  ON authors (source_key)
-  WHERE source_key IS NOT NULL;
-
--- Mevcut provisional negatif legacy_id kayıtları için source_key doldur (opsiyonel backfill)
-UPDATE authors
-SET source_key = 'legacy_neg:' || legacy_id::text
-WHERE source_key IS NULL
-  AND legacy_id IS NOT NULL
-  AND legacy_id < 0;
-
-UPDATE authors
-SET source_key = 'mysql_yazarlar:' || legacy_id::text
-WHERE source_key IS NULL
-  AND legacy_id IS NOT NULL
-  AND legacy_id > 0;
+CREATE UNIQUE INDEX IF NOT EXISTS authors_source_key_uidx
+  ON public.authors (source_key);
