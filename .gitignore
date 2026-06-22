@@ -6,6 +6,8 @@
 .env.staging
 # ETL çıktıları
 scripts/etl/output/
+scripts/etl/checkpoints/
+scripts/etl/_tmp-*.mjs
 scripts/etl/*.json
 reports/etl-dry-run-*.json
 

@@ -3,6 +3,8 @@
  * Hem ETL scriptleri hem de unit testler tarafından kullanılır.
  */
 
+import { parseAuthorList, normalizeAuthorDisplayName } from './author-utils'
+
 /**
  * "1-15", "12–20", "7" gibi formatları parse eder.
  */
@@ -30,23 +32,12 @@ export function parsePages(raw: string | null | undefined): { start: number | nu
  * Boş, sadece boşluk veya sadece noktalama içeren isimleri filtreler.
  */
 export function parseAuthors(raw: string | null | undefined): string[] {
-  if (!raw) return []
-  return raw
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 1 && /[a-zA-ZçğıöşüÇĞİÖŞÜ]/.test(s))
+  return parseAuthorList(raw)
 }
 
 /**
- * Yazar adını normalize eder:
- * - Baştaki/sondaki boşluk ve noktalama temizlenir
- * - Birden fazla boşluk → tekil
- * - 2 karakterden kısa adlar geçersiz
+ * Yazar adını normalize eder (gösterim adı).
  */
 export function normalizeAuthorName(name: string): string {
-  return name
-    .replace(/^[^a-zA-ZçğıöşüÇĞİÖŞÜ]+/, '')
-    .replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ]+$/, '')
-    .replace(/\s+/g, ' ')
-    .trim()
+  return normalizeAuthorDisplayName(name)
 }

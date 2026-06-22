@@ -105,7 +105,7 @@ export async function startRun(
   opts: RunOptions,
 ): Promise<string> {
   const ts = new Date().toISOString().replace(/[:.]/g, '').slice(0, 15)
-  const runId = `${opts.script}-${ts}`
+  const runId = `${opts.script}-${ts}-${Math.random().toString(36).slice(2, 8)}`
 
   const { error } = await sb.from('etl_runs').insert({
     run_id: runId,
