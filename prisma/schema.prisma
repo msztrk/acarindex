@@ -1,0 +1,253 @@
+// Prisma schema — AcarIndex katalog (standart PostgreSQL)
+// Supabase migration'larından konsolide baseline ile uyumlu.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        BigInt   @id
+  legacyId  BigInt?  @unique @map("legacy_id")
+  nameTr    String?  @map("name_tr")
+  nameEn    String?  @map("name_en")
+  slug      String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  journals Journal[]
+
+  @@map("categories")
+}
+
+model Journal {
+  id               BigInt   @id
+  legacyId         BigInt?  @unique @map("legacy_id")
+  slug             String
+  titleTr          String?  @map("title_tr")
+  titleEn          String?  @map("title_en")
+  oldName          String?  @map("old_name")
+  issn             String?
+  eissn            String?
+  publisher        String?
+  frequency        String?
+  startYear        String?  @map("start_year")
+  publicationFormat String? @map("publication_format")
+  publishLanguage  String?  @map("publish_language")
+  subjectCategory  String?  @map("subject_category")
+  topics           String?
+  editorInChief    String?  @map("editor_in_chief")
+  editorialBoard   String?  @map("editorial_board")
+  colophon         String?
+  description      String?
+  about            String?
+  aimAndScope      String?  @map("aim_and_scope")
+  policy           String?
+  writingRules     String?  @map("writing_rules")
+  pricePolicy      String?  @map("price_policy")
+  indexesText      String?  @map("indexes_text")
+  yearsIndexed     String?  @map("years_indexed")
+  contactText      String?  @map("contact_text")
+  contactJson      Json?    @map("contact_json")
+  coverPath        String?  @map("cover_path")
+  legacyLink       String?  @map("legacy_link")
+  categoryId       BigInt?  @map("category_id")
+  status           String   @default("published")
+  hitCount         Int      @default(0) @map("hit_count")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  issues   Issue[]
+  articles Article[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("journals")
+}
+
+model Issue {
+  id               BigInt   @id
+  legacyId         BigInt?  @unique @map("legacy_id")
+  journalId        BigInt   @map("journal_id")
+  year             Int?
+  issueNumber      String?  @map("issue_number")
+  volume           String?
+  issueLabel       String?  @map("issue_label")
+  dergiparkIssueId BigInt?  @map("dergipark_issue_id")
+  status           String   @default("published")
+  hitCount         Int      @default(0) @map("hit_count")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  journal  Journal   @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  articles Article[]
+
+  @@index([journalId, year(sort: Desc)])
+  @@map("issues")
+}
+
+model Article {
+  id                BigInt    @id
+  legacyId          BigInt?   @unique @map("legacy_id")
+  slug              String
+  legacyJournalSlug String    @map("legacy_journal_slug")
+  journalId         BigInt    @map("journal_id")
+  issueId           BigInt?   @map("issue_id")
+  titleTr           String?   @map("title_tr")
+  titleEn           String?   @map("title_en")
+  authorsRaw        String?   @map("authors_raw")
+  authorsCitation   String?   @map("authors_citation")
+  legacyAuthorIds   String?   @map("legacy_author_ids")
+  institutionRaw    String?   @map("institution_raw")
+  abstractTr        String?   @map("abstract_tr")
+  abstractEn        String?   @map("abstract_en")
+  keywordsTr        String?   @map("keywords_tr")
+  keywordsEn        String?   @map("keywords_en")
+  referencesRaw     String?   @map("references_raw")
+  citationFormat    String?   @map("citation_format")
+  pageStart         Int?      @map("page_start")
+  pageEnd           Int?      @map("page_end")
+  publishedAt       DateTime? @map("published_at") @db.Date
+  publishedYear     Int?      @map("published_year")
+  submissionDates   String?   @map("submission_dates")
+  language          String?
+  documentLanguage  String?   @map("document_language")
+  documentType      String?   @map("document_type")
+  articleType       String?   @map("article_type")
+  accessType        String?   @default("open") @map("access_type")
+  section           String?
+  subjectArea       String?   @map("subject_area")
+  doi               String?
+  dergiparkIssueId  BigInt?   @map("dergipark_issue_id")
+  hitCount          Int       @default(0) @map("hit_count")
+  downloadCount     Int       @default(0) @map("download_count")
+  status            String    @default("published")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  journal        Journal         @relation(fields: [journalId], references: [id], onDelete: Restrict)
+  issue          Issue?          @relation(fields: [issueId], references: [id], onDelete: SetNull)
+  pdfFile        PdfFile?
+  articleAuthors ArticleAuthor[]
+
+  @@index([journalId, publishedYear(sort: Desc)])
+  @@index([issueId])
+  @@index([legacyJournalSlug, slug, id])
+  @@index([status])
+  @@map("articles")
+}
+
+model PdfFile {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId       BigInt   @unique @map("article_id")
+  legacyPdfPath   String?  @map("legacy_pdf_path")
+  storageKey      String?  @map("storage_key")
+  cdnUrl          String?  @map("cdn_url")
+  fileSizeBytes   BigInt?  @map("file_size_bytes")
+  pageCount       Int?     @map("page_count")
+  checksumSha256  String?  @map("checksum_sha256")
+  fileStatus      String   @default("legacy") @map("file_status")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([fileStatus])
+  @@map("pdf_files")
+}
+
+model Author {
+  id            BigInt   @id @default(autoincrement())
+  legacyId      BigInt?  @unique @map("legacy_id")
+  slug          String?
+  name          String
+  title         String?
+  institution   String?
+  bio           String?
+  orcid         String?  @unique
+  email         String?
+  isProvisional Boolean  @default(false) @map("is_provisional")
+  sourceKey     String?  @unique @map("source_key")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  articleAuthors ArticleAuthor[]
+
+  @@index([isProvisional])
+  @@map("authors")
+}
+
+model ArticleAuthor {
+  articleId       BigInt  @map("article_id")
+  authorId        BigInt  @map("author_id")
+  authorPosition  Int?    @map("author_position")
+  rawAuthorName   String? @map("raw_author_name")
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author  Author  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, authorId])
+  @@index([authorId])
+  @@map("article_authors")
+}
+
+model EtlRun {
+  id           BigInt    @id @default(autoincrement())
+  runId        String    @unique @map("run_id")
+  script       String
+  mode         String    @default("full")
+  sourceTable  String?   @map("source_table")
+  targetTable  String?   @map("target_table")
+  limitRows    Int?      @map("limit_rows")
+  offsetRows   Int       @default(0) @map("offset_rows")
+  rowsRead     Int       @default(0) @map("rows_read")
+  rowsInserted Int       @default(0) @map("rows_inserted")
+  rowsUpdated  Int       @default(0) @map("rows_updated")
+  rowsSkipped  Int       @default(0) @map("rows_skipped")
+  rowsError    Int       @default(0) @map("rows_error")
+  startedAt    DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt   DateTime? @map("finished_at") @db.Timestamptz(6)
+  status       String    @default("running")
+  errorSummary String?   @map("error_summary")
+  notes        String?
+
+  errors EtlError[]
+
+  @@index([script, startedAt(sort: Desc)])
+  @@map("etl_runs")
+}
+
+model EtlError {
+  id           BigInt   @id @default(autoincrement())
+  runId        String   @map("run_id")
+  sourceTable  String?  @map("source_table")
+  sourceId     BigInt?  @map("source_id")
+  sourceRow    Json?    @map("source_row")
+  errorType    String   @map("error_type")
+  errorMessage String   @map("error_message")
+  fieldName    String?  @map("field_name")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  run EtlRun @relation(fields: [runId], references: [runId], onDelete: Cascade)
+
+  @@index([runId])
+  @@map("etl_errors")
+}
+
+model UrlAlias {
+  legacyPath    String   @id @map("legacy_path")
+  canonicalPath String   @map("canonical_path")
+  entityType    String?  @map("entity_type")
+  entityId      BigInt?  @map("entity_id")
+  httpStatus    Int      @default(200) @map("http_status")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([entityType, entityId])
+  @@map("url_aliases")
+}

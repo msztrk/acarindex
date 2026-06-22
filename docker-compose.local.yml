@@ -1,0 +1,23 @@
+# Yerel geliştirme — PostgreSQL (localhost only)
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: acarindex_dev_pg
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: acarindex
+      POSTGRES_PASSWORD: dev_password_change_me
+      POSTGRES_DB: acarindex_dev
+    volumes:
+      - acarindex_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acarindex -d acarindex_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  acarindex_pg_data:
