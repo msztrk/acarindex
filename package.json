@@ -15,7 +15,12 @@
     "staging:seed": "npx tsx --env-file=.env.staging scripts/staging/seed-catalog.ts",
     "staging:migrate": "npx tsx --env-file=.env.staging scripts/staging/apply-migrations.ts",
     "staging:validate": "npx tsx --env-file=.env.staging scripts/staging/run-validation.ts",
-    "staging:orphan-test": "npx tsx --env-file=.env.staging scripts/staging/test-orphan-scenario.ts"
+    "staging:orphan-test": "npx tsx --env-file=.env.staging scripts/staging/test-orphan-scenario.ts",
+    "source:inspect-dump": "npx tsx scripts/source/inspect-dump.ts",
+    "source:restore": "npx tsx scripts/source/restore-local.ts",
+    "source:inventory": "npx tsx scripts/source/inventory.ts",
+    "source:etl-dry-run": "npx tsx scripts/source/etl-stage-dry-run.ts",
+    "source:audit-secrets": "npx tsx scripts/audit-secrets.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
