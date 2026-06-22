@@ -26,6 +26,30 @@ async function loadArticleAuthors() {
   return rows
 }
 
+async function loadProvisionalAuthors(hasSourceKey: boolean) {
+  const rows: Array<{ id: number; source_key: string | null }> = []
+  let offset = 0
+  while (true) {
+    const selectCols = hasSourceKey ? 'id, source_key' : 'id'
+    const { data, error } = await sb
+      .from('authors')
+      .select(selectCols)
+      .eq('is_provisional', true)
+      .range(offset, offset + 999)
+    if (error) throw error
+    if (!data?.length) break
+    for (const r of data as Array<Record<string, unknown>>) {
+      rows.push({
+        id: r.id as number,
+        source_key: hasSourceKey ? ((r.source_key as string | null) ?? null) : null,
+      })
+    }
+    if (data.length < 1000) break
+    offset += 1000
+  }
+  return rows
+}
+
 async function main() {
   const phase = process.argv[2] ?? 'pre'
   const rows = await loadArticleAuthors()
@@ -47,40 +71,52 @@ async function main() {
     posByArticle.set(r.article_id, set)
   }
 
+  const relByAuthor = new Map<number, typeof rows>()
+  for (const r of rows) {
+    const list = relByAuthor.get(r.author_id) ?? []
+    list.push(r)
+    relByAuthor.set(r.author_id, list)
+  }
+
+  const { error: skErr } = await sb.from('authors').select('source_key').limit(1)
+  const sourceKeyColumn = !skErr?.message?.includes('source_key')
+
+  let multiRelationProvisional = 0
+  let linkedProvisionalNullSk = 0
+  let orphanProvisional = 0
+
+  const provisionalAuthors = await loadProvisionalAuthors(sourceKeyColumn)
+  for (const a of provisionalAuthors) {
+    const rels = relByAuthor.get(a.id) ?? []
+    if (rels.length > 1) multiRelationProvisional++
+    if (rels.length === 0) orphanProvisional++
+    if (rels.length > 0 && a.source_key == null) linkedProvisionalNullSk++
+  }
+
   const { count: authorsTotal } = await sb.from('authors').select('*', { count: 'exact', head: true })
   const { count: emptyNames } = await sb
     .from('authors')
     .select('*', { count: 'exact', head: true })
     .or('name.is.null,name.eq.')
 
-  let sourceKeyChecks: Record<string, unknown> = { column: false }
-  const { error: skErr } = await sb.from('authors').select('source_key').limit(1)
-  if (!skErr?.message?.includes('source_key')) {
-    const { count: skNullCanon } = await sb
-      .from('authors')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_provisional', false)
-      .is('source_key', null)
-    const { count: skNullProv } = await sb
-      .from('authors')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_provisional', true)
-      .is('source_key', null)
-
-    const { data: skAll } = await sb.from('authors').select('source_key').not('source_key', 'is', null).limit(10000)
+  let duplicateSourceKey = 0
+  if (sourceKeyColumn) {
     const skSet = new Set<string>()
-    let dupSk = 0
-    for (const r of skAll ?? []) {
-      const k = r.source_key as string
-      if (skSet.has(k)) dupSk++
-      skSet.add(k)
-    }
-
-    sourceKeyChecks = {
-      column: true,
-      null_canonical: skNullCanon,
-      null_provisional: skNullProv,
-      duplicate_source_key_sample: dupSk,
+    let offset = 0
+    while (true) {
+      const { data } = await sb
+        .from('authors')
+        .select('source_key')
+        .not('source_key', 'is', null)
+        .range(offset, offset + 999)
+      if (!data?.length) break
+      for (const r of data ?? []) {
+        const k = r.source_key as string
+        if (skSet.has(k)) duplicateSourceKey++
+        skSet.add(k)
+      }
+      if (data.length < 1000) break
+      offset += 1000
     }
   }
 
@@ -91,10 +127,14 @@ async function main() {
         article_authors_total: rows.length,
         duplicate_article_author: dupPair,
         duplicate_position: dupPos,
+        duplicate_source_key: duplicateSourceKey,
         position_le_zero: badPos,
+        linked_provisional_null_source_key: linkedProvisionalNullSk,
+        multi_relation_provisional: multiRelationProvisional,
+        orphan_provisional: orphanProvisional,
         authors_total: authorsTotal,
         empty_names: emptyNames,
-        source_key: sourceKeyChecks,
+        source_key_column: sourceKeyColumn,
       },
       null,
       2,
