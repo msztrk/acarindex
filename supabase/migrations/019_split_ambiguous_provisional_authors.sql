@@ -194,7 +194,7 @@ BEGIN
         LIMIT 1;
 
         IF v_target_id IS NULL THEN
-          v_leg := -(rel.article_id * 100000 + rel.author_position);
+          v_leg := -((rel.article_id::bigint * 10000000::bigint) + rel.author_position::bigint);
 
           IF EXISTS (SELECT 1 FROM public.authors WHERE legacy_id = v_leg) THEN
             RAISE EXCEPTION '019 split: legacy_id collision % for article=% position=%',

@@ -7,9 +7,14 @@ import mysql from 'mysql2/promise'
 import { createClient } from '@supabase/supabase-js'
 import * as dotenv from 'dotenv'
 import path from 'path'
+import fs from 'fs'
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
-dotenv.config({ path: path.resolve(process.cwd(), '.env') })
+const cwd = process.cwd()
+dotenv.config({ path: path.resolve(cwd, '.env.local') })
+dotenv.config({ path: path.resolve(cwd, '.env') })
+if (process.env.STAGING === '1' && fs.existsSync(path.resolve(cwd, '.env.staging'))) {
+  dotenv.config({ path: path.resolve(cwd, '.env.staging'), override: true })
+}
 
 // ─── Bağlantılar ──────────────────────────────────────────────────────────────
 

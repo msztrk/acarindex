@@ -10,10 +10,10 @@ export interface AuthorRelationSlot {
   authorPosition: number
 }
 
-/** Split sonrası yeni kayıtlar için legacy_id (article_id×100 ile çakışmaz). */
+/** Split sonrası yeni kayıtlar için legacy_id (article_id×100 ve ×100000 ile çakışmaz). */
 export function splitProvisionalLegacyId(articleId: number, authorPosition: number): number {
-  const packed = articleId * 100_000 + authorPosition
-  if (packed > 2_147_483_647) {
+  const packed = articleId * 10_000_000 + authorPosition
+  if (!Number.isSafeInteger(packed)) {
     throw new Error(`splitProvisionalLegacyId overflow: article=${articleId} pos=${authorPosition}`)
   }
   return -packed

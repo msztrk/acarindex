@@ -66,10 +66,11 @@ describe('provisional author split plan', () => {
     expect(keys[119]).toBe(articleAuthorSourceKey(999, 120))
   })
 
-  it('split legacy_id article_id×100 formülünden farklıdır', () => {
+  it('split legacy_id article_id×100 ve ×100000 formüllerinden farklıdır', () => {
     const splitLeg = splitProvisionalLegacyId(5000, 3)
-    expect(splitLeg).toBe(-500_000_003)
+    expect(splitLeg).toBe(-50_000_000_003)
     expect(splitLeg).not.toBe(-(5000 * 100 + 3))
+    expect(splitLeg).not.toBe(-(5000 * 100_000 + 3))
   })
 
   it('migration ikinci çalışmada no-op — belirsiz kayıt kalmaz', () => {

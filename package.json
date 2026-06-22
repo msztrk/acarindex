@@ -9,7 +9,13 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "etl:authors": "npx tsx scripts/etl/04-authors.ts"
+    "etl:authors": "npx tsx scripts/etl/04-authors.ts",
+    "staging:verify-legacy-id": "npx tsx scripts/staging/verify-legacy-id.ts",
+    "staging:snapshot": "npx tsx --env-file=.env.staging scripts/staging/snapshot.ts",
+    "staging:seed": "npx tsx --env-file=.env.staging scripts/staging/seed-catalog.ts",
+    "staging:migrate": "npx tsx --env-file=.env.staging scripts/staging/apply-migrations.ts",
+    "staging:validate": "npx tsx --env-file=.env.staging scripts/staging/run-validation.ts",
+    "staging:orphan-test": "npx tsx --env-file=.env.staging scripts/staging/test-orphan-scenario.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
