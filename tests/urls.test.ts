@@ -191,6 +191,10 @@ describeIssueRouteHttp('journal issue route HTTP', () => {
     return response.status
   }
 
+  function metaDescription(html: string): string | undefined {
+    return html.match(/name="description" content="([^"]+)"/)?.[1]
+  }
+
   it('geçerli sayı → 200', async () => {
     const status = await fetchStatus(`${sbfJournal}/sayi/2155`)
     expect(status).toBe(200)
@@ -198,6 +202,15 @@ describeIssueRouteHttp('journal issue route HTTP', () => {
     expect(html).toContain('Cilt 52')
     expect(html).toMatch(/rel="canonical" href="[^"]*\/sayi\/2155"/)
     expect(html.replace(/<!-- -->/g, '')).toContain('45 makale')
+    expect(metaDescription(html)).toContain('45 akademik makale')
+  })
+
+  it('28 makaleli sayı → 200 ve metadata count', async () => {
+    const url = `${otherJournal}/sayi/2647`
+    expect(await fetchStatus(url)).toBe(200)
+    const html = await (await fetch(url)).text()
+    expect(html.replace(/<!-- -->/g, '')).toContain('28 makale')
+    expect(metaDescription(html)).toContain('28 akademik makale')
   })
 
   it('boş ama geçerli sayı → 200', async () => {
@@ -206,6 +219,8 @@ describeIssueRouteHttp('journal issue route HTTP', () => {
     const html = await (await fetch(`${sbfJournal}/sayi/37951`)).text()
     expect(html).toContain('Bu sayıda listelenecek makale bulunmuyor.')
     expect(html).toMatch(/rel="canonical" href="[^"]*\/sayi\/37951"/)
+    expect(metaDescription(html)).toContain('akademik makaleleri inceleyin.')
+    expect(metaDescription(html)).not.toMatch(/\d+ akademik makale/)
   })
 
   it('olmayan sayı → 404', async () => {

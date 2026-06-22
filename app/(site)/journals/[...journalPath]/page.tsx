@@ -80,6 +80,23 @@ async function getIssueArticlesUncached(issueId: number) {
 
 const getIssueArticles = cache(getIssueArticlesUncached)
 
+async function countIssueArticlesUncached(issueId: number): Promise<number> {
+  const sb = await createClient()
+  const { count, error } = await sb
+    .from('articles')
+    .select('id', { count: 'exact', head: true })
+    .eq('issue_id', issueId)
+    .eq('status', 'published')
+
+  if (error) {
+    throw error
+  }
+
+  return count ?? 0
+}
+
+const countIssueArticles = cache(countIssueArticlesUncached)
+
 async function getIssueUncached(issueId: number) {
   const sb = await createClient()
   const { data } = await sb
@@ -231,9 +248,9 @@ export async function generateMetadata({
   if (resolved.subPage === 'sayi' && resolved.issueId) {
     const issue = await requireJournalIssue(parsed.journalId, resolved.issueId)
 
-    const articles = await getIssueArticles(resolved.issueId)
+    const articleCount = await countIssueArticles(resolved.issueId)
     const pageTitle = buildIssueMetadataTitle(journalTitle, issue)
-    const description = buildIssueMetadataDescription(journalTitle, issue, articles.length)
+    const description = buildIssueMetadataDescription(journalTitle, issue, articleCount)
 
     return {
       title: pageTitle,
