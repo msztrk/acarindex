@@ -1,16 +1,17 @@
 /**
  * Postgres bağlantı URL'si — yalnızca ortam değişkeninden.
- * Secret değerleri loglanmaz.
+ * Birincil: DATABASE_URL (standart PostgreSQL).
+ * Legacy: SUPABASE_DB_URL (geçici geri uyumluluk).
  */
 
 export function requireDatabaseUrl(): string {
-  const url = process.env.SUPABASE_DB_URL ?? process.env.DATABASE_URL
-  if (!url?.trim()) {
+  const url = process.env.DATABASE_URL?.trim() || process.env.SUPABASE_DB_URL?.trim()
+  if (!url) {
     throw new Error(
-      'SUPABASE_DB_URL tanımlı değil. Veritabanı bağlantısını ortam değişkeni üzerinden sağlayın.',
+      'DATABASE_URL tanımlı değil. Standart PostgreSQL bağlantısını ortam değişkeni üzerinden sağlayın.',
     )
   }
-  return url.trim()
+  return url
 }
 
 /** Raporlama için maskeli URL: postgresql://user:***@host/database */

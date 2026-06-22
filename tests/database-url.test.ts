@@ -6,12 +6,12 @@ import {
 } from '../scripts/lib/database-url'
 
 describe('requireDatabaseUrl', () => {
-  it('SUPABASE_DB_URL yokken anlaşılır hata verir', () => {
+  it('DATABASE_URL yokken anlaşılır hata verir', () => {
     const prev = { ...process.env }
     delete process.env.SUPABASE_DB_URL
     delete process.env.DATABASE_URL
     try {
-      expect(() => requireDatabaseUrl()).toThrow(/SUPABASE_DB_URL tanımlı değil/)
+      expect(() => requireDatabaseUrl()).toThrow(/DATABASE_URL tanımlı değil/)
     } finally {
       process.env = prev
     }
@@ -31,11 +31,12 @@ describe('requireDatabaseUrl', () => {
     }
   })
 
-  it('SUPABASE_DB_URL değerini döndürür', () => {
+  it('DATABASE_URL öncelikli döndürülür', () => {
     const prev = { ...process.env }
-    process.env.SUPABASE_DB_URL = 'postgresql://user:secret@db.example.com:5432/postgres'
+    process.env.DATABASE_URL = 'postgresql://user:secret@127.0.0.1:5432/acarindex_dev'
+    process.env.SUPABASE_DB_URL = 'postgresql://user:other@db.example.com:5432/postgres'
     try {
-      expect(requireDatabaseUrl()).toBe(process.env.SUPABASE_DB_URL)
+      expect(requireDatabaseUrl()).toBe(process.env.DATABASE_URL)
     } finally {
       process.env = prev
     }

@@ -21,10 +21,17 @@
     "source:inventory": "npx tsx scripts/source/inventory.ts",
     "source:etl-dry-run": "npx tsx scripts/source/etl-stage-dry-run.ts",
     "source:profile-authors": "npx tsx scripts/source/profile-author-columns.ts",
-    "source:audit-secrets": "npx tsx scripts/audit-secrets.ts"
+    "source:audit-secrets": "npx tsx scripts/audit-secrets.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:schema-report": "npx tsx scripts/db/schema-report.ts",
+    "etl:pilot-dry-run": "npx tsx scripts/etl-pg/pilot-dry-run.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@prisma/client": "^6.19.0",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.2",
     "class-variance-authority": "^0.7.1",
@@ -47,6 +54,7 @@
     "eslint-config-next": "16.2.9",
     "mysql2": "^3.22.5",
     "pg": "^8.22.0",
+    "prisma": "^6.19.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.9"
