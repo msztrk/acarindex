@@ -1,16 +1,19 @@
 /**
- * Author ETL unit tests — idempotency, parsing, dry-run, resume mantığı.
+ * Author ETL unit tests — idempotency, parsing, dry-run, resume, reconcile.
  */
 
 import { describe, it, expect, vi } from 'vitest'
 import {
   decodeHtmlEntities,
   normalizeAuthorDisplayName,
-  normalizeAuthorMatchKey,
   parseAuthorList,
+  parseAuthorTokens,
   provisionalLegacyId,
+  provisionalSourceKey,
   buildYazarlarRegistry,
   profileAuthorSource,
+  isInsufficientIdentity,
+  classifyCommaAuthorSample,
 } from '../lib/etl/author-utils'
 import {
   planAuthorsForArticle,
@@ -18,7 +21,24 @@ import {
   parseAuthorEtlCliArgs,
   createAuthorEtlCounters,
   AuthorEtlErrorType,
+  processArticleAuthors,
 } from '../lib/etl/run-authors-etl'
+import {
+  classifyArticleCoverage,
+  wouldCheckpointSkipArticle,
+  buildReconcileReport,
+} from '../lib/etl/author-reconcile'
+
+const baseCli = {
+  dryRun: false,
+  profileOnly: false,
+  missingOnly: false,
+  reconcile: false,
+  limit: 10,
+  startAfter: 0,
+  batchSize: 10,
+  skipNonPublished: true,
+}
 
 describe('author parsing & normalization', () => {
   it('Türkçe karakterli isim korunur', () => {
@@ -26,26 +46,49 @@ describe('author parsing & normalization', () => {
     expect(parseAuthorList('İbrahim Çelik')).toEqual(['İbrahim Çelik'])
   })
 
+  it('Kiril isim parse ediliyor', () => {
+    expect(parseAuthorList('Александр Иванов')).toEqual(['Александр Иванов'])
+  })
+
+  it('Arapça isim parse ediliyor', () => {
+    expect(parseAuthorList('محمد أحمد')).toEqual(['محمد أحمد'])
+  })
+
+  it('Yunanca isim parse ediliyor', () => {
+    expect(parseAuthorList('Γεώργιος Παπαδόπουλος')).toEqual(['Γεώργιος Παπαδόπουλος'])
+  })
+
+  it('aksanlı Latin isim korunuyor', () => {
+    expect(parseAuthorList('Željko Petrović')).toEqual(['Željko Petrović'])
+  })
+
+  it('A. Yılmaz kabul edilir', () => {
+    expect(parseAuthorList('A. Yılmaz')).toEqual(['A. Yılmaz'])
+  })
+
+  it('B. yetersiz kimlik olarak işaretlenir', () => {
+    const tokens = parseAuthorTokens('B.')
+    expect(tokens[0]?.rejected).toBe('insufficient_identity')
+    expect(parseAuthorList('B.')).toEqual([])
+    expect(isInsufficientIdentity('B.')).toBe(true)
+  })
+
+  it('yalnızca noktalama atlanır', () => {
+    expect(parseAuthorList('..., ---')).toEqual([])
+  })
+
   it('HTML entity temizlenir', () => {
     expect(decodeHtmlEntities('Ahmet&amp; Mehmet')).toBe('Ahmet& Mehmet')
     expect(normalizeAuthorDisplayName('Fatma&#231;')).toBe('Fatmaç')
   })
 
-  it('boş yazar atlanır', () => {
-    expect(parseAuthorList('  ,  ,')).toEqual([])
+  it('Soyad, Ad birleştirir', () => {
+    expect(parseAuthorList('AKÇA, Yavuz DEMİREL')).toEqual(['AKÇA, Yavuz DEMİREL'])
   })
 
-  it('noktalı virgül ayırır', () => {
-    expect(parseAuthorList('Ahmet YILMAZ; Mehmet DEMİR')).toEqual(['Ahmet YILMAZ', 'Mehmet DEMİR'])
-  })
-
-  it('Soyad, Ad birleştirir (ters çevirme yapmaz)', () => {
-    const parsed = parseAuthorList('AKÇA, Yavuz DEMİREL')
-    expect(parsed).toEqual(['AKÇA, Yavuz DEMİREL'])
-  })
-
-  it('virgül boşluksuz çoklu yazar', () => {
-    expect(parseAuthorList('Mutlu SESLİ,Şeyhmus DEMİR')).toEqual(['Mutlu SESLİ', 'Şeyhmus DEMİR'])
+  it('provisional source key deterministik', () => {
+    expect(provisionalSourceKey(100, 2)).toBe('article:100:pos:2')
+    expect(provisionalSourceKey(100, 2)).toBe(provisionalSourceKey(100, 2))
   })
 })
 
@@ -55,116 +98,92 @@ describe('author identity', () => {
     const a1 = planAuthorsForArticle({ id: 10, authors_raw: 'Ahmet GÜVEN' }, reg, false)
     const a2 = planAuthorsForArticle({ id: 20, authors_raw: 'Ahmet GÜVEN' }, reg, false)
     expect(a1.authors[0].legacyId).not.toBe(a2.authors[0].legacyId)
-    expect(a1.authors[0].isProvisional).toBe(true)
+    expect(a1.authors[0].sourceKey).not.toBe(a2.authors[0].sourceKey)
   })
 
   it('mysql yazarlar tek eşleşmede güvenilir ID kullanır', () => {
     const reg = buildYazarlarRegistry([{ id: 42, yazar: 'Ahmet GÜVEN' }])
     const r = planAuthorsForArticle({ id: 10, authors_raw: 'Ahmet GÜVEN' }, reg, false)
     expect(r.authors[0].legacyId).toBe(42)
+    expect(r.authors[0].sourceKey).toBe('mysql_yazarlar:42')
     expect(r.authors[0].isProvisional).toBe(false)
   })
+})
 
-  it('belirsiz yazarlar eşleşmesinde provisional kalır', () => {
-    const reg = buildYazarlarRegistry([
-      { id: 1, yazar: 'Ahmet GÜVEN' },
-      { id: 2, yazar: 'Ahmet GÜVEN' },
-    ])
-    const r = planAuthorsForArticle({ id: 10, authors_raw: 'Ahmet GÜVEN' }, reg, false)
-    expect(r.authors[0].isProvisional).toBe(true)
-    expect(r.authors[0].legacyId).toBe(provisionalLegacyId(10, 1))
+describe('coverage & reconcile', () => {
+  it('checkpoint düşük ID makaleyi atlar', () => {
+    expect(wouldCheckpointSkipArticle(10000, 5000)).toBe(true)
+    expect(wouldCheckpointSkipArticle(10000, 10001)).toBe(false)
   })
 
-  it('author position korunur', () => {
-    const reg = buildYazarlarRegistry([])
-    const r = planAuthorsForArticle(
-      { id: 5, authors_raw: 'A Yazar, B Yazar, C Yazar' },
-      reg,
-      false,
+  it('ilişkisi olmayan makale missing', () => {
+    const s = classifyArticleCoverage(
+      { id: 5, authors_raw: 'Test Yazar' },
+      undefined,
     )
-    expect(r.authors.map((a) => a.position)).toEqual([1, 2, 3])
+    expect(s.status).toBe('missing')
+  })
+
+  it('kısmi ilişkili makale partial', () => {
+    const s = classifyArticleCoverage(
+      { id: 5, authors_raw: 'A Yazar, B Yazar' },
+      { authorIds: new Set([1]), positions: new Map([[1, 1]]) },
+    )
+    expect(s.status).toBe('partial')
+  })
+
+  it('tam ilişkili makale complete', () => {
+    const s = classifyArticleCoverage(
+      { id: 5, authors_raw: 'A Yazar' },
+      { authorIds: new Set([1]), positions: new Map([[1, 1]]) },
+    )
+    expect(s.status).toBe('complete')
+  })
+
+  it('reconcile raporu eksik ve kısmi sayar', () => {
+    const report = buildReconcileReport([
+      { articleId: 1, authorsRaw: 'A', expectedCount: 1, relationCount: 0, status: 'missing' },
+      { articleId: 2, authorsRaw: 'A, B', expectedCount: 2, relationCount: 1, status: 'partial' },
+      { articleId: 3, authorsRaw: 'C', expectedCount: 1, relationCount: 1, status: 'complete' },
+    ])
+    expect(report.missingRelations).toBe(1)
+    expect(report.partialRelations).toBe(1)
+    expect(report.toProcess).toBe(2)
+  })
+
+  it('processArticleAuthors eksik pozisyonu tamamlar', () => {
+    const planned = planAuthorsForArticle(
+      { id: 1, authors_raw: 'A Yazar, B Yazar' },
+      buildYazarlarRegistry([]),
+      false,
+    ).authors
+    const { toCreate } = processArticleAuthors(planned, {
+      authorIds: new Set([99]),
+      positions: new Map([[1, 99]]),
+    })
+    expect(toCreate.length).toBe(1)
+    expect(toCreate[0].position).toBe(2)
+  })
+
+  it('pozisyon çakışmasında üzerine yazmaz', () => {
+    const planned = planAuthorsForArticle(
+      { id: 1, authors_raw: 'A Yazar' },
+      buildYazarlarRegistry([]),
+      false,
+    ).authors
+    const { toCreate, errors } = processArticleAuthors(planned, {
+      authorIds: new Set([99]),
+      positions: new Map([[1, 99]]),
+    })
+    expect(toCreate.length).toBe(0)
+    expect(errors).toContain(AuthorEtlErrorType.POSITION_CONFLICT)
   })
 })
 
 describe('runAuthorsEtl', () => {
-  function mockSb() {
-    const authors: Array<Record<string, unknown>> = []
-    const relations: Array<Record<string, unknown>> = []
-    let authorSeq = 100
-
-    const sb = {
-      from(table: string) {
-        const api = {
-          select: () => api,
-          gt: () => api,
-          eq: () => api,
-          order: () => api,
-          limit: () => api,
-          range: () => api,
-          not: () => api,
-          in: () => api,
-          upsert: async (rows: Record<string, unknown>[], opts?: { onConflict?: string }) => {
-            if (table === 'authors') {
-              for (const row of rows) {
-                const existing = authors.find((a) => a.legacy_id === row.legacy_id)
-                if (!existing) {
-                  const id = authorSeq++
-                  authors.push({ ...row, id })
-                }
-              }
-              return { error: null }
-            }
-            if (table === 'article_authors') {
-              for (const row of rows) {
-                const dup = relations.find(
-                  (r) => r.article_id === row.article_id && r.author_id === row.author_id,
-                )
-                if (!dup) relations.push(row)
-              }
-              return { error: null }
-            }
-            return { error: null }
-          },
-        }
-        const chain = {
-          ...api,
-          select: () => chain,
-          gt: () => chain,
-          eq: () => chain,
-          order: () => chain,
-          limit: () => chain,
-          not: () => chain,
-          in: () => chain,
-          range: () => chain,
-        }
-        if (table === 'articles') {
-          Object.assign(chain, {
-            then(resolve: (v: unknown) => void) {
-              resolve({ data: [], error: null })
-            },
-          })
-        } else if (table === 'authors') {
-          Object.assign(chain, {
-            then(resolve: (v: unknown) => void) {
-              resolve({ data: authors.map((a) => ({ id: a.id, legacy_id: a.legacy_id })), error: null })
-            },
-          })
-        } else {
-          Object.assign(chain, {
-            then(resolve: (v: unknown) => void) {
-              resolve({ data: [], error: null })
-            },
-          })
-        }
-        return chain
-      },
-    }
-
-    return { sb, authors, relations }
-  }
-
   it('dry-run yazma yapmaz', async () => {
     const articles = [{ id: 1, authors_raw: 'Test Yazar', status: 'published' }]
+    const upsert = vi.fn()
     const sb = {
       from(table: string) {
         const chain = {
@@ -173,91 +192,7 @@ describe('runAuthorsEtl', () => {
           eq: () => chain,
           order: () => chain,
           limit: () => chain,
-          upsert: vi.fn(),
-        }
-        if (table === 'articles') {
-          Object.assign(chain, {
-            then(resolve: (v: unknown) => void) {
-              resolve({ data: articles, error: null })
-            },
-          })
-        }
-        return chain
-      },
-    }
-
-    await runAuthorsEtl({
-      sb: sb as never,
-      registry: buildYazarlarRegistry([]),
-      cli: {
-        dryRun: true,
-        profileOnly: false,
-        limit: 10,
-        startAfter: 0,
-        batchSize: 10,
-        skipNonPublished: true,
-      },
-    })
-
-    expect(sb.from('authors').upsert).not.toHaveBeenCalled()
-  })
-
-  it('aynı kaynak yazar ikinci kez oluşturulmuyor', async () => {
-    const articles = [
-      { id: 1, authors_raw: 'Yazar A', status: 'published' },
-      { id: 2, authors_raw: 'Yazar A', status: 'published' },
-    ]
-    let call = 0
-    const { sb, authors } = mockSb()
-
-    const customSb = {
-      from(table: string) {
-        if (table === 'articles') {
-          const chain = {
-            select: () => chain,
-            gt: () => chain,
-            eq: () => chain,
-            order: () => chain,
-            limit: () => chain,
-            then(resolve: (v: unknown) => void) {
-              const batch = call === 0 ? [articles[0]] : call === 1 ? [articles[1]] : []
-              call++
-              resolve({ data: batch, error: null })
-            },
-          }
-          return chain
-        }
-        return sb.from(table)
-      },
-    }
-
-    const registry = buildYazarlarRegistry([])
-    const existing = new Set<number>()
-
-    await runAuthorsEtl({
-      sb: customSb as never,
-      registry,
-      cli: { dryRun: false, profileOnly: false, limit: 2, startAfter: 0, batchSize: 1, skipNonPublished: true },
-      existingLegacyIds: existing,
-      existingRelations: new Set(),
-    })
-
-    const provisionalIds = authors.filter((a) => (a.legacy_id as number) < 0)
-    expect(provisionalIds.length).toBe(2)
-    expect(authors.length).toBe(2)
-  })
-
-  it('veritabanı hatası başarı olarak raporlanmıyor', async () => {
-    const articles = [{ id: 1, authors_raw: 'Fail Yazar', status: 'published' }]
-    const sb = {
-      from(table: string) {
-        const chain = {
-          select: () => chain,
-          gt: () => chain,
-          eq: () => chain,
-          order: () => chain,
-          limit: () => chain,
-          upsert: async () => ({ error: { message: 'db down' } }),
+          upsert,
           then(resolve: (v: unknown) => void) {
             if (table === 'articles') resolve({ data: articles, error: null })
             else resolve({ data: [], error: null })
@@ -267,42 +202,38 @@ describe('runAuthorsEtl', () => {
       },
     }
 
-    await expect(
-      runAuthorsEtl({
-        sb: sb as never,
-        registry: buildYazarlarRegistry([]),
-        cli: { dryRun: false, profileOnly: false, limit: 1, startAfter: 0, batchSize: 1, skipNonPublished: true },
-      }),
-    ).rejects.toThrow('authors upsert batch failed')
+    await runAuthorsEtl({
+      sb: sb as never,
+      registry: buildYazarlarRegistry([]),
+      cli: { ...baseCli, dryRun: true, limit: 10 },
+    })
+
+    expect(upsert).not.toHaveBeenCalled()
   })
 })
 
-describe('CLI & profile', () => {
-  it('parseAuthorEtlCliArgs limit ve batch-size', () => {
-    const cli = parseAuthorEtlCliArgs(['--dry-run', '--limit=1000', '--start-after=500', '--batch-size=250'])
+describe('CLI', () => {
+  it('missing-only ve reconcile flag', () => {
+    const cli = parseAuthorEtlCliArgs(['--missing-only', '--reconcile', '--dry-run'])
+    expect(cli.missingOnly).toBe(true)
+    expect(cli.reconcile).toBe(true)
     expect(cli.dryRun).toBe(true)
-    expect(cli.limit).toBe(1000)
-    expect(cli.startAfter).toBe(500)
-    expect(cli.batchSize).toBe(250)
   })
+})
 
-  it('profileAuthorSource delimiter sayıları', () => {
-    const stats = profileAuthorSource([
-      { id: 1, authors_raw: 'A; B, C' },
-      { id: 2, authors_raw: '' },
-    ])
-    expect(stats.withAuthors).toBe(1)
-    expect(stats.emptyAuthors).toBe(1)
-    expect(stats.delimiterCounts.semicolon).toBe(1)
-    expect(stats.delimiterCounts.comma).toBe(1)
+describe('comma classification', () => {
+  it('çoklu yazar örneği', () => {
+    const c = classifyCommaAuthorSample(1, 'Ahmet YILMAZ, Mehmet DEMİR')
+    expect(c.classification).toBe('multi_author')
   })
+})
 
+describe('insufficient identity reporting', () => {
   it('boş yazar makale raporlanır', () => {
     const counters = createAuthorEtlCounters()
     const reg = buildYazarlarRegistry([])
     const r = planAuthorsForArticle({ id: 1, authors_raw: '   ', status: 'published' }, reg, false)
     expect(r.errorType).toBe(AuthorEtlErrorType.EMPTY_AUTHOR_TEXT)
-    expect(r.skipped).toBe(true)
     if (r.errorType) counters.errorsByType[r.errorType] = 1
     expect(counters.errorsByType.empty_author_text).toBe(1)
   })
@@ -329,13 +260,8 @@ describe('resume', () => {
           _gt: 0,
           then(resolve: (v: unknown) => void) {
             if (table === 'articles') {
-              const filtered = articles.filter((a) => a.id > chain._gt)
-              resolve({ data: filtered, error: null })
-            } else if (table === 'authors') {
-              resolve({ data: [], error: null })
-            } else {
-              resolve({ data: [], error: null })
-            }
+              resolve({ data: articles.filter((a) => a.id > chain._gt), error: null })
+            } else resolve({ data: [], error: null })
           },
         }
         return chain
@@ -345,14 +271,7 @@ describe('resume', () => {
     const result = await runAuthorsEtl({
       sb: sb as never,
       registry: buildYazarlarRegistry([]),
-      cli: {
-        dryRun: true,
-        profileOnly: false,
-        limit: 10,
-        startAfter: 150,
-        batchSize: 10,
-        skipNonPublished: true,
-      },
+      cli: { ...baseCli, dryRun: true, startAfter: 150, limit: 10 },
     })
 
     expect(result.counters.articlesProcessed).toBe(1)

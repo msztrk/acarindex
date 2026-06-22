@@ -1,13 +1,14 @@
 /**
  * ETL 04 — articles.authors_raw → authors + article_authors
  *
+ * KAPSAM: Yalnızca Supabase `articles` tablosu (mevcut Supabase makale kümesi).
+ * MySQL makaleler ETL 03 ile aktarılmadan tam kaynak katalog işlenemez.
+ *
  * Kullanım:
  *   npm run etl:authors -- --dry-run --limit=10000
- *   npm run etl:authors -- --limit=3000 --start-after=500 --batch-size=500
- *   npm run etl:authors -- --profile-only --limit=10000
- *
- * Kaynak makale metni: Supabase articles.authors_raw (MySQL makaleler.Yazarlar kopyası)
- * Yazar kimliği: mysql yazarlar.id (tekil normalize eşleşme) veya provisional legacy_id
+ *   npm run etl:authors -- --missing-only
+ *   npm run etl:authors -- --reconcile
+ *   npm run etl:authors -- --limit=3000 --start-after=500
  */
 
 import fs from 'fs'
@@ -25,9 +26,22 @@ import {
   runAuthorsEtl,
   loadYazarlarFromMysql,
   printAuthorEtlReport,
+  verifyCatalogScope,
+  printCatalogScopeReport,
   type ArticleAuthorRow,
 } from '../../lib/etl/run-authors-etl'
-import { profileAuthorSource } from '../../lib/etl/author-utils'
+import {
+  profileAuthorSource,
+  classifyCommaAuthorSample,
+  summarizeCommaClassifications,
+  profileProvisionalFragmentation,
+  evaluateProvisionalLegacyIdBounds,
+} from '../../lib/etl/author-utils'
+import {
+  scanArticleCoverage,
+  printReconcileReport,
+  runMissingOnlyAuthorsEtl,
+} from '../../lib/etl/author-reconcile'
 
 const CHECKPOINT_DIR = path.join(__dirname, 'checkpoints')
 const CHECKPOINT_FILE = path.join(CHECKPOINT_DIR, '04-authors.checkpoint.json')
@@ -125,40 +139,154 @@ async function fetchArticlesForProfile(
   return out
 }
 
+async function runCommaSampleReport(sb: ReturnType<typeof getSupabaseAdmin>, limit = 1000) {
+  const { data, error } = await sb
+    .from('articles')
+    .select('id, authors_raw')
+    .eq('status', 'published')
+    .like('authors_raw', '%,%')
+    .order('id', { ascending: true })
+    .limit(limit)
+  if (error) throw new Error(error.message)
+
+  const samples = (data ?? []).map((row) =>
+    classifyCommaAuthorSample(row.id as number, (row.authors_raw as string) ?? ''),
+  )
+  const summary = summarizeCommaClassifications(samples)
+  console.log('\n=== Virgüllü yazar örneklem (' + samples.length + ') ===')
+  console.log('  Sınıflandırma:', summary)
+  const wrongSplit = summary.mixed_format + summary.bad_data + summary.undecided
+  const total = samples.length || 1
+  console.log(
+    `  Belirsiz/hatalı oran: ${((wrongSplit / total) * 100).toFixed(1)}%`,
+  )
+}
+
 async function main() {
   const cli = parseAuthorEtlCliArgs(process.argv.slice(2))
   const sb = getSupabaseAdmin()
   const pool = getMysqlPool()
 
+  const scope = await verifyCatalogScope(sb, pool)
+  printCatalogScopeReport(scope)
+
+  const bounds = evaluateProvisionalLegacyIdBounds(
+    scope.supabaseArticlesTotal > 0 ? 2_000_000 : 0,
+    200,
+  )
   console.log(
-    `👥 ETL 04 — authors [${cli.dryRun ? 'DRY-RUN' : 'WRITE'}] limit=${cli.limit} start-after=${cli.startAfter} batch=${cli.batchSize}`,
+    `\n  provisional legacy_id (article×100+pos): packed=${bounds.packed} int32=${bounds.fitsInt32} bigint=${bounds.fitsBigint}`,
+  )
+
+  console.log(
+    `👥 ETL 04 — authors [${cli.dryRun ? 'DRY-RUN' : 'WRITE'}${cli.missingOnly ? ' MISSING-ONLY' : ''}${cli.reconcile ? ' RECONCILE' : ''}]`,
   )
 
   await markStaleRuns(sb)
 
-  const checkpoint = readCheckpoint()
-  if (checkpoint && cli.startAfter === 0 && !cli.dryRun && !process.argv.includes('--no-resume')) {
-    cli.startAfter = checkpoint.lastArticleId
-    console.log(`  Resume checkpoint: start-after=${cli.startAfter}`)
+  if (cli.reconcile) {
+    const { report } = await scanArticleCoverage(sb, {
+      skipNonPublished: cli.skipNonPublished,
+      batchSize: cli.batchSize,
+      limit: Number.isFinite(cli.limit) ? cli.limit : undefined,
+    })
+    printReconcileReport(report)
+    await pool.end()
+    return
   }
 
   const registry = await loadYazarlarFromMysql(pool)
   console.log('  mysql yazarlar registry yüklendi')
 
+  if (cli.profileOnly) {
+    const articles = await fetchArticlesForProfile(
+      sb,
+      cli.startAfter,
+      Number.isFinite(cli.limit) ? cli.limit : 10000,
+      cli.skipNonPublished,
+    )
+    const profile = profileAuthorSource(articles)
+    const frag = profileProvisionalFragmentation(articles, registry)
+    printAuthorEtlReport(
+      {
+        counters: createEmptyCounters(),
+        lastArticleId: articles.at(-1)?.id ?? cli.startAfter,
+        duplicateNameCandidates: [],
+        normalizedNameSamples: [],
+        profile,
+      },
+      { dryRun: true, profile },
+    )
+    console.log('\n--- Provisional parçalanma ---')
+    console.log(`  Provisional satır: ${frag.provisionalProfileCount}`)
+    console.log(`  Çok makalede tekrar normalize ad: ${frag.normalizeNamesWithMultipleProfiles}`)
+    console.log(`  Tek makaleli provisional %: ${frag.singleArticleProvisionalPct.toFixed(1)}`)
+    console.log(`  yazarlar eşleşme: matched=${frag.yazarlarMatchFailures.matched} ambiguous=${frag.yazarlarMatchFailures.ambiguous} noMatch=${frag.yazarlarMatchFailures.noRegistryMatch}`)
+    if (frag.topFragmentedNames.length) {
+      console.log('  En parçalı isimler (ilk 10):')
+      frag.topFragmentedNames.slice(0, 10).forEach((n) =>
+        console.log(`    ${n.sampleDisplay} → ${n.profileCount} profil`),
+      )
+    }
+    await runCommaSampleReport(sb, 1000)
+    await pool.end()
+    return
+  }
+
+  if (cli.missingOnly) {
+    const existing = await loadExistingState(sb)
+    const runId = await startRun(sb, {
+      script: '04-authors',
+      mode: cli.dryRun ? 'dry-run' : 'full',
+      sourceTable: 'articles',
+      targetTable: 'authors,article_authors',
+      limitRows: Number.isFinite(cli.limit) ? cli.limit : undefined,
+    })
+
+    try {
+      const result = await runMissingOnlyAuthorsEtl({
+        sb,
+        registry,
+        dryRun: cli.dryRun,
+        skipNonPublished: cli.skipNonPublished,
+        batchSize: cli.batchSize,
+        limit: Number.isFinite(cli.limit) ? cli.limit : undefined,
+        existingLegacyIds: existing.legacyIds,
+        existingRelations: existing.relations,
+      })
+      printReconcileReport(result.report, 'Missing-only')
+      console.log('\n--- Missing-only sayaçlar ---')
+      console.log(result.counters)
+      await finishRun(sb, runId, {
+        rowsRead: result.counters.articlesRead,
+        rowsInserted: result.counters.authorsCreated + result.counters.relationsCreated,
+        rowsUpdated: result.counters.authorsReused + result.counters.relationsExisting,
+        rowsSkipped: result.counters.articlesSkipped,
+        rowsError: result.counters.erroneousRecords,
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error(msg)
+      await finishRun(sb, runId, { rowsRead: 0, rowsInserted: 0, rowsUpdated: 0, rowsSkipped: 0, rowsError: 1 }, 'failed', msg)
+      await pool.end()
+      process.exit(1)
+    }
+    await pool.end()
+    return
+  }
+
+  const checkpoint = readCheckpoint()
+  if (checkpoint && cli.startAfter === 0 && !cli.dryRun && !process.argv.includes('--no-resume')) {
+    cli.startAfter = checkpoint.lastArticleId
+    console.log(`  Resume checkpoint: start-after=${cli.startAfter} (düşük ID riski: --missing-only kullanın)`)
+  }
+
   let profileStats: ReturnType<typeof profileAuthorSource> | undefined
-  if (cli.profileOnly || cli.dryRun) {
-    const profileLimit = cli.profileOnly ? cli.limit : Math.min(cli.limit, 10000)
+  if (cli.dryRun) {
+    const profileLimit = Math.min(cli.limit, 10000)
     const articles = await fetchArticlesForProfile(sb, cli.startAfter, profileLimit, cli.skipNonPublished)
     profileStats = profileAuthorSource(articles)
     console.log(`  Profil: ${articles.length} makale analiz edildi`)
-    if (cli.profileOnly) {
-      printAuthorEtlReport(
-        { counters: { articlesRead: articles.length, articlesProcessed: 0, articlesSkipped: 0, authorsCreated: 0, authorsReused: 0, relationsCreated: 0, relationsExisting: 0, erroneousRecords: 0, provisionalAuthors: 0, errorsByType: {} }, lastArticleId: articles.at(-1)?.id ?? cli.startAfter, duplicateNameCandidates: [], normalizedNameSamples: [] },
-        { dryRun: true, profile: profileStats },
-      )
-      await pool.end()
-      return
-    }
   }
 
   const existing = await loadExistingState(sb)
@@ -222,6 +350,21 @@ async function main() {
   if (errorLog.length) await logErrors(sb, runId, errorLog)
   await pool.end()
   if (failed) process.exit(1)
+}
+
+function createEmptyCounters() {
+  return {
+    articlesRead: 0,
+    articlesProcessed: 0,
+    articlesSkipped: 0,
+    authorsCreated: 0,
+    authorsReused: 0,
+    relationsCreated: 0,
+    relationsExisting: 0,
+    erroneousRecords: 0,
+    provisionalAuthors: 0,
+    errorsByType: {},
+  }
 }
 
 main().catch((e) => {

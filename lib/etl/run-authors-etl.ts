@@ -1,5 +1,8 @@
 /**
- * Authors + article_authors ETL çekirdeği (idempotent, batch, resume, dry-run).
+ * Authors + article_authors ETL çekirdeği (idempotent, batch, resume, dry-run, reconcile).
+ *
+ * Kapsam: Yalnızca Supabase `articles` tablosundaki kayıtlar.
+ * MySQL'de olup Supabase'e aktarılmamış makaleler bu ETL ile işlenemez.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -7,17 +10,24 @@ import { urlYap } from '../urls/slug'
 import {
   buildYazarlarRegistry,
   parseAuthorList,
+  parseAuthorTokens,
   provisionalLegacyId,
+  provisionalSourceKey,
   yazarlarLegacyId,
+  mysqlYazarlarSourceKey,
   profileAuthorSource,
   type ArticleAuthorRow,
   type AuthorProfileStats,
   type YazarlarRegistry,
 } from './author-utils'
 
+export type { YazarlarRegistry }
+
 export interface AuthorEtlCliOptions {
   dryRun: boolean
   profileOnly: boolean
+  missingOnly: boolean
+  reconcile: boolean
   limit: number
   startAfter: number
   batchSize: number
@@ -27,6 +37,8 @@ export interface AuthorEtlCliOptions {
 export function parseAuthorEtlCliArgs(argv: string[]): AuthorEtlCliOptions {
   const dryRun = argv.includes('--dry-run')
   const profileOnly = argv.includes('--profile-only')
+  const missingOnly = argv.includes('--missing-only')
+  const reconcile = argv.includes('--reconcile')
   const skipNonPublished = !argv.includes('--include-draft')
   let limit = Number.POSITIVE_INFINITY
   let startAfter = 0
@@ -43,15 +55,27 @@ export function parseAuthorEtlCliArgs(argv: string[]): AuthorEtlCliOptions {
   if (!Number.isFinite(batchSize) || batchSize < 1) batchSize = 500
   batchSize = Math.min(batchSize, 1000)
 
-  return { dryRun, profileOnly, limit, startAfter, batchSize, skipNonPublished }
+  return {
+    dryRun,
+    profileOnly,
+    missingOnly,
+    reconcile,
+    limit,
+    startAfter,
+    batchSize,
+    skipNonPublished,
+  }
 }
 
 export const AuthorEtlErrorType = {
   SOURCE_ARTICLE_NOT_FOUND: 'source_article_not_found',
   EMPTY_AUTHOR_TEXT: 'empty_author_text',
   UNPARSEABLE_AUTHOR_TEXT: 'unparseable_author_text',
+  INSUFFICIENT_IDENTITY: 'insufficient_identity',
   INVALID_SOURCE_AUTHOR_ID: 'invalid_source_author_id',
   DUPLICATE_RELATION: 'duplicate_relation',
+  PARTIAL_AUTHOR_RELATIONS: 'partial_author_relations',
+  POSITION_CONFLICT: 'position_conflict',
   AUTHOR_CREATE_ERROR: 'author_create_error',
   RELATION_CREATE_ERROR: 'relation_create_error',
   FOREIGN_KEY_ERROR: 'foreign_key_error',
@@ -88,13 +112,14 @@ export function createAuthorEtlCounters(): AuthorEtlCounters {
   }
 }
 
-function bumpError(counters: AuthorEtlCounters, type: AuthorEtlErrorTypeName): void {
+export function bumpError(counters: AuthorEtlCounters, type: AuthorEtlErrorTypeName): void {
   counters.erroneousRecords++
   counters.errorsByType[type] = (counters.errorsByType[type] ?? 0) + 1
 }
 
 export interface PlannedAuthor {
   legacyId: number
+  sourceKey: string
   name: string
   slug: string
   isProvisional: boolean
@@ -107,6 +132,40 @@ export interface ProcessArticleResult {
   authors: PlannedAuthor[]
   skipped: boolean
   errorType?: AuthorEtlErrorTypeName
+}
+
+export interface ExistingArticleRelations {
+  authorIds: Set<number>
+  positions: Map<number, number>
+}
+
+/** Mevcut ilişkilerle karşılaştır; yalnızca eksik ilişkileri oluştur. */
+export function processArticleAuthors(
+  planned: PlannedAuthor[],
+  existing: ExistingArticleRelations | undefined,
+): { toCreate: PlannedAuthor[]; errors: AuthorEtlErrorTypeName[] } {
+  const errors: AuthorEtlErrorTypeName[] = []
+  const toCreate: PlannedAuthor[] = []
+
+  if (!existing || existing.authorIds.size === 0) {
+    return { toCreate: planned, errors }
+  }
+
+  for (const p of planned) {
+    const posAuthor = existing.positions.get(p.position)
+    if (posAuthor != null) {
+      // Pozisyon dolu — sessizce üzerine yazma; çakışma raporla
+      errors.push(AuthorEtlErrorType.POSITION_CONFLICT)
+      continue
+    }
+    toCreate.push(p)
+  }
+
+  if (planned.length > existing.authorIds.size && toCreate.length > 0) {
+    errors.push(AuthorEtlErrorType.PARTIAL_AUTHOR_RELATIONS)
+  }
+
+  return { toCreate, errors }
 }
 
 export function planAuthorsForArticle(
@@ -123,8 +182,14 @@ export function planAuthorsForArticle(
     return { authors: [], skipped: true, errorType: AuthorEtlErrorType.EMPTY_AUTHOR_TEXT }
   }
 
-  const parsed = parseAuthorList(raw)
+  const tokens = parseAuthorTokens(raw)
+  const rejectedInsufficient = tokens.some((t) => t.rejected === 'insufficient_identity')
+  const parsed = tokens.filter((t) => !t.rejected).map((t) => t.display)
+
   if (parsed.length === 0) {
+    if (rejectedInsufficient) {
+      return { authors: [], skipped: true, errorType: AuthorEtlErrorType.INSUFFICIENT_IDENTITY }
+    }
     return { authors: [], skipped: true, errorType: AuthorEtlErrorType.UNPARSEABLE_AUTHOR_TEXT }
   }
 
@@ -138,23 +203,25 @@ export function planAuthorsForArticle(
     const resolved = registry.resolve(displayName)
 
     let legacyId: number
+    let sourceKey: string
     let isProvisional = true
 
     if (resolved && 'yazarlarId' in resolved) {
       legacyId = yazarlarLegacyId(resolved.yazarlarId)
+      sourceKey = mysqlYazarlarSourceKey(resolved.yazarlarId)
       isProvisional = false
     } else {
       legacyId = provisionalLegacyId(article.id, position)
+      sourceKey = provisionalSourceKey(article.id, position)
     }
 
     const relKey = `${article.id}:${legacyId}`
-    if (relationKeys.has(relKey)) {
-      continue
-    }
+    if (relationKeys.has(relKey)) continue
     relationKeys.add(relKey)
 
     authors.push({
       legacyId,
+      sourceKey,
       name: displayName,
       slug: urlYap(displayName),
       isProvisional,
@@ -197,9 +264,7 @@ async function fetchArticleBatch(
     .order('id', { ascending: true })
     .limit(batchSize)
 
-  if (skipNonPublished) {
-    q = q.eq('status', 'published')
-  }
+  if (skipNonPublished) q = q.eq('status', 'published')
 
   const { data, error } = await q
   if (error) throw new Error(`articles fetch: ${error.message}`)
@@ -208,10 +273,14 @@ async function fetchArticleBatch(
 
 async function upsertAuthorsBatch(
   sb: SupabaseClient,
-  rows: Array<{ legacy_id: number; name: string; slug: string; is_provisional: boolean }>,
-  dryRun: boolean,
+  rows: Array<{
+    legacy_id: number
+    name: string
+    slug: string
+    is_provisional: boolean
+  }>,
 ): Promise<{ error: string | null }> {
-  if (dryRun || rows.length === 0) return { error: null }
+  if (rows.length === 0) return { error: null }
   const { error } = await sb.from('authors').upsert(rows, { onConflict: 'legacy_id' })
   return { error: error?.message ?? null }
 }
@@ -241,9 +310,8 @@ async function upsertRelationsBatch(
     author_position: number
     raw_author_name: string
   }>,
-  dryRun: boolean,
 ): Promise<{ error: string | null }> {
-  if (dryRun || rows.length === 0) return { error: null }
+  if (rows.length === 0) return { error: null }
   const { error } = await sb
     .from('article_authors')
     .upsert(rows, { onConflict: 'article_id,author_id', ignoreDuplicates: true })
@@ -300,7 +368,6 @@ export async function runAuthorsEtl(opts: AuthorEtlRunOptions): Promise<AuthorEt
     counters.articlesRead += articles.length
 
     const plannedAuthors: PlannedAuthor[] = []
-    const batchErrors: Array<{ articleId: number; type: AuthorEtlErrorTypeName }> = []
 
     for (const article of articles) {
       const result = planAuthorsForArticle(article, registry, cli.skipNonPublished)
@@ -313,30 +380,30 @@ export async function runAuthorsEtl(opts: AuthorEtlRunOptions): Promise<AuthorEt
       plannedAuthors.push(...result.authors)
     }
 
-    const authorUpsertRows = plannedAuthors.map((p) => ({
-      legacy_id: p.legacyId,
-      name: p.name,
-      slug: p.slug,
-      is_provisional: p.isProvisional,
-    }))
-
-    const dedupedAuthorRows = [...new Map(authorUpsertRows.map((r) => [r.legacy_id, r])).values()]
+    const dedupedAuthorRows = [...new Map(
+      plannedAuthors.map((p) => [
+        p.legacyId,
+        {
+          legacy_id: p.legacyId,
+          name: p.name,
+          slug: p.slug,
+          is_provisional: p.isProvisional,
+        },
+      ]),
+    ).values()]
 
     for (const p of plannedAuthors) {
-      if (normalizedNameSamples.length < 10) {
-        normalizedNameSamples.push(p.name)
-      }
+      if (normalizedNameSamples.length < 10) normalizedNameSamples.push(p.name)
       if (p.isProvisional) counters.provisionalAuthors++
-      if (existingLegacy.has(p.legacyId)) {
-        counters.authorsReused++
-      } else {
+      if (existingLegacy.has(p.legacyId)) counters.authorsReused++
+      else {
         counters.authorsCreated++
         existingLegacy.add(p.legacyId)
       }
     }
 
     if (!cli.dryRun && dedupedAuthorRows.length > 0) {
-      const { error } = await upsertAuthorsBatch(sb, dedupedAuthorRows, false)
+      const { error } = await upsertAuthorsBatch(sb, dedupedAuthorRows)
       if (error) {
         bumpError(counters, AuthorEtlErrorType.BATCH_DB_ERROR)
         bumpError(counters, AuthorEtlErrorType.AUTHOR_CREATE_ERROR)
@@ -350,14 +417,10 @@ export async function runAuthorsEtl(opts: AuthorEtlRunOptions): Promise<AuthorEt
     if (!cli.dryRun && legacyIds.length > 0) {
       idMap = await fetchAuthorIdsByLegacy(sb, legacyIds)
       for (const lid of legacyIds) {
-        if (!idMap.has(lid)) {
-          bumpError(counters, AuthorEtlErrorType.AUTHOR_CREATE_ERROR)
-        }
+        if (!idMap.has(lid)) bumpError(counters, AuthorEtlErrorType.AUTHOR_CREATE_ERROR)
       }
     } else if (cli.dryRun) {
-      for (const lid of legacyIds) {
-        idMap.set(lid, lid)
-      }
+      for (const lid of legacyIds) idMap.set(lid, lid)
     }
 
     const relationRows: Array<{
@@ -386,11 +449,9 @@ export async function runAuthorsEtl(opts: AuthorEtlRunOptions): Promise<AuthorEt
     }
 
     if (!cli.dryRun && relationRows.length > 0) {
-      const { error } = await upsertRelationsBatch(sb, relationRows, false)
+      const { error } = await upsertRelationsBatch(sb, relationRows)
       if (error) {
-        if (error.includes('foreign key')) {
-          bumpError(counters, AuthorEtlErrorType.FOREIGN_KEY_ERROR)
-        }
+        if (error.includes('foreign key')) bumpError(counters, AuthorEtlErrorType.FOREIGN_KEY_ERROR)
         bumpError(counters, AuthorEtlErrorType.RELATION_CREATE_ERROR)
         throw new Error(`article_authors upsert batch failed: ${error}`)
       }
@@ -424,6 +485,71 @@ export async function loadYazarlarFromMysql(
   return buildYazarlarRegistry(rows)
 }
 
+export interface CatalogScopeReport {
+  mysqlArticlesWithAuthors: number | null
+  supabaseArticlesTotal: number
+  supabaseArticlesPublished: number
+  supabaseArticlesWithAuthorsRaw: number
+  etlProcessesOnlySupabase: true
+  fullRunCoversSupabaseCluster: true
+  fullSourceCatalogRequiresArticleEtl03: true
+  gapSourceNotInSupabase: number | null
+}
+
+export async function verifyCatalogScope(
+  sb: SupabaseClient,
+  mysqlPool?: { execute: (sql: string) => Promise<unknown[]> },
+): Promise<CatalogScopeReport> {
+  const { count: total } = await sb.from('articles').select('*', { count: 'exact', head: true })
+  const { count: published } = await sb
+    .from('articles')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'published')
+  const { count: withRaw } = await sb
+    .from('articles')
+    .select('*', { count: 'exact', head: true })
+    .not('authors_raw', 'is', null)
+    .neq('authors_raw', '')
+
+  let mysqlCount: number | null = null
+  if (mysqlPool) {
+    try {
+      const [rows] = (await mysqlPool.execute(
+        'SELECT COUNT(*) as c FROM makaleler WHERE Yazarlar IS NOT NULL AND Yazarlar != ""',
+      )) as [{ c: number }[]]
+      mysqlCount = rows[0]?.c ?? null
+    } catch {
+      mysqlCount = null
+    }
+  }
+
+  return {
+    mysqlArticlesWithAuthors: mysqlCount,
+    supabaseArticlesTotal: total ?? 0,
+    supabaseArticlesPublished: published ?? 0,
+    supabaseArticlesWithAuthorsRaw: withRaw ?? 0,
+    etlProcessesOnlySupabase: true,
+    fullRunCoversSupabaseCluster: true,
+    fullSourceCatalogRequiresArticleEtl03: true,
+    gapSourceNotInSupabase: mysqlCount != null ? mysqlCount - (withRaw ?? 0) : null,
+  }
+}
+
+export function printCatalogScopeReport(scope: CatalogScopeReport): void {
+  console.log('\n=== ETL Kapsam ===')
+  console.log('  Bu ETL yalnızca Supabase articles tablosunu işler.')
+  console.log(`  Mevcut Supabase makale kümesi: ${scope.supabaseArticlesTotal} (yayımlanmış: ${scope.supabaseArticlesPublished})`)
+  console.log(`  authors_raw dolu: ${scope.supabaseArticlesWithAuthorsRaw}`)
+  if (scope.mysqlArticlesWithAuthors != null) {
+    console.log(`  Tam kaynak katalog (MySQL Yazarlar dolu): ${scope.mysqlArticlesWithAuthors}`)
+    if (scope.gapSourceNotInSupabase != null) {
+      console.log(`  Supabase'e henüz aktarılmamış (tahmini): ${scope.gapSourceNotInSupabase}`)
+    }
+  }
+  console.log('  Tam çalışma komutu mevcut durumda mevcut Supabase kümesini kapsar, tam kaynak kataloğu değil.')
+  console.log('  Tam kaynak katalog için önce ETL 03 (makaleler) tamamlanmalı.')
+}
+
 export function printAuthorEtlReport(
   result: AuthorEtlRunResult,
   opts: { dryRun: boolean; profile?: AuthorProfileStats },
@@ -439,11 +565,10 @@ export function printAuthorEtlReport(
     console.log(`  Ayrıştırılan yazar: ${p.parsedAuthorTokens}`)
     console.log(`  Tekil ham ad: ${p.uniqueRawNames}`)
     console.log(`  Tekil normalize ad: ${p.uniqueNormalizedNames}`)
-    console.log(`  Normalize çakışma (farklı ham): ${p.sameNormalizedDifferentRaw}`)
     console.log(`  Max yazar/makale: ${p.maxAuthorsPerArticle}`)
-    console.log(`  Tek yazarlı: ${p.singleAuthorArticles}`)
-    console.log(`  Çok yazarlı: ${p.multiAuthorArticles}`)
-    console.log(`  Ayraç: virgül=${p.delimiterCounts.comma} ;=${p.delimiterCounts.semicolon} and=${p.delimiterCounts.andWord} ve=${p.delimiterCounts.veWord}`)
+    if (p.insufficientIdentitySamples.length) {
+      console.log('  Yetersiz kimlik örnekleri:', p.insufficientIdentitySamples.join('; '))
+    }
     if (p.unparseableSamples.length) {
       console.log('  Parse edilemeyen örnekler:')
       p.unparseableSamples.forEach((s) => console.log(`    ${s}`))
@@ -454,7 +579,7 @@ export function printAuthorEtlReport(
   console.log(`  Okunan makale: ${c.articlesRead}`)
   console.log(`  İşlenen makale: ${c.articlesProcessed}`)
   console.log(`  Atlanan makale: ${c.articlesSkipped}`)
-  console.log(`  Oluşturulan yazar: ${opts.dryRun ? c.authorsCreated : c.authorsCreated}`)
+  console.log(`  Oluşturulan yazar: ${c.authorsCreated}`)
   console.log(`  Yeniden kullanılan yazar: ${c.authorsReused}`)
   console.log(`  Oluşturulan ilişki: ${c.relationsCreated}`)
   console.log(`  Mevcut ilişki: ${c.relationsExisting}`)
@@ -463,8 +588,5 @@ export function printAuthorEtlReport(
   console.log(`  Son makale ID: ${result.lastArticleId}`)
   if (Object.keys(c.errorsByType).length) {
     console.log('  Hata sınıfları:', c.errorsByType)
-  }
-  if (result.normalizedNameSamples.length) {
-    console.log('  Örnek normalize isimler:', result.normalizedNameSamples.join(' | '))
   }
 }
