@@ -5,6 +5,7 @@ import {
   buildAuthorMetadataDescription,
   normalizeAuthorDisplayName,
 } from '../lib/authors/display'
+import { buildAuthorRobots, shouldEmitAuthorProfileJsonLd } from '../lib/authors/robots'
 import { buildAuthorUrl, parseAuthorSlugAndId } from '../lib/urls/author'
 
 describe('parseAuthorSlugAndId', () => {
@@ -94,5 +95,17 @@ describe('buildAuthorMetadataDescription', () => {
 
   it('makalesiz yazarda genel açıklama üretir', () => {
     expect(buildAuthorMetadataDescription('Ahmet GÜVEN', 0)).toContain('akademik makaleleri')
+  })
+})
+
+describe('buildAuthorRobots', () => {
+  it('canonical index follow', () => {
+    expect(buildAuthorRobots({ is_provisional: false })).toEqual({ index: true, follow: true })
+    expect(shouldEmitAuthorProfileJsonLd({ is_provisional: false })).toBe(true)
+  })
+
+  it('provisional noindex follow ve JSON-LD yok', () => {
+    expect(buildAuthorRobots({ is_provisional: true })).toEqual({ index: false, follow: true })
+    expect(shouldEmitAuthorProfileJsonLd({ is_provisional: true })).toBe(false)
   })
 })

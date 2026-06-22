@@ -182,6 +182,7 @@ export interface PdfFile {
 export interface Author {
   id: number
   legacy_id: number | null
+  source_key: string | null
   slug: string | null
   name: string
   title: string | null
@@ -189,6 +190,7 @@ export interface Author {
   bio: string | null
   orcid: string | null
   email: string | null
+  is_provisional: boolean
   created_at: string
   updated_at: string
 }

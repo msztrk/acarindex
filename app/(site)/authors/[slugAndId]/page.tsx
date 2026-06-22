@@ -11,6 +11,7 @@ import {
   normalizeAuthorDisplayName,
 } from '@/lib/authors/display'
 import { buildOrcidUrl, normalizeOrcidValue } from '@/lib/authors/orcid'
+import { buildAuthorRobots, shouldEmitAuthorProfileJsonLd } from '@/lib/authors/robots'
 import { buildAuthorPageJsonLd } from '@/lib/seo/author-jsonld'
 import { buildAuthorUrl, parseAuthorSlugAndId } from '@/lib/urls/author'
 import { cn } from '@/lib/utils'
@@ -96,6 +97,7 @@ export async function generateMetadata({
   return {
     title: pageTitle,
     description,
+    robots: buildAuthorRobots(author),
     alternates: { canonical: `${canonicalBase}${canonicalPath}` },
     openGraph: {
       title: pageTitle,
@@ -180,13 +182,15 @@ export default async function AuthorPage({
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
   const orcid = normalizeOrcidValue(author.orcid)
   const institution = author.institution?.trim()
-  const authorJsonLd = buildAuthorPageJsonLd({
-    canonicalBase,
-    author,
-    articles,
-    pageTitle,
-    description,
-  })
+  const authorJsonLd = shouldEmitAuthorProfileJsonLd(author)
+    ? buildAuthorPageJsonLd({
+        canonicalBase,
+        author,
+        articles,
+        pageTitle,
+        description,
+      })
+    : null
 
   const articlesByYear = articles.reduce<Record<number, number>>((acc, article) => {
     const year = article.published_year ?? 0
@@ -200,7 +204,7 @@ export default async function AuthorPage({
 
   return (
     <>
-      <JsonLd data={authorJsonLd} />
+      {authorJsonLd ? <JsonLd data={authorJsonLd} /> : null}
       <div className="content-width py-6 lg:py-10 min-w-0">
         <Breadcrumb className="mb-5 md:mb-6 min-w-0" aria-label="Breadcrumb">
           <BreadcrumbList className="min-w-0 flex-wrap">
