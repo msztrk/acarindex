@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { parseJournalSegment } from '@/lib/urls/journal'
+import { parseJournalSegment, parseIssueIdSegment } from '@/lib/urls/journal'
 import { cn, buttonVariants } from '@/lib/utils'
 import {
   Breadcrumb, BreadcrumbItem, BreadcrumbLink,
@@ -36,9 +36,11 @@ function resolvePath(segments: string[]): ResolvedPath | null {
   if (sub === 'editor-kurulu') return { journalSegment, subPage: 'editor-kurulu' }
   if (sub === 'yazim-kurallari') return { journalSegment, subPage: 'yazim-kurallari' }
   if (sub === 'iletisim') return { journalSegment, subPage: 'iletisim' }
-  if (sub === 'sayi' && rest[0]) {
-    const issueId = parseInt(rest[0], 10)
-    if (!isNaN(issueId)) return { journalSegment, subPage: 'sayi', issueId }
+  if (sub === 'sayi') {
+    if (!rest[0]) return null
+    const issueId = parseIssueIdSegment(rest[0])
+    if (issueId === null) return null
+    return { journalSegment, subPage: 'sayi', issueId }
   }
   return null
 }
@@ -90,6 +92,14 @@ async function getIssueUncached(issueId: number) {
 }
 
 const getIssue = cache(getIssueUncached)
+
+async function requireJournalIssue(journalId: number, issueId: number): Promise<Issue> {
+  const issue = await getIssue(issueId)
+  if (!issue || issue.journal_id !== journalId) {
+    notFound()
+  }
+  return issue
+}
 
 async function getLatestArticles(journalId: number, limit = 10) {
   const sb = await createClient()
@@ -219,8 +229,7 @@ export async function generateMetadata({
   const canonicalUrl = `${canonicalBase}${canonicalPath}`
 
   if (resolved.subPage === 'sayi' && resolved.issueId) {
-    const issue = await getIssue(resolved.issueId)
-    if (!issue) return { title: 'Sayı bulunamadı' }
+    const issue = await requireJournalIssue(parsed.journalId, resolved.issueId)
 
     const articles = await getIssueArticles(resolved.issueId)
     const pageTitle = buildIssueMetadataTitle(journalTitle, issue)
@@ -672,16 +681,8 @@ async function JournalSayi({
   issueId: number
   segment: string
 }) {
-  const issue = await getIssue(issueId)
+  const issue = await requireJournalIssue(journal.id, issueId)
   const articles = await getIssueArticles(issueId)
-
-  if (!issue) {
-    return (
-      <p className="text-sm text-muted-foreground py-4">
-        İstenen sayı bulunamadı.
-      </p>
-    )
-  }
 
   const issueRow = issue
   const journalTitle = journal.title_tr ?? journal.title_en ?? 'Dergi'

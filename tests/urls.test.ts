@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { urlYap } from '../lib/urls/slug'
 import { parseArticlePath, extractArticleId, buildArticleUrl } from '../lib/urls/article'
-import { parseJournalSegment, buildJournalPathSegment } from '../lib/urls/journal'
+import { parseJournalSegment, buildJournalPathSegment, parseIssueIdSegment } from '../lib/urls/journal'
 import { buildLegacyPdfUrl, hasPdf } from '../lib/pdf/legacy-url'
 
 // ─── urlYap parity ───────────────────────────────────────────────────────────
@@ -154,5 +154,76 @@ describe('hasPdf', () => {
   it('PDF yoksa false döner', () => {
     expect(hasPdf('pdf-bulunamadi')).toBe(false)
     expect(hasPdf(null)).toBe(false)
+  })
+})
+
+// ─── parseIssueIdSegment ─────────────────────────────────────────────────────
+describe('parseIssueIdSegment', () => {
+  it('pozitif tam sayı issue ID döner', () => {
+    expect(parseIssueIdSegment('2155')).toBe(2155)
+    expect(parseIssueIdSegment('1')).toBe(1)
+  })
+
+  it('sayısal olmayan segmenti reddeder', () => {
+    expect(parseIssueIdSegment('abc')).toBeNull()
+    expect(parseIssueIdSegment('12abc')).toBeNull()
+    expect(parseIssueIdSegment('')).toBeNull()
+  })
+
+  it('sıfır ve negatif ID reddeder', () => {
+    expect(parseIssueIdSegment('0')).toBeNull()
+    expect(parseIssueIdSegment('-1')).toBeNull()
+  })
+})
+
+// ─── journal issue route HTTP ────────────────────────────────────────────────
+const issueRouteBase = process.env.ISSUE_ROUTE_TEST_BASE_URL
+const describeIssueRouteHttp = issueRouteBase ? describe : describe.skip
+
+describeIssueRouteHttp('journal issue route HTTP', () => {
+  const base = issueRouteBase!
+  const sbfJournal = `${base}/journals/ankara-universitesi-sbf-dergisi-91`
+  const otherJournal =
+    `${base}/journals/yonetim-ve-ekonomi-celal-bayar-universitesi-iktisadi-ve-idari-bilimler-fakultesi-dergisi-101`
+
+  async function fetchStatus(path: string): Promise<number> {
+    const response = await fetch(path)
+    return response.status
+  }
+
+  it('geçerli sayı → 200', async () => {
+    const status = await fetchStatus(`${sbfJournal}/sayi/2155`)
+    expect(status).toBe(200)
+    const html = await (await fetch(`${sbfJournal}/sayi/2155`)).text()
+    expect(html).toContain('Cilt 52')
+    expect(html).toMatch(/rel="canonical" href="[^"]*\/sayi\/2155"/)
+    expect(html.replace(/<!-- -->/g, '')).toContain('45 makale')
+  })
+
+  it('boş ama geçerli sayı → 200', async () => {
+    const status = await fetchStatus(`${sbfJournal}/sayi/37951`)
+    expect(status).toBe(200)
+    const html = await (await fetch(`${sbfJournal}/sayi/37951`)).text()
+    expect(html).toContain('Bu sayıda listelenecek makale bulunmuyor.')
+    expect(html).toMatch(/rel="canonical" href="[^"]*\/sayi\/37951"/)
+  })
+
+  it('olmayan sayı → 404', async () => {
+    const status = await fetchStatus(`${sbfJournal}/sayi/999999999`)
+    expect(status).toBe(404)
+    const html = await (await fetch(`${sbfJournal}/sayi/999999999`)).text()
+    expect(html).not.toMatch(/rel="canonical" href="[^"]*\/sayi\/999999999"/)
+    expect(html).not.toMatch(/property="og:url" content="[^"]*\/sayi\/999999999"/)
+  })
+
+  it('sayı yanlış dergi altında → 404', async () => {
+    const status = await fetchStatus(`${otherJournal}/sayi/2155`)
+    expect(status).toBe(404)
+  })
+
+  it('sayısal olmayan issue ID → 404', async () => {
+    expect(await fetchStatus(`${sbfJournal}/sayi/abc`)).toBe(404)
+    expect(await fetchStatus(`${sbfJournal}/sayi/-1`)).toBe(404)
+    expect(await fetchStatus(`${sbfJournal}/sayi/0`)).toBe(404)
   })
 })

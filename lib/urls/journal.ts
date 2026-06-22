@@ -61,3 +61,14 @@ export function buildJournalSubUrl(
 export function buildIssueUrl(titleTr: string, journalId: number, issueId: number): string {
   return `${buildJournalUrl(titleTr, journalId)}/sayi/${issueId}`
 }
+
+/**
+ * /sayi/{segment} path segmentinden pozitif tam sayı issue ID çıkarır.
+ * Geçersiz: abc, 0, -1, boş.
+ */
+export function parseIssueIdSegment(segment: string): number | null {
+  if (!segment || !/^\d+$/.test(segment)) return null
+  const issueId = Number(segment)
+  if (!Number.isSafeInteger(issueId) || issueId <= 0) return null
+  return issueId
+}
