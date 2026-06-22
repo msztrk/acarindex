@@ -10,6 +10,11 @@ import {
 } from '@/components/ui/breadcrumb'
 import { BookOpen, FileText, ChevronRight, ExternalLink } from 'lucide-react'
 import { JsonLd } from '@/components/seo/JsonLd'
+import {
+  buildIssueMetadataDescription,
+  buildIssueMetadataTitle,
+} from '@/lib/journals/issue-citation'
+import { buildIssuePageJsonLd } from '@/lib/seo/issue-jsonld'
 import type { Journal, Issue, Article } from '@/types/database'
 import type { ReactNode } from 'react'
 import { cache } from 'react'
@@ -131,89 +136,6 @@ async function getLatestArticles(journalId: number, limit = 10) {
 }
 
 // ─── Metadata ────────────────────────────────────────────────────────────────
-
-function isRedundantYearLabel(label: string, year: number | null): boolean {
-  return year !== null && label === String(year)
-}
-
-function parseIssueCitationParts(issue: Issue): {
-  volumeLabel: string | null
-  issueNumLabel: string | null
-  year: number | null
-} {
-  const year = issue.year ?? null
-  let volumeLabel = issue.volume?.trim() || null
-  let issueNumLabel: string | null = null
-  const raw = issue.issue_number?.trim()
-
-  if (raw) {
-    const ciltMatch = raw.match(/Cilt:\s*([^,-]+)/i)
-    const sayiMatch = raw.match(/Sayı:\s*(\S+)/i)
-    if (ciltMatch) volumeLabel = ciltMatch[1].trim()
-    if (sayiMatch) issueNumLabel = sayiMatch[1].trim()
-    if (!sayiMatch && !ciltMatch) issueNumLabel = raw
-  }
-
-  return { volumeLabel, issueNumLabel, year }
-}
-
-function buildIssueMetadataTitle(journalTitle: string, issue: Issue): string {
-  const { volumeLabel, issueNumLabel, year } = parseIssueCitationParts(issue)
-  const detailParts: string[] = []
-
-  if (volumeLabel && issueNumLabel) {
-    detailParts.push(`Cilt ${volumeLabel}, Sayı ${issueNumLabel}`)
-  } else if (issueNumLabel) {
-    detailParts.push(`Sayı ${issueNumLabel}`)
-  } else if (volumeLabel) {
-    detailParts.push(`Cilt ${volumeLabel}`)
-  } else {
-    const label = issue.issue_label?.trim()
-    if (label && !isRedundantYearLabel(label, year)) {
-      detailParts.push(label)
-    }
-  }
-
-  if (detailParts.length === 0) {
-    return year ? `${journalTitle} — ${year}` : journalTitle
-  }
-
-  return year
-    ? `${journalTitle} — ${detailParts[0]} (${year})`
-    : `${journalTitle} — ${detailParts[0]}`
-}
-
-function buildIssueMetadataDescription(
-  journalTitle: string,
-  issue: Issue,
-  articleCount: number,
-): string | undefined {
-  const { volumeLabel, issueNumLabel, year } = parseIssueCitationParts(issue)
-  const issueBits: string[] = []
-  if (volumeLabel) issueBits.push(`Cilt ${volumeLabel}`)
-  if (issueNumLabel) issueBits.push(`Sayı ${issueNumLabel}`)
-  const labelFallback = issue.issue_label?.trim()
-  const issueStr =
-    issueBits.join(' ') ||
-    (labelFallback && !isRedundantYearLabel(labelFallback, year) ? labelFallback : undefined)
-
-  if (!issueStr && !year) return undefined
-
-  let desc = journalTitle
-  if (issueStr) {
-    desc += `, ${issueStr}`
-    if (year) desc += ` (${year})`
-  } else if (year) {
-    desc += ` (${year})`
-  }
-  desc += ' içinde yayımlanan'
-  if (articleCount > 0) {
-    desc += ` ${articleCount} akademik makaleyi inceleyin.`
-  } else {
-    desc += ' akademik makaleleri inceleyin.'
-  }
-  return desc.slice(0, 160)
-}
 
 function buildJournalCanonicalPath(
   resolved: ResolvedPath,
@@ -708,6 +630,18 @@ async function JournalSayi({
   const issueSuffix = buildIssueHeadingSuffix(issueRow)
   const breadcrumbIssueLabel = formatIssueBreadcrumbLabel(issueRow)
   const articleCount = articles.length
+  const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
+  const pageTitle = buildIssueMetadataTitle(journalTitle, issueRow)
+  const pageDescription = buildIssueMetadataDescription(journalTitle, issueRow, articleCount)
+  const issueJsonLd = buildIssuePageJsonLd({
+    canonicalBase,
+    journalSegment: segment,
+    journal,
+    issue: issueRow,
+    articles,
+    pageTitle,
+    description: pageDescription,
+  })
 
   const metadataItems = [
     issueRow.year && { label: 'Yayın yılı', value: String(issueRow.year) },
@@ -720,7 +654,9 @@ async function JournalSayi({
   ].filter(Boolean) as Array<{ label: string; value: string }>
 
   return (
-    <div className="min-w-0">
+    <>
+      <JsonLd data={issueJsonLd} />
+      <div className="min-w-0">
       <Breadcrumb className="mb-5 md:mb-6 min-w-0" aria-label="Breadcrumb">
         <BreadcrumbList className="min-w-0 flex-wrap">
           <BreadcrumbItem>
@@ -817,6 +753,7 @@ async function JournalSayi({
         <ChevronRight className="h-3.5 w-3.5" aria-hidden />
       </Link>
     </div>
+    </>
   )
 }
 

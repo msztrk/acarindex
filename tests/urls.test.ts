@@ -195,6 +195,23 @@ describeIssueRouteHttp('journal issue route HTTP', () => {
     return html.match(/name="description" content="([^"]+)"/)?.[1]
   }
 
+  function extractIssueJsonLd(html: string): Record<string, unknown> | null {
+    const scripts = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    for (const match of scripts) {
+      const parsed = JSON.parse(match[1]) as Record<string, unknown>
+      const graph = parsed['@graph'] as Array<Record<string, unknown>> | undefined
+      if (graph?.some((node) => node['@type'] === 'PublicationIssue')) {
+        return parsed
+      }
+    }
+    return null
+  }
+
+  function findGraphType(jsonLd: Record<string, unknown>, type: string): Record<string, unknown> | undefined {
+    const graph = jsonLd['@graph'] as Array<Record<string, unknown>> | undefined
+    return graph?.find((node) => node['@type'] === type)
+  }
+
   it('geçerli sayı → 200', async () => {
     const status = await fetchStatus(`${sbfJournal}/sayi/2155`)
     expect(status).toBe(200)
@@ -203,6 +220,12 @@ describeIssueRouteHttp('journal issue route HTTP', () => {
     expect(html).toMatch(/rel="canonical" href="[^"]*\/sayi\/2155"/)
     expect(html.replace(/<!-- -->/g, '')).toContain('45 makale')
     expect(metaDescription(html)).toContain('45 akademik makale')
+
+    const jsonLd = extractIssueJsonLd(html)
+    expect(jsonLd).not.toBeNull()
+    expect(findGraphType(jsonLd!, 'PublicationIssue')).toBeDefined()
+    expect(findGraphType(jsonLd!, 'ItemList')?.numberOfItems).toBe(45)
+    expect(html).toContain('PublicationIssue')
   })
 
   it('28 makaleli sayı → 200 ve metadata count', async () => {
@@ -221,6 +244,12 @@ describeIssueRouteHttp('journal issue route HTTP', () => {
     expect(html).toMatch(/rel="canonical" href="[^"]*\/sayi\/37951"/)
     expect(metaDescription(html)).toContain('akademik makaleleri inceleyin.')
     expect(metaDescription(html)).not.toMatch(/\d+ akademik makale/)
+
+    const jsonLd = extractIssueJsonLd(html)
+    expect(jsonLd).not.toBeNull()
+    expect(findGraphType(jsonLd!, 'PublicationIssue')).toBeDefined()
+    expect(findGraphType(jsonLd!, 'ItemList')).toBeUndefined()
+    expect(findGraphType(jsonLd!, 'PublicationIssue')?.hasPart).toBeUndefined()
   })
 
   it('olmayan sayı → 404', async () => {
@@ -229,6 +258,7 @@ describeIssueRouteHttp('journal issue route HTTP', () => {
     const html = await (await fetch(`${sbfJournal}/sayi/999999999`)).text()
     expect(html).not.toMatch(/rel="canonical" href="[^"]*\/sayi\/999999999"/)
     expect(html).not.toMatch(/property="og:url" content="[^"]*\/sayi\/999999999"/)
+    expect(extractIssueJsonLd(html)).toBeNull()
   })
 
   it('sayı yanlış dergi altında → 404', async () => {
