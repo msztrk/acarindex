@@ -296,3 +296,51 @@ describe('resume', () => {
     expect(result.lastArticleId).toBe(200)
   })
 })
+
+describe('ETL orphan protection', () => {
+  it('relation insert position conflict sınıflandırılır', async () => {
+    const { classifyRelationUpsertError } = await import('../lib/etl/author-upsert')
+    expect(
+      classifyRelationUpsertError('duplicate key idx_article_authors_article_position_unique'),
+    ).toBe('position_conflict')
+  })
+
+  it('relation insert başarısızlığı author_upsert_succeeded_relation_failed sayacını artırır', async () => {
+    const { applyRelationUpsertFailureCounters } = await import('../lib/etl/author-upsert')
+    const counters = createAuthorEtlCounters()
+    applyRelationUpsertFailureCounters(
+      counters,
+      'duplicate key idx_article_authors_article_position_unique',
+      new Set(['article:1:position:1']),
+    )
+    expect(counters.authorUpsertSucceededRelationFailed).toBe(1)
+    expect(counters.positionConflict).toBe(1)
+  })
+
+  it('ilişkisiz yeni provisional tespit edilir', async () => {
+    const { findOrphanAuthorIdsInBatch } = await import('../lib/etl/author-upsert')
+    const sb = {
+      from() {
+        const chain = {
+          select: () => chain,
+          in: async () => ({ data: [], error: null }),
+        }
+        return chain
+      },
+    }
+    const orphans = await findOrphanAuthorIdsInBatch(sb as never, [101, 102])
+    expect(orphans).toEqual([101, 102])
+  })
+
+  it('relation insert hatası başarı sayılmaz — sayaçlar sıfırdan büyük', async () => {
+    const { applyRelationUpsertFailureCounters } = await import('../lib/etl/author-upsert')
+    const counters = createAuthorEtlCounters()
+    applyRelationUpsertFailureCounters(
+      counters,
+      'duplicate key authors_source_key_uidx',
+      new Set(['article:2:position:1']),
+    )
+    expect(counters.sourceKeyConflict).toBe(1)
+    expect(counters.authorUpsertSucceededRelationFailed).toBe(1)
+  })
+})

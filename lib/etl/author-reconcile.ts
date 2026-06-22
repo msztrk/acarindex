@@ -8,6 +8,8 @@ import {
   ensureAuthorsSourceKeyColumn,
   upsertAuthorsBySourceKey,
   fetchAuthorIdsBySourceKey,
+  applyRelationUpsertFailureCounters,
+  verifyBatchProvisionalOrphans,
 } from './author-upsert'
 import {
   planAuthorsForArticle,
@@ -340,12 +342,15 @@ async function persistAuthorBatch(
     plannedAuthors.map((p) => [p.sourceKey, toAuthorUpsertRow(p)]),
   ).values()]
 
+  const batchNewSourceKeys = new Set<string>()
+
   for (const p of plannedAuthors) {
     if (p.isProvisional) counters.provisionalAuthors++
     if (existingSourceKeys.has(p.sourceKey)) counters.authorsReused++
     else {
       counters.authorsCreated++
       existingSourceKeys.add(p.sourceKey)
+      batchNewSourceKeys.add(p.sourceKey)
     }
     existingLegacy.add(p.legacyId)
   }
@@ -397,8 +402,26 @@ async function persistAuthorBatch(
       .from('article_authors')
       .upsert(relationRows, { onConflict: 'article_id,author_id', ignoreDuplicates: true })
     if (error) {
+      const kind = applyRelationUpsertFailureCounters(counters, error.message, batchNewSourceKeys)
+      if (kind === 'position_conflict') bumpError(counters, AuthorEtlErrorType.POSITION_CONFLICT)
       bumpError(counters, AuthorEtlErrorType.RELATION_CREATE_ERROR)
+      if (batchNewSourceKeys.size > 0) {
+        try {
+          await verifyBatchProvisionalOrphans(sb, counters, batchNewSourceKeys, idBySourceKey)
+        } catch {
+          /* orphan sayacı verify içinde artırıldı */
+        }
+      }
       throw new Error(`article_authors upsert: ${error.message}`)
+    }
+  }
+
+  if (!dryRun) {
+    try {
+      await verifyBatchProvisionalOrphans(sb, counters, batchNewSourceKeys, idBySourceKey)
+    } catch (e) {
+      bumpError(counters, AuthorEtlErrorType.RELATION_CREATE_ERROR)
+      throw e
     }
   }
 }

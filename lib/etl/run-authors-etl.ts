@@ -25,6 +25,8 @@ import {
   ensureAuthorsSourceKeyColumn,
   upsertAuthorsBySourceKey,
   fetchAuthorIdsBySourceKey,
+  applyRelationUpsertFailureCounters,
+  verifyBatchProvisionalOrphans,
   type AuthorUpsertRow,
 } from './author-upsert'
 
@@ -101,6 +103,10 @@ export interface AuthorEtlCounters {
   relationsExisting: number
   erroneousRecords: number
   provisionalAuthors: number
+  authorUpsertSucceededRelationFailed: number
+  orphanProvisionalDetected: number
+  sourceKeyConflict: number
+  positionConflict: number
   errorsByType: Record<string, number>
 }
 
@@ -115,6 +121,10 @@ export function createAuthorEtlCounters(): AuthorEtlCounters {
     relationsExisting: 0,
     erroneousRecords: 0,
     provisionalAuthors: 0,
+    authorUpsertSucceededRelationFailed: 0,
+    orphanProvisionalDetected: 0,
+    sourceKeyConflict: 0,
+    positionConflict: 0,
     errorsByType: {},
   }
 }
@@ -376,6 +386,8 @@ export async function runAuthorsEtl(opts: AuthorEtlRunOptions): Promise<AuthorEt
       plannedAuthors.map((p) => [p.sourceKey, toAuthorUpsertRow(p)]),
     ).values()]
 
+    const batchNewSourceKeys = new Set<string>()
+
     for (const p of plannedAuthors) {
       if (normalizedNameSamples.length < 10) normalizedNameSamples.push(p.name)
       if (p.isProvisional) counters.provisionalAuthors++
@@ -384,6 +396,7 @@ export async function runAuthorsEtl(opts: AuthorEtlRunOptions): Promise<AuthorEt
       } else {
         counters.authorsCreated++
         existingSourceKeys.add(p.sourceKey)
+        batchNewSourceKeys.add(p.sourceKey)
       }
       existingLegacy.add(p.legacyId)
     }
@@ -438,8 +451,26 @@ export async function runAuthorsEtl(opts: AuthorEtlRunOptions): Promise<AuthorEt
       const { error } = await upsertRelationsBatch(sb, relationRows)
       if (error) {
         if (error.includes('foreign key')) bumpError(counters, AuthorEtlErrorType.FOREIGN_KEY_ERROR)
+        const kind = applyRelationUpsertFailureCounters(counters, error, batchNewSourceKeys)
+        if (kind === 'position_conflict') bumpError(counters, AuthorEtlErrorType.POSITION_CONFLICT)
         bumpError(counters, AuthorEtlErrorType.RELATION_CREATE_ERROR)
+        if (batchNewSourceKeys.size > 0) {
+          try {
+            await verifyBatchProvisionalOrphans(sb, counters, batchNewSourceKeys, idBySourceKey)
+          } catch {
+            /* orphan sayacı verify içinde artırıldı */
+          }
+        }
         throw new Error(`article_authors upsert batch failed: ${error}`)
+      }
+    }
+
+    if (!cli.dryRun) {
+      try {
+        await verifyBatchProvisionalOrphans(sb, counters, batchNewSourceKeys, idBySourceKey)
+      } catch (e) {
+        bumpError(counters, AuthorEtlErrorType.RELATION_CREATE_ERROR)
+        throw e
       }
     }
 
@@ -571,6 +602,10 @@ export function printAuthorEtlReport(
   console.log(`  Mevcut ilişki: ${c.relationsExisting}`)
   console.log(`  Hatalı kayıt: ${c.erroneousRecords}`)
   console.log(`  Provisional yazar: ${c.provisionalAuthors}`)
+  console.log(`  author_upsert_succeeded_relation_failed: ${c.authorUpsertSucceededRelationFailed}`)
+  console.log(`  orphan_provisional_detected: ${c.orphanProvisionalDetected}`)
+  console.log(`  source_key_conflict: ${c.sourceKeyConflict}`)
+  console.log(`  position_conflict: ${c.positionConflict}`)
   console.log(`  Son makale ID: ${result.lastArticleId}`)
   if (Object.keys(c.errorsByType).length) {
     console.log('  Hata sınıfları:', c.errorsByType)

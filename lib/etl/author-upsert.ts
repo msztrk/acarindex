@@ -77,3 +77,81 @@ export async function loadExistingAuthorSourceKeys(sb: SupabaseClient): Promise<
   }
   return keys
 }
+
+export type RelationUpsertErrorKind = 'position_conflict' | 'source_key_conflict' | 'other'
+
+export function classifyRelationUpsertError(error: string): RelationUpsertErrorKind {
+  const lower = error.toLowerCase()
+  if (
+    lower.includes('author_position')
+    || lower.includes('article_position')
+    || lower.includes('idx_article_authors_article_position')
+  ) {
+    return 'position_conflict'
+  }
+  if (lower.includes('source_key') || lower.includes('authors_source_key')) {
+    return 'source_key_conflict'
+  }
+  return 'other'
+}
+
+export async function findOrphanAuthorIdsInBatch(
+  sb: SupabaseClient,
+  authorIds: number[],
+): Promise<number[]> {
+  if (authorIds.length === 0) return []
+  const relationCounts = new Map<number, number>()
+  const CHUNK = 200
+  for (let i = 0; i < authorIds.length; i += CHUNK) {
+    const chunk = authorIds.slice(i, i + CHUNK)
+    const { data, error } = await sb
+      .from('article_authors')
+      .select('author_id')
+      .in('author_id', chunk)
+    if (error) throw new Error(`article_authors orphan check: ${error.message}`)
+    for (const row of data ?? []) {
+      const id = row.author_id as number
+      relationCounts.set(id, (relationCounts.get(id) ?? 0) + 1)
+    }
+  }
+  return authorIds.filter((id) => (relationCounts.get(id) ?? 0) === 0)
+}
+
+export interface RelationFailureCounters {
+  authorUpsertSucceededRelationFailed: number
+  orphanProvisionalDetected: number
+  sourceKeyConflict: number
+  positionConflict: number
+}
+
+export function applyRelationUpsertFailureCounters(
+  counters: RelationFailureCounters,
+  error: string,
+  batchNewSourceKeys: Set<string>,
+): RelationUpsertErrorKind {
+  const kind = classifyRelationUpsertError(error)
+  if (kind === 'position_conflict') counters.positionConflict++
+  else if (kind === 'source_key_conflict') counters.sourceKeyConflict++
+  if (batchNewSourceKeys.size > 0) {
+    counters.authorUpsertSucceededRelationFailed += batchNewSourceKeys.size
+  }
+  return kind
+}
+
+export async function verifyBatchProvisionalOrphans(
+  sb: SupabaseClient,
+  counters: RelationFailureCounters,
+  batchNewSourceKeys: Set<string>,
+  idBySourceKey: Map<string, number>,
+): Promise<void> {
+  if (batchNewSourceKeys.size === 0) return
+  const authorIds = [...batchNewSourceKeys]
+    .map((sk) => idBySourceKey.get(sk))
+    .filter((id): id is number => id != null && id > 0)
+  const orphans = await findOrphanAuthorIdsInBatch(sb, authorIds)
+  if (orphans.length === 0) return
+  counters.orphanProvisionalDetected += orphans.length
+  throw new Error(
+    `orphan provisional authors detected after batch (ids: ${orphans.join(', ')}); relation insert may have failed`,
+  )
+}
