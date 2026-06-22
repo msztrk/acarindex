@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { urlYap } from '../lib/urls/slug'
 import { parseArticlePath, extractArticleId, buildArticleUrl } from '../lib/urls/article'
+import { buildAuthorUrl, parseAuthorSlugAndId } from '../lib/urls/author'
 import { parseJournalSegment, buildJournalPathSegment, parseIssueIdSegment } from '../lib/urls/journal'
 import { buildLegacyPdfUrl, hasPdf } from '../lib/pdf/legacy-url'
 
@@ -343,5 +344,71 @@ describeArchiveRouteHttp('journal archive route HTTP', () => {
   it('geçersiz dergi arşivi → 404', async () => {
     const response = await fetch(`${base}/journals/ankara-universitesi-sbf-dergisi-99999/arsiv`)
     expect(response.status).toBe(404)
+  })
+})
+
+// ─── author route HTTP ─────────────────────────────────────────────────────────
+const describeAuthorRouteHttp = issueRouteBase ? describe : describe.skip
+
+describeAuthorRouteHttp('author route HTTP', () => {
+  const base = issueRouteBase!
+
+  function extractAuthorJsonLd(html: string): Record<string, unknown> | null {
+    const scripts = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    for (const match of scripts) {
+      const parsed = JSON.parse(match[1]) as Record<string, unknown>
+      const graph = parsed['@graph'] as Array<Record<string, unknown>> | undefined
+      if (graph?.some((node) => node['@type'] === 'ProfilePage' || node['@type'] === 'Person')) {
+        return parsed
+      }
+    }
+    return null
+  }
+
+  it('çok makaleli yazar → 200, canonical ve JSON-LD', async () => {
+    const url = `${base}/authors/ahmet-guven-15`
+    const response = await fetch(url)
+    expect(response.status).toBe(200)
+    const html = await response.text()
+    expect(html).toMatch(/rel="canonical" href="[^"]*\/authors\/ahmet-guven-15"/)
+    expect(html).toContain('Ahmet GÜVEN')
+    const jsonLd = extractAuthorJsonLd(html)
+    expect(jsonLd).not.toBeNull()
+    const graph = jsonLd!['@graph'] as Array<Record<string, unknown>>
+    expect(graph.some((n) => n['@type'] === 'Person')).toBe(true)
+    expect(graph.some((n) => n['@type'] === 'ProfilePage')).toBe(true)
+  })
+
+  it('tek makaleli yazar → 200', async () => {
+    const response = await fetch(`${base}/authors/murat-sengoz-3`)
+    expect(response.status).toBe(200)
+    const html = await response.text()
+    expect(html).toContain('Murat ŞENGÖZ')
+  })
+
+  it('yanlış slug + doğru ID → 200 ve doğru canonical', async () => {
+    const response = await fetch(`${base}/authors/yanlis-slug-15`)
+    expect(response.status).toBe(200)
+    const html = await response.text()
+    expect(html).toMatch(/rel="canonical" href="[^"]*\/authors\/ahmet-guven-15"/)
+  })
+
+  it('geçersiz yazar ID → 404', async () => {
+    expect((await fetch(`${base}/authors/yazar-abc`)).status).toBe(404)
+    expect((await fetch(`${base}/authors/yazar-0`)).status).toBe(404)
+    expect((await fetch(`${base}/authors/yazar--1`)).status).toBe(404)
+    const invalid = await fetch(`${base}/authors/999999999`)
+    expect(invalid.status).toBe(404)
+    const html = await invalid.text()
+    expect(extractAuthorJsonLd(html)).toBeNull()
+  })
+
+  it('makale detay yazar bağlantısı → yazar sayfası 200', async () => {
+    const articleUrl = `${base}/enderun/turkiyede-e-devlet-olgusu-ve-bilgi-guvenligi-acisindan-bir-degerlendirme-29`
+    const articleHtml = await (await fetch(articleUrl)).text()
+    const authorHref = articleHtml.match(/href="(\/authors\/[^"]+)"/)?.[1]
+    expect(authorHref).toBeTruthy()
+    const authorResponse = await fetch(`${base}${authorHref}`)
+    expect(authorResponse.status).toBe(200)
   })
 })

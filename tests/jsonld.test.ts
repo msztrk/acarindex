@@ -57,4 +57,27 @@ describe('JsonLd serialization', () => {
     const parsed = JSON.parse(issueGraph)
     expect(parsed['@graph'][0]['@type']).toBe('PublicationIssue')
   })
+
+  it('ProfilePage ve Person örneğini geçerli JSON olarak üretir', () => {
+    const authorGraph = serializeJsonLd({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'ProfilePage',
+          '@id': 'https://www.acarindex.com/authors/demo-1#profile',
+          name: 'Demo Yazar – Makaleleri ve Akademik Yayınları',
+          mainEntity: { '@id': 'https://www.acarindex.com/authors/demo-1#person' },
+        },
+        {
+          '@type': 'Person',
+          '@id': 'https://www.acarindex.com/authors/demo-1#person',
+          name: 'Demo Yazar',
+        },
+      ],
+    })
+
+    const parsed = JSON.parse(authorGraph)
+    expect(parsed['@graph'][0]['@type']).toBe('ProfilePage')
+    expect(parsed['@graph'][1]['@type']).toBe('Person')
+  })
 })

@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { parseArticlePath, extractArticleId } from '@/lib/urls/article'
+import { buildAuthorUrl } from '@/lib/urls/author'
 import { buildLegacyPdfUrl, buildPdfViewerUrl, hasPdf } from '@/lib/pdf/legacy-url'
 import { cn, buttonVariants } from '@/lib/utils'
 import { JsonLd } from '@/components/seo/JsonLd'
@@ -201,9 +202,7 @@ function AuthorLinks({
     authorLinks.length > 0
       ? authorLinks.map((row) => {
           const name = row.author?.name ?? row.raw_author_name ?? 'Yazar'
-          const href = row.author
-            ? `/authors/${row.author.slug ?? row.author.id}-${row.author.id}`
-            : `/search?q=${encodeURIComponent(name)}&area=author`
+          const href = row.author ? buildAuthorUrl(row.author) : `/search?q=${encodeURIComponent(name)}&area=author`
           return { key: `${row.author?.id ?? name}-${row.author_position}`, name, href }
         })
       : authorsList.map((name, i) => ({
