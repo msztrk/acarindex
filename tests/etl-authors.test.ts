@@ -9,12 +9,11 @@ import {
   parseAuthorList,
   parseAuthorTokens,
   provisionalLegacyId,
-  provisionalSourceKey,
   buildYazarlarRegistry,
-  profileAuthorSource,
   isInsufficientIdentity,
   classifyCommaAuthorSample,
 } from '../lib/etl/author-utils'
+import { mysqlAuthorSourceKey, articleAuthorSourceKey } from '../lib/etl/author-source-key'
 import {
   planAuthorsForArticle,
   runAuthorsEtl,
@@ -87,8 +86,8 @@ describe('author parsing & normalization', () => {
   })
 
   it('provisional source key deterministik', () => {
-    expect(provisionalSourceKey(100, 2)).toBe('article:100:pos:2')
-    expect(provisionalSourceKey(100, 2)).toBe(provisionalSourceKey(100, 2))
+    expect(articleAuthorSourceKey(100, 2)).toBe('article:100:position:2')
+    expect(articleAuthorSourceKey(100, 2)).toBe(articleAuthorSourceKey(100, 2))
   })
 })
 
@@ -105,7 +104,7 @@ describe('author identity', () => {
     const reg = buildYazarlarRegistry([{ id: 42, yazar: 'Ahmet GÜVEN' }])
     const r = planAuthorsForArticle({ id: 10, authors_raw: 'Ahmet GÜVEN' }, reg, false)
     expect(r.authors[0].legacyId).toBe(42)
-    expect(r.authors[0].sourceKey).toBe('mysql_yazarlar:42')
+    expect(r.authors[0].sourceKey).toBe('mysql-author:42')
     expect(r.authors[0].isProvisional).toBe(false)
   })
 })

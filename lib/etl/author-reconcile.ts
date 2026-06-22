@@ -5,7 +5,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { parseAuthorList, parseAuthorTokens, type ArticleAuthorRow } from './author-utils'
 import {
+  ensureAuthorsSourceKeyColumn,
+  upsertAuthorsBySourceKey,
+  fetchAuthorIdsBySourceKey,
+  loadExistingAuthorSourceKeys,
+} from './author-upsert'
+import {
   planAuthorsForArticle,
+  toAuthorUpsertRow,
   type PlannedAuthor,
   type YazarlarRegistry,
   AuthorEtlErrorType,
@@ -225,6 +232,7 @@ export interface MissingOnlyRunOptions {
   skipNonPublished: boolean
   batchSize: number
   limit?: number
+  existingSourceKeys?: Set<string>
   existingLegacyIds?: Set<number>
   existingRelations?: Set<string>
 }
@@ -237,9 +245,14 @@ export interface MissingOnlyRunResult {
 
 export async function runMissingOnlyAuthorsEtl(opts: MissingOnlyRunOptions): Promise<MissingOnlyRunResult> {
   const counters = createAuthorEtlCounters()
+  const existingSourceKeys = opts.existingSourceKeys ?? new Set<string>()
   const existingLegacy = opts.existingLegacyIds ?? new Set<number>()
   const existingRelations = opts.existingRelations ?? new Set<string>()
   const processedArticleIds: number[] = []
+
+  if (!opts.dryRun) {
+    await ensureAuthorsSourceKeyColumn(opts.sb)
+  }
 
   const { states: beforeStates } = await scanArticleCoverage(opts.sb, {
     skipNonPublished: opts.skipNonPublished,
@@ -288,7 +301,15 @@ export async function runMissingOnlyAuthorsEtl(opts: MissingOnlyRunOptions): Pro
 
     if (plannedAuthors.length === 0) continue
 
-    await persistAuthorBatch(opts.sb, plannedAuthors, opts.dryRun, counters, existingLegacy, existingRelations)
+    await persistAuthorBatch(
+      opts.sb,
+      plannedAuthors,
+      opts.dryRun,
+      counters,
+      existingSourceKeys,
+      existingLegacy,
+      existingRelations,
+    )
   }
 
   const { states: afterStates } = await scanArticleCoverage(opts.sb, {
@@ -312,51 +333,39 @@ async function persistAuthorBatch(
   plannedAuthors: PlannedAuthor[],
   dryRun: boolean,
   counters: AuthorEtlCounters,
+  existingSourceKeys: Set<string>,
   existingLegacy: Set<number>,
   existingRelations: Set<string>,
 ): Promise<void> {
   const authorRows = [...new Map(
-    plannedAuthors.map((p) => [
-      p.legacyId,
-      {
-        legacy_id: p.legacyId,
-        name: p.name,
-        slug: p.slug,
-        is_provisional: p.isProvisional,
-      },
-    ]),
+    plannedAuthors.map((p) => [p.sourceKey, toAuthorUpsertRow(p)]),
   ).values()]
 
   for (const p of plannedAuthors) {
     if (p.isProvisional) counters.provisionalAuthors++
-    if (existingLegacy.has(p.legacyId)) counters.authorsReused++
+    if (existingSourceKeys.has(p.sourceKey)) counters.authorsReused++
     else {
       counters.authorsCreated++
-      existingLegacy.add(p.legacyId)
+      existingSourceKeys.add(p.sourceKey)
     }
+    existingLegacy.add(p.legacyId)
   }
 
   if (!dryRun && authorRows.length > 0) {
-    const { error } = await sb.from('authors').upsert(authorRows, { onConflict: 'legacy_id' })
+    const { error } = await upsertAuthorsBySourceKey(sb, authorRows)
     if (error) {
       bumpError(counters, AuthorEtlErrorType.BATCH_DB_ERROR)
-      throw new Error(`authors upsert: ${error.message}`)
+      throw new Error(`authors upsert: ${error}`)
     }
   }
 
-  const legacyIds = [...new Set(plannedAuthors.map((p) => p.legacyId))]
-  const idMap = new Map<number, number>()
-  if (!dryRun && legacyIds.length > 0) {
-    const CHUNK = 200
-    for (let j = 0; j < legacyIds.length; j += CHUNK) {
-      const chunk = legacyIds.slice(j, j + CHUNK)
-      const { data } = await sb.from('authors').select('id, legacy_id').in('legacy_id', chunk)
-      for (const row of data ?? []) {
-        if (row.legacy_id != null) idMap.set(row.legacy_id as number, row.id as number)
-      }
-    }
+  const sourceKeys = [...new Set(plannedAuthors.map((p) => p.sourceKey))]
+  const idBySourceKey = new Map<string, number>()
+  if (!dryRun && sourceKeys.length > 0) {
+    const fetched = await fetchAuthorIdsBySourceKey(sb, sourceKeys)
+    for (const [k, v] of fetched) idBySourceKey.set(k, v)
   } else if (dryRun) {
-    for (const lid of legacyIds) idMap.set(lid, lid)
+    for (const sk of sourceKeys) idBySourceKey.set(sk, -1)
   }
 
   const relationRows: Array<{
@@ -367,8 +376,8 @@ async function persistAuthorBatch(
   }> = []
 
   for (const p of plannedAuthors) {
-    const authorId = idMap.get(p.legacyId)
-    if (!authorId) continue
+    const authorId = idBySourceKey.get(p.sourceKey)
+    if (!authorId || authorId < 0) continue
     const relKey = `${p.articleId}:${authorId}`
     if (existingRelations.has(relKey)) {
       counters.relationsExisting++

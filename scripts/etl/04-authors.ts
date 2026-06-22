@@ -42,6 +42,7 @@ import {
   printReconcileReport,
   runMissingOnlyAuthorsEtl,
 } from '../../lib/etl/author-reconcile'
+import { loadExistingAuthorSourceKeys } from '../../lib/etl/author-upsert'
 
 const CHECKPOINT_DIR = path.join(__dirname, 'checkpoints')
 const CHECKPOINT_FILE = path.join(CHECKPOINT_DIR, '04-authors.checkpoint.json')
@@ -74,6 +75,7 @@ async function markStaleRuns(sb: ReturnType<typeof getSupabaseAdmin>): Promise<v
 }
 
 async function loadExistingState(sb: ReturnType<typeof getSupabaseAdmin>) {
+  const sourceKeys = await loadExistingAuthorSourceKeys(sb)
   const legacyIds = new Set<number>()
   const relations = new Set<string>()
   let offset = 0
@@ -109,7 +111,7 @@ async function loadExistingState(sb: ReturnType<typeof getSupabaseAdmin>) {
     offset += SIZE
   }
 
-  return { legacyIds, relations }
+  return { legacyIds, relations, sourceKeys }
 }
 
 async function fetchArticlesForProfile(
@@ -251,6 +253,7 @@ async function main() {
         skipNonPublished: cli.skipNonPublished,
         batchSize: cli.batchSize,
         limit: Number.isFinite(cli.limit) ? cli.limit : undefined,
+        existingSourceKeys: existing.sourceKeys,
         existingLegacyIds: existing.legacyIds,
         existingRelations: existing.relations,
       })
@@ -290,7 +293,7 @@ async function main() {
   }
 
   const existing = await loadExistingState(sb)
-  console.log(`  Mevcut state: ${existing.legacyIds.size} legacy_id, ${existing.relations.size} ilişki`)
+  console.log(`  Mevcut state: ${existing.sourceKeys.size} source_key, ${existing.legacyIds.size} legacy_id, ${existing.relations.size} ilişki`)
 
   const mode = cli.dryRun ? 'dry-run' : 'full'
   const runId = await startRun(sb, {
@@ -310,6 +313,7 @@ async function main() {
       sb,
       registry,
       cli,
+      existingSourceKeys: existing.sourceKeys,
       existingLegacyIds: existing.legacyIds,
       existingRelations: existing.relations,
       onBatchComplete: cli.dryRun

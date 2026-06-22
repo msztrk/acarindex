@@ -157,13 +157,7 @@ export function yazarlarLegacyId(yazarlarId: number): number {
   return yazarlarId
 }
 
-export function mysqlYazarlarSourceKey(yazarlarId: number): string {
-  return `mysql_yazarlar:${yazarlarId}`
-}
-
-export function provisionalSourceKey(articleId: number, position: number): string {
-  return `article:${articleId}:pos:${position}`
-}
+// source_key üretimi: lib/etl/author-source-key.ts
 
 /**
  * Kaynak yazar ID yoksa makale+pozisyon bazlı provisional legacy_id.

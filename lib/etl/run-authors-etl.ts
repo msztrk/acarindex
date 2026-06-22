@@ -12,14 +12,22 @@ import {
   parseAuthorList,
   parseAuthorTokens,
   provisionalLegacyId,
-  provisionalSourceKey,
   yazarlarLegacyId,
-  mysqlYazarlarSourceKey,
   profileAuthorSource,
   type ArticleAuthorRow,
   type AuthorProfileStats,
   type YazarlarRegistry,
 } from './author-utils'
+import {
+  articleAuthorSourceKey,
+  mysqlAuthorSourceKey,
+} from './author-source-key'
+import {
+  ensureAuthorsSourceKeyColumn,
+  upsertAuthorsBySourceKey,
+  fetchAuthorIdsBySourceKey,
+  type AuthorUpsertRow,
+} from './author-upsert'
 
 export type { YazarlarRegistry }
 
@@ -208,11 +216,11 @@ export function planAuthorsForArticle(
 
     if (resolved && 'yazarlarId' in resolved) {
       legacyId = yazarlarLegacyId(resolved.yazarlarId)
-      sourceKey = mysqlYazarlarSourceKey(resolved.yazarlarId)
+      sourceKey = mysqlAuthorSourceKey(resolved.yazarlarId)
       isProvisional = false
     } else {
       legacyId = provisionalLegacyId(article.id, position)
-      sourceKey = provisionalSourceKey(article.id, position)
+      sourceKey = articleAuthorSourceKey(article.id, position)
     }
 
     const relKey = `${article.id}:${legacyId}`
@@ -247,8 +255,19 @@ export interface AuthorEtlRunOptions {
   registry: YazarlarRegistry
   cli: AuthorEtlCliOptions
   onBatchComplete?: (lastArticleId: number) => Promise<void>
+  existingSourceKeys?: Set<string>
   existingLegacyIds?: Set<number>
   existingRelations?: Set<string>
+}
+
+export function toAuthorUpsertRow(p: PlannedAuthor): AuthorUpsertRow {
+  return {
+    source_key: p.sourceKey,
+    legacy_id: p.isProvisional ? p.legacyId : p.legacyId,
+    name: p.name,
+    slug: p.slug,
+    is_provisional: p.isProvisional,
+  }
 }
 
 async function fetchArticleBatch(
@@ -271,37 +290,6 @@ async function fetchArticleBatch(
   return (data ?? []) as ArticleAuthorRow[]
 }
 
-async function upsertAuthorsBatch(
-  sb: SupabaseClient,
-  rows: Array<{
-    legacy_id: number
-    name: string
-    slug: string
-    is_provisional: boolean
-  }>,
-): Promise<{ error: string | null }> {
-  if (rows.length === 0) return { error: null }
-  const { error } = await sb.from('authors').upsert(rows, { onConflict: 'legacy_id' })
-  return { error: error?.message ?? null }
-}
-
-async function fetchAuthorIdsByLegacy(
-  sb: SupabaseClient,
-  legacyIds: number[],
-): Promise<Map<number, number>> {
-  const map = new Map<number, number>()
-  const CHUNK = 200
-  for (let i = 0; i < legacyIds.length; i += CHUNK) {
-    const chunk = legacyIds.slice(i, i + CHUNK)
-    const { data, error } = await sb.from('authors').select('id, legacy_id').in('legacy_id', chunk)
-    if (error) throw new Error(`authors lookup: ${error.message}`)
-    for (const row of data ?? []) {
-      if (row.legacy_id != null) map.set(row.legacy_id as number, row.id as number)
-    }
-  }
-  return map
-}
-
 async function upsertRelationsBatch(
   sb: SupabaseClient,
   rows: Array<{
@@ -321,10 +309,15 @@ async function upsertRelationsBatch(
 export async function runAuthorsEtl(opts: AuthorEtlRunOptions): Promise<AuthorEtlRunResult> {
   const { sb, registry, cli, onBatchComplete } = opts
   const counters = createAuthorEtlCounters()
+  const existingSourceKeys = opts.existingSourceKeys ?? new Set<string>()
   const existingLegacy = opts.existingLegacyIds ?? new Set<number>()
   const existingRelations = opts.existingRelations ?? new Set<string>()
   const duplicateNameCandidates: AuthorEtlRunResult['duplicateNameCandidates'] = []
   const normalizedNameSamples: string[] = []
+
+  if (!cli.dryRun) {
+    await ensureAuthorsSourceKeyColumn(sb)
+  }
 
   let cursor = cli.startAfter
   let processedInRun = 0
@@ -381,29 +374,23 @@ export async function runAuthorsEtl(opts: AuthorEtlRunOptions): Promise<AuthorEt
     }
 
     const dedupedAuthorRows = [...new Map(
-      plannedAuthors.map((p) => [
-        p.legacyId,
-        {
-          legacy_id: p.legacyId,
-          name: p.name,
-          slug: p.slug,
-          is_provisional: p.isProvisional,
-        },
-      ]),
+      plannedAuthors.map((p) => [p.sourceKey, toAuthorUpsertRow(p)]),
     ).values()]
 
     for (const p of plannedAuthors) {
       if (normalizedNameSamples.length < 10) normalizedNameSamples.push(p.name)
       if (p.isProvisional) counters.provisionalAuthors++
-      if (existingLegacy.has(p.legacyId)) counters.authorsReused++
-      else {
+      if (existingSourceKeys.has(p.sourceKey)) {
+        counters.authorsReused++
+      } else {
         counters.authorsCreated++
-        existingLegacy.add(p.legacyId)
+        existingSourceKeys.add(p.sourceKey)
       }
+      existingLegacy.add(p.legacyId)
     }
 
     if (!cli.dryRun && dedupedAuthorRows.length > 0) {
-      const { error } = await upsertAuthorsBatch(sb, dedupedAuthorRows)
+      const { error } = await upsertAuthorsBySourceKey(sb, dedupedAuthorRows)
       if (error) {
         bumpError(counters, AuthorEtlErrorType.BATCH_DB_ERROR)
         bumpError(counters, AuthorEtlErrorType.AUTHOR_CREATE_ERROR)
@@ -411,16 +398,16 @@ export async function runAuthorsEtl(opts: AuthorEtlRunOptions): Promise<AuthorEt
       }
     }
 
-    const legacyIds = [...new Set(plannedAuthors.map((p) => p.legacyId))]
-    let idMap = new Map<number, number>()
+    const sourceKeys = [...new Set(plannedAuthors.map((p) => p.sourceKey))]
+    let idBySourceKey = new Map<string, number>()
 
-    if (!cli.dryRun && legacyIds.length > 0) {
-      idMap = await fetchAuthorIdsByLegacy(sb, legacyIds)
-      for (const lid of legacyIds) {
-        if (!idMap.has(lid)) bumpError(counters, AuthorEtlErrorType.AUTHOR_CREATE_ERROR)
+    if (!cli.dryRun && sourceKeys.length > 0) {
+      idBySourceKey = await fetchAuthorIdsBySourceKey(sb, sourceKeys)
+      for (const sk of sourceKeys) {
+        if (!idBySourceKey.has(sk)) bumpError(counters, AuthorEtlErrorType.AUTHOR_CREATE_ERROR)
       }
     } else if (cli.dryRun) {
-      for (const lid of legacyIds) idMap.set(lid, lid)
+      for (const sk of sourceKeys) idBySourceKey.set(sk, -1)
     }
 
     const relationRows: Array<{
@@ -431,8 +418,8 @@ export async function runAuthorsEtl(opts: AuthorEtlRunOptions): Promise<AuthorEt
     }> = []
 
     for (const p of plannedAuthors) {
-      const authorId = idMap.get(p.legacyId)
-      if (!authorId) continue
+      const authorId = idBySourceKey.get(p.sourceKey)
+      if (!authorId || authorId < 0) continue
       const relKey = `${p.articleId}:${authorId}`
       if (existingRelations.has(relKey)) {
         counters.relationsExisting++
