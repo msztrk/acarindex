@@ -1,4 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
+import { isPrismaBackend } from '@/lib/db/config'
+import * as platformData from '@/lib/data/platform'
+import * as catalogData from '@/lib/data/catalog'
 import type { PlatformStats } from '@/types/database'
 import type { RecentArticleItem } from '@/components/home/RecentArticlesList'
 import type { FeaturedJournalItem } from '@/components/home/FeaturedJournalsList'
@@ -33,6 +36,26 @@ export type HomeStatsBundle = {
 }
 
 async function fetchStats(): Promise<{ stats: PlatformStats | null; error: boolean }> {
+  if (isPrismaBackend()) {
+    try {
+      const row = await platformData.getPlatformStats()
+      if (!row) return { stats: null, error: true }
+      return {
+        stats: {
+          journal_count: Number(row.journal_count),
+          article_count: Number(row.article_count),
+          pdf_count: Number(row.pdf_count),
+          total_hits: Number(row.total_hits),
+          author_count: Number(row.author_count),
+          institution_count: Number(row.institution_count),
+          refreshed_at: row.refreshed_at.toISOString(),
+        },
+        error: false,
+      }
+    } catch {
+      return { stats: null, error: true }
+    }
+  }
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
@@ -47,6 +70,13 @@ async function fetchStats(): Promise<{ stats: PlatformStats | null; error: boole
 }
 
 async function fetchAccessiblePdfCount(): Promise<number | null> {
+  if (isPrismaBackend()) {
+    try {
+      return await platformData.countAccessiblePdfs()
+    } catch {
+      return null
+    }
+  }
   try {
     const sb = await createClient()
     const { count, error } = await sb
@@ -89,6 +119,9 @@ export async function loadHomeStats(qa?: HomeQaMode): Promise<HomeStatsBundle> {
 
 export async function loadRecentArticles(qa?: HomeQaMode): Promise<RecentArticleItem[]> {
   if (qa === 'empty-articles') return []
+  if (isPrismaBackend()) {
+    return await catalogData.listRecentArticles(8) as RecentArticleItem[]
+  }
 
   const sb = await createClient()
   const { data } = await sb
@@ -106,6 +139,9 @@ export async function loadRecentArticles(qa?: HomeQaMode): Promise<RecentArticle
 
 export async function loadFeaturedJournals(qa?: HomeQaMode): Promise<FeaturedJournalItem[]> {
   if (qa === 'empty-journals') return []
+  if (isPrismaBackend()) {
+    return await catalogData.listFeaturedJournals(6) as FeaturedJournalItem[]
+  }
 
   const sb = await createClient()
   const { data } = await sb
@@ -119,6 +155,10 @@ export async function loadFeaturedJournals(qa?: HomeQaMode): Promise<FeaturedJou
 }
 
 export async function loadTopicAreas(): Promise<TopicAreaItem[]> {
+  if (isPrismaBackend()) {
+    return await catalogData.listActiveCategories() as TopicAreaItem[]
+  }
+
   const sb = await createClient()
   const { data } = await sb
     .from('categories')
