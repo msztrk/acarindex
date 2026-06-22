@@ -45,7 +45,20 @@ export const SOURCE_TARGET_SCHEMA_MAP = [
       { source: 'DergiID', target: 'journal_id', type: 'bigint', rule: 'FK' },
       { source: 'ArsivID', target: 'issue_id', type: 'bigint', rule: 'FK nullable' },
       { source: 'TitleTR', target: 'title_tr', type: 'text', rule: 'required' },
-      { source: 'Yazarlar', target: 'authors_raw', type: 'text', rule: 'parse ETL 04' },
+      {
+        source: 'Yazarlar',
+        target: 'authors_raw',
+        type: 'varchar(300)',
+        rule: 'birincil makale yazarı listesi (virgülle ayrılmış); ETL 04 parse',
+      },
+      {
+        source: 'YazarlarKAYNAKCA',
+        target: 'authors_citation',
+        type: 'mediumtext',
+        rule: 'atıf/kaynakça yazar metni; authors_raw için kullanılmaz (dump: çoğunlukla Yazarlar ile aynı veya boş)',
+      },
+      { source: 'YazarID', target: 'legacy_author_ids', type: 'varchar(300)', rule: 'ham legacy ID listesi' },
+      { source: 'Kaynakca', target: 'references_raw', type: 'mediumtext', rule: 'bibliyografya gövdesi' },
       { source: 'PdfLINK', target: 'pdf_files', type: 'text', rule: 'ayrı tablo' },
     ],
   },
@@ -53,8 +66,9 @@ export const SOURCE_TARGET_SCHEMA_MAP = [
     sourceTable: 'yazarlar',
     targetTable: 'authors',
     keyColumns: [
-      { source: 'id', target: 'legacy_id', type: 'bigint', rule: 'canonical mysql-author:{id}' },
+      { source: 'id', target: 'legacy_id', type: 'bigint', rule: 'canonical mysql-author:{id}; dump’ta tablo yoksa provisional-only' },
       { source: 'yazar', target: 'name', type: 'text', rule: 'registry only' },
     ],
+    optional: true as const,
   },
 ] as const

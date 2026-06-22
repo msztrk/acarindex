@@ -3,6 +3,7 @@
  */
 import { createConnection } from 'mysql2/promise'
 import { resolveSourceMysqlConfig } from './mysql-config'
+import { authorColumnFillSql } from '../../lib/etl/article-author-source'
 
 async function scalarCount(conn: Awaited<ReturnType<typeof createConnection>>, sql: string): Promise<number> {
   const [rows] = await conn.query(sql)
@@ -73,13 +74,32 @@ async function main() {
   }
 
   if (stage === 'all' || stage === '04') {
+    const fill = authorColumnFillSql()
+    let yazarlarTable = 0
+    try {
+      yazarlarTable = await scalarCount(conn, `SELECT COUNT(*) AS c FROM yazarlar`)
+    } catch {
+      yazarlarTable = -1
+    }
     out.etl_04_authors = {
-      yazarlar_registry_total: await scalarCount(conn, `SELECT COUNT(*) AS c FROM yazarlar`),
-      articles_with_authors_raw: await scalarCount(
+      yazarlar_registry_total: yazarlarTable < 0 ? null : yazarlarTable,
+      yazarlar_table_present: yazarlarTable > 0,
+      articles_yazarlar_filled: await scalarCount(
         conn,
-        `SELECT COUNT(*) AS c FROM makaleler WHERE Yazarlar IS NOT NULL AND TRIM(Yazarlar) != ''`,
+        `SELECT COUNT(*) AS c FROM makaleler WHERE ${fill.yazarlarFilled}`,
       ),
-      note: 'Author ETL hedefi Supabase articles; kaynak yazarlar registry + makaleler.Yazarlar',
+      articles_kaynakca_filled: await scalarCount(
+        conn,
+        `SELECT COUNT(*) AS c FROM makaleler WHERE ${fill.kaynakcaFilled}`,
+      ),
+      articles_only_yazarlar: await scalarCount(
+        conn,
+        `SELECT COUNT(*) AS c FROM makaleler WHERE ${fill.onlyYazarlar}`,
+      ),
+      authors_raw_source_column: 'Yazarlar',
+      author_registry_mode_default: 'required',
+      author_registry_mode_no_table: 'AUTHOR_REGISTRY_MODE=provisional-only',
+      note: 'ETL 04 Supabase articles.authors_raw okur; yazarlar tablosu yoksa provisional-only zorunlu',
       writes_to_supabase: false,
     }
   }

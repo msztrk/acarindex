@@ -24,10 +24,12 @@ import {
 import {
   parseAuthorEtlCliArgs,
   runAuthorsEtl,
-  loadYazarlarFromMysql,
-  printAuthorEtlReport,
+  loadAuthorRegistry,
+  assertAuthorRegistryReadyForWrite,
   verifyCatalogScope,
   printCatalogScopeReport,
+  printAuthorEtlReport,
+  createAuthorEtlCounters,
   type ArticleAuthorRow,
 } from '../../lib/etl/run-authors-etl'
 import {
@@ -197,8 +199,15 @@ async function main() {
     return
   }
 
-  const registry = await loadYazarlarFromMysql(pool)
-  console.log('  mysql yazarlar registry yüklendi')
+  const registryLoad = await loadAuthorRegistry(pool)
+  const registry = registryLoad.registry
+  console.log(
+    `  Author registry: mode=${registryLoad.mode} yazarlar_table=${registryLoad.yazarlarTablePresent} rows=${registryLoad.yazarlarRowCount}`,
+  )
+
+  if (!cli.dryRun && !cli.profileOnly && !cli.reconcile) {
+    assertAuthorRegistryReadyForWrite(registryLoad)
+  }
 
   if (cli.profileOnly) {
     const articles = await fetchArticlesForProfile(

@@ -215,6 +215,72 @@ export function buildYazarlarRegistry(
   }
 }
 
+export type AuthorParseIssueClass =
+  | 'empty_author_source'
+  | 'empty_author_segment'
+  | 'only_punctuation'
+  | 'insufficient_identity'
+  | 'ambiguous_comma_format'
+  | 'mixed_delimiter_format'
+
+export interface AuthorParseIssue {
+  class: AuthorParseIssueClass
+  detail?: string
+}
+
+/** Ham yazar metni için raporlanabilir sorun sınıfları (yanlış ilişki üretmez). */
+export function collectAuthorParseIssues(raw: string | null | undefined): AuthorParseIssue[] {
+  const issues: AuthorParseIssue[] = []
+  const cleaned = raw?.trim() ?? ''
+  if (!cleaned) {
+    issues.push({ class: 'empty_author_source' })
+    return issues
+  }
+
+  const hasComma = cleaned.includes(',')
+  const hasSemi = cleaned.includes(';')
+  if (hasComma && hasSemi) {
+    issues.push({ class: 'mixed_delimiter_format' })
+  }
+
+  const parts = cleaned.split(',').map((s) => s.trim())
+  if (parts.some((p) => p === '')) {
+    issues.push({ class: 'empty_author_segment' })
+  }
+
+  const commaParts = parts.filter(Boolean)
+  if (commaParts.length === 2) {
+    const [a, b] = commaParts
+    if (!a.includes(' ') && b.includes(' ') && !/^\p{L}\.?$/u.test(a)) {
+      issues.push({ class: 'ambiguous_comma_format', detail: 'Soyad, Ad olasılığı' })
+    }
+  }
+
+  const tokens = parseAuthorTokens(cleaned)
+  for (const t of tokens) {
+    if (t.rejected === 'only_punctuation') {
+      issues.push({ class: 'only_punctuation', detail: t.display })
+    }
+    if (t.rejected === 'insufficient_identity') {
+      issues.push({ class: 'insufficient_identity', detail: t.display })
+    }
+  }
+
+  const parsed = tokens.filter((t) => !t.rejected)
+  if (parsed.length === 0 && !issues.some((i) => i.class === 'empty_author_source')) {
+    if (!issues.length) issues.push({ class: 'only_punctuation' })
+  }
+
+  const classification = hasComma ? classifyCommaAuthorSample(0, cleaned).classification : null
+  if (classification === 'inverted_name' || classification === 'mixed_format') {
+    if (!issues.some((i) => i.class === 'ambiguous_comma_format')) {
+      issues.push({ class: 'ambiguous_comma_format', detail: classification })
+    }
+  }
+
+  return issues
+}
+
 export type CommaAuthorClass =
   | 'multi_author'
   | 'inverted_name'

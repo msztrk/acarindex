@@ -3,6 +3,7 @@
  */
 import { createConnection } from 'mysql2/promise'
 import { resolveSourceMysqlConfig } from './mysql-config'
+import { authorColumnFillSql } from '../../lib/etl/article-author-source'
 
 const CORE_TABLES = [
   'kategoriler',
@@ -72,9 +73,21 @@ async function main() {
     WHERE a.DergiID IS NOT NULL AND d.DergiID IS NULL
   `).catch(() => [[{ c: null }]])
 
+  const fillSql = authorColumnFillSql()
+  const [authorCompareRows] = await conn.query(`
+    SELECT
+      SUM(CASE WHEN ${fillSql.yazarlarFilled} THEN 1 ELSE 0 END) AS yazarlar_filled,
+      SUM(CASE WHEN ${fillSql.kaynakcaFilled} THEN 1 ELSE 0 END) AS kaynakca_filled,
+      SUM(CASE WHEN ${fillSql.bothFilled} THEN 1 ELSE 0 END) AS both_filled,
+      SUM(CASE WHEN ${fillSql.onlyYazarlar} THEN 1 ELSE 0 END) AS only_yazarlar,
+      SUM(CASE WHEN ${fillSql.onlyKaynakca} THEN 1 ELSE 0 END) AS only_kaynakca
+    FROM makaleler
+  `).catch(() => [[]])
+  const authorCompare = (authorCompareRows as Record<string, unknown>[])[0] ?? null
+
   const [authorsRawRows] = await conn.query(`
     SELECT COUNT(*) AS c FROM makaleler
-    WHERE Yazarlar IS NOT NULL AND TRIM(Yazarlar) != ''
+    WHERE ${fillSql.yazarlarFilled}
   `).catch(() => [[{ c: null }]])
 
   const [tableList] = await conn.query(
@@ -88,7 +101,9 @@ async function main() {
     table_count: (tableList as { TABLE_NAME?: string; table_name?: string }[]).length,
     core_counts: counts,
     makaleler: makaleStats,
+    author_column_compare: authorCompare,
     authors_raw_filled_articles: (authorsRawRows as { c: number }[])[0]?.c ?? null,
+    authors_raw_source_column: 'Yazarlar',
     orphan_issue_on_articles: (orphanIssueRows as { c: number }[])[0]?.c ?? null,
     orphan_journal_on_articles: (orphanJournalRows as { c: number }[])[0]?.c ?? null,
     orphan_journal_on_issues: (orphanIssueOnIssuesRows as { c: number }[])[0]?.c ?? null,

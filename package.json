@@ -20,6 +20,7 @@
     "source:restore": "npx tsx scripts/source/restore-local.ts",
     "source:inventory": "npx tsx scripts/source/inventory.ts",
     "source:etl-dry-run": "npx tsx scripts/source/etl-stage-dry-run.ts",
+    "source:profile-authors": "npx tsx scripts/source/profile-author-columns.ts",
     "source:audit-secrets": "npx tsx scripts/audit-secrets.ts"
   },
   "dependencies": {

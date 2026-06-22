@@ -8,6 +8,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { urlYap } from '../urls/slug'
 import {
+  resolveAuthorRegistryMode,
+  authorColumnFillSql,
+  type AuthorRegistryMode,
+} from './article-author-source'
+import {
   buildYazarlarRegistry,
   parseAuthorTokens,
   provisionalLegacyId,
@@ -502,6 +507,70 @@ export async function loadYazarlarFromMysql(
   return buildYazarlarRegistry(rows)
 }
 
+export interface AuthorRegistryLoadResult {
+  registry: YazarlarRegistry
+  mode: AuthorRegistryMode
+  yazarlarTablePresent: boolean
+  yazarlarRowCount: number
+}
+
+/** yazarlar tablosu varlığı + AUTHOR_REGISTRY_MODE ile registry yükleme. */
+export async function loadAuthorRegistry(
+  pool: { execute: (sql: string) => Promise<unknown[]> },
+  mode: AuthorRegistryMode = resolveAuthorRegistryMode(),
+): Promise<AuthorRegistryLoadResult> {
+  let yazarlarTablePresent = false
+  let yazarlarRowCount = 0
+
+  try {
+    const [tableRows] = (await pool.execute(
+      `SELECT COUNT(*) AS c FROM information_schema.tables
+       WHERE table_schema = DATABASE() AND table_name = 'yazarlar'`,
+    )) as [{ c: number }[]]
+    yazarlarTablePresent = Number(tableRows[0]?.c ?? 0) > 0
+  } catch {
+    yazarlarTablePresent = false
+  }
+
+  if (mode === 'provisional-only') {
+    return {
+      registry: buildYazarlarRegistry([]),
+      mode: 'provisional-only',
+      yazarlarTablePresent,
+      yazarlarRowCount: 0,
+    }
+  }
+
+  if (!yazarlarTablePresent) {
+    return {
+      registry: buildYazarlarRegistry([]),
+      mode: 'required',
+      yazarlarTablePresent: false,
+      yazarlarRowCount: 0,
+    }
+  }
+
+  const [rows] = (await pool.execute('SELECT id, yazar FROM yazarlar')) as [
+    Array<{ id: number; yazar: string }>,
+  ]
+  yazarlarRowCount = rows.length
+  return {
+    registry: buildYazarlarRegistry(rows),
+    mode: 'required',
+    yazarlarTablePresent: true,
+    yazarlarRowCount,
+  }
+}
+
+export function assertAuthorRegistryReadyForWrite(load: AuthorRegistryLoadResult): void {
+  if (load.mode === 'provisional-only') return
+  if (!load.yazarlarTablePresent) {
+    throw new Error(
+      'Kaynak yazarlar tablosu bulunamadı. Tam yazma için AUTHOR_REGISTRY_MODE=provisional-only ayarlayın.',
+    )
+  }
+}
+
 export interface CatalogScopeReport {
   mysqlArticlesWithAuthors: number | null
   supabaseArticlesTotal: number
@@ -531,8 +600,9 @@ export async function verifyCatalogScope(
   let mysqlCount: number | null = null
   if (mysqlPool) {
     try {
+      const fill = authorColumnFillSql()
       const [rows] = (await mysqlPool.execute(
-        'SELECT COUNT(*) as c FROM makaleler WHERE Yazarlar IS NOT NULL AND Yazarlar != ""',
+        `SELECT COUNT(*) as c FROM makaleler WHERE ${fill.yazarlarFilled}`,
       )) as [{ c: number }[]]
       mysqlCount = rows[0]?.c ?? null
     } catch {

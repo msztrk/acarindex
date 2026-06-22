@@ -11,6 +11,7 @@
 
 import { getMysqlPool, getSupabaseAdmin, startRun, finishRun, logErrors, type EtlErrorEntry } from './db'
 import { urlYap } from '../../lib/urls/slug'
+import { mapMakaleAuthorFields } from '../../lib/etl/article-author-source'
 import type mysql from 'mysql2/promise'
 
 const isPilot = process.argv.includes('--pilot')
@@ -65,6 +66,7 @@ async function buildJournalSlugMap(pool: mysql.Pool): Promise<Map<number, string
 
 async function main() {
   console.log(`📄 ETL 03 — makaleler → articles + pdf_files [${isPilot ? `PILOT: ilk ${PILOT_LIMIT}` : 'FULL'}]`)
+  console.log('  Yazar kaynağı: makaleler.Yazarlar → articles.authors_raw (merkezi politika)')
   const pool = getMysqlPool()
   const sb = getSupabaseAdmin()
 
@@ -140,6 +142,11 @@ async function main() {
       const pdfPath = raw.PdfLINK?.trim()
       const hasPdf  = !!(pdfPath && pdfPath !== '' && pdfPath !== 'pdf-bulunamadi')
 
+      const authorFields = mapMakaleAuthorFields({
+        Yazarlar: raw.Yazarlar,
+        YazarlarKAYNAKCA: raw.YazarlarKAYNAKCA,
+      })
+
       articles.push({
         id:                   raw.MakaleID,
         legacy_id:            raw.MakaleID,
@@ -149,8 +156,8 @@ async function main() {
         issue_id:             raw.ArsivID || null,
         title_tr:             raw.TitleTR?.trim() || null,
         title_en:             raw.TitleEN?.trim() || null,
-        authors_raw:          raw.Yazarlar?.trim() || null,
-        authors_citation:     raw.YazarlarKAYNAKCA?.trim() || null,
+        authors_raw:          authorFields.authors_raw,
+        authors_citation:     authorFields.authors_citation,
         legacy_author_ids:    raw.YazarID?.trim() || null,
         institution_raw:      raw.Kurum?.trim() || null,
         abstract_tr:          raw.OzetTR?.trim() || null,
