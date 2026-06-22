@@ -48,6 +48,12 @@ yarn-error.log*
 !.env.example
 !.env.*.example
 !staging.env.example
+!local-source.env.example
+
+# Yerel SQL yedekleri (supabase/migrations hariç)
+/local-backups/
+/local-data/
+/database-backups/
 
 # vercel
 .vercel

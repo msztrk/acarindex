@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js'
 import * as dotenv from 'dotenv'
 import path from 'path'
 import fs from 'fs'
+import { resolveSourceMysqlConfig } from '../source/mysql-config'
 
 const cwd = process.cwd()
 dotenv.config({ path: path.resolve(cwd, '.env.local') })
@@ -19,16 +20,13 @@ if (process.env.STAGING === '1' && fs.existsSync(path.resolve(cwd, '.env.staging
 // ─── Bağlantılar ──────────────────────────────────────────────────────────────
 
 export function getMysqlPool() {
-  const required = ['MYSQL_HOST', 'MYSQL_USER', 'MYSQL_PASSWORD', 'MYSQL_DATABASE']
-  for (const k of required) {
-    if (!process.env[k]) throw new Error(`Eksik env: ${k}`)
-  }
+  const cfg = resolveSourceMysqlConfig()
   return mysql.createPool({
-    host: process.env.MYSQL_HOST,
-    port: parseInt(process.env.MYSQL_PORT ?? '3306', 10),
-    user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
-    database: process.env.MYSQL_DATABASE,
+    host: cfg.host,
+    port: cfg.port,
+    user: cfg.user,
+    password: cfg.password,
+    database: cfg.database,
     waitForConnections: true,
     connectionLimit: 5,
     decimalNumbers: true,

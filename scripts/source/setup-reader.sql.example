@@ -1,0 +1,16 @@
+-- Yerel kaynak DB: salt okunur ETL kullanıcısı (şifreyi buraya yazmayın).
+-- mysql -u root -p < scripts/source/setup-reader.sql
+-- Ardından şifreyi yalnızca yerel env dosyasına kaydedin.
+
+CREATE DATABASE IF NOT EXISTS acarindex_source_local
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+-- Şifreyi komut satırında değiştirin: IDENTIFIED BY '...'
+CREATE USER IF NOT EXISTS 'acarindex_etl_reader'@'localhost'
+  IDENTIFIED BY 'CHANGE_ME_LOCAL_STRONG_PASSWORD';
+
+GRANT SELECT ON acarindex_source_local.*
+  TO 'acarindex_etl_reader'@'localhost';
+
+FLUSH PRIVILEGES;
