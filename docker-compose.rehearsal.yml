@@ -1,0 +1,58 @@
+# Yerel production-benzeri prova — acarindex_dev ile ÇAKIŞMAZ
+# Kullanım: deploy/scripts/rehearsal-up.sh (veya npm run rehearsal:up)
+name: acarindex-rehearsal
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: acarindex_rehearsal_pg
+    restart: unless-stopped
+    environment:
+      # Sabit rehearsal değerleri — kök .env ile karışmaması için ${} kullanılmaz
+      POSTGRES_USER: acarindex_rehearsal
+      POSTGRES_PASSWORD: rehearsal_dev_password
+      POSTGRES_DB: acarindex_rehearsal
+    volumes:
+      - rehearsal_pg_data:/var/lib/postgresql/data
+    ports:
+      # Yalnızca yerel migrate/seed için — production'da host portu yok
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U acarindex_rehearsal -d acarindex_rehearsal",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: acarindex-web:rehearsal
+    container_name: acarindex_rehearsal_app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - deploy/.env.rehearsal
+    ports:
+      - "127.0.0.1:3001:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  rehearsal_pg_data:

@@ -32,6 +32,13 @@
     "db:schema-report": "npx tsx --env-file=.env.local scripts/db/schema-report.ts",
     "etl:pilot-dry-run": "npx tsx scripts/etl-pg/pilot-dry-run.ts",
     "etl:pilot-run": "npx tsx scripts/etl-pg/pilot-run.ts",
+    "rehearsal:build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step build",
+    "rehearsal:migrate": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step migrate",
+    "rehearsal:seed": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step seed",
+    "rehearsal:up": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step up",
+    "rehearsal:smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step smoke",
+    "rehearsal:backup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step backup",
+    "rehearsal:all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step all",
     "postinstall": "prisma generate"
   },
   "dependencies": {
