@@ -15,8 +15,8 @@ async function main() {
   try {
     await client.query(sql)
     console.log('✅ 013_etl_status_interrupted.sql uygulandı')
-  } catch (e: any) {
-    console.error('❌ Hata:', e.message)
+  } catch (e: unknown) {
+    console.error('❌ Hata:', e instanceof Error ? e.message : String(e))
   }
 
   // Verify

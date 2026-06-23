@@ -1,6 +1,5 @@
-﻿import { Client } from 'pg';
-import * as fs from 'fs';
-import { requireDatabaseUrl } from './lib/database-url';
+﻿import { Client } from 'pg'
+import { requireDatabaseUrl } from './lib/database-url'
 
 async function main() {
   const client = new Client({ connectionString: requireDatabaseUrl(), ssl: { rejectUnauthorized: false } });
@@ -22,8 +21,9 @@ async function main() {
     try {
       await client.query(sql);
       console.log('OK: ' + sql.slice(30, 70));
-    } catch(e: any) {
-      console.error('HATA: ' + e.message.slice(0,80));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('HATA: ' + msg.slice(0, 80))
     }
   }
   

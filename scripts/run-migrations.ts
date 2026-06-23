@@ -29,8 +29,9 @@ async function main() {
     try {
       await client.query(sql);
       console.log('OK: ' + file);
-    } catch (e: any) {
-      console.error('HATA: ' + file + ': ' + e.message.slice(0,100));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error('HATA: ' + file + ': ' + msg.slice(0, 100))
     }
   }
   

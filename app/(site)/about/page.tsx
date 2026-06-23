@@ -108,7 +108,7 @@ export default function AboutPage() {
         <section className="mb-16 rounded-2xl border border-border bg-secondary/40 p-8 max-w-3xl mx-auto text-center">
           <h2 className="font-serif text-xl font-bold mb-3">Dergi Yayıncıları İçin</h2>
           <p className="text-muted-foreground text-sm mb-6">
-            Dergilerinizin AcarIndex'te listelenmesini veya mevcut bilgilerin güncellenmesini
+            Dergilerinizin AcarIndex&apos;te listelenmesini veya mevcut bilgilerin güncellenmesini
             istiyorsanız bizimle iletişime geçin.
           </p>
           <Link href="/contact" className={cn(buttonVariants())}>İletişime Geç</Link>

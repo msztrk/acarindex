@@ -11,8 +11,8 @@ async function main() {
   try {
     await client.query(sql)
     console.log('✅ 015_authors_model_fix.sql uygulandı')
-  } catch (e: any) {
-    console.error('❌', e.message)
+  } catch (e: unknown) {
+    console.error('❌', e instanceof Error ? e.message : String(e))
   }
 
   // Verify columns
