@@ -10,7 +10,6 @@ if (!externalBase) {
 }
 const issueRouteBase = externalBase
 // ─── journal issue route HTTP ────────────────────────────────────────────────
-const issueRouteBase = process.env.EXTERNAL_TEST_BASE_URL
 const describeIssueRouteHttp = issueRouteBase ? describe : describe.skip
 
 describeIssueRouteHttp('journal issue route HTTP', () => {
