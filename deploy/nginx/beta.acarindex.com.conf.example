@@ -1,17 +1,41 @@
 # Nginx reverse proxy — beta.acarindex.com örneği
-# SSL: Certbot veya hosting panel üzerinden kurulacak (bu dosyada sertifika yolu örnek)
+# SSL: Certbot veya hosting panel. Beta: noindex + HTTPS zorunlu.
 
 upstream acarindex_app {
     server 127.0.0.1:3000;
     keepalive 32;
 }
 
+# HTTP → HTTPS (beta deploy sonrası etkinleştirin)
 server {
     listen 80;
     server_name beta.acarindex.com;
+    return 301 https://$host$request_uri;
+}
 
-    # Certbot sonrası HTTPS yönlendirmesi
-    # return 301 https://$host$request_uri;
+server {
+    listen 443 ssl http2;
+    server_name beta.acarindex.com;
+
+    ssl_certificate     /etc/letsencrypt/live/beta.acarindex.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/beta.acarindex.com/privkey.pem;
+
+    server_tokens off;
+
+    # Beta — indeksleme kapalı
+    add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Önerilen: Basic Auth veya IP kısıtlaması
+    # auth_basic "Beta";
+    # auth_basic_user_file /etc/nginx/.htpasswd-beta;
+
+    location ~ /\.(env|git|dump|sql) {
+        deny all;
+        return 404;
+    }
 
     location / {
         proxy_pass http://acarindex_app;
@@ -20,13 +44,6 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120s;
     }
 }
-
-# server {
-#     listen 443 ssl http2;
-#     server_name beta.acarindex.com;
-#     ssl_certificate     /etc/letsencrypt/live/beta.acarindex.com/fullchain.pem;
-#     ssl_certificate_key /etc/letsencrypt/live/beta.acarindex.com/privkey.pem;
-#     ...
-# }
