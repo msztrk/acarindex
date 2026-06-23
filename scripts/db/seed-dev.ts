@@ -65,9 +65,92 @@ export function describeDevFixturePlan() {
   }
 }
 
-async function upsertCategories() {
+export interface SeedRunStats {
+  inserted: {
+    categories: number
+    journals: number
+    issues: number
+    authors: number
+    articles: number
+    pdf_files: number
+    article_authors: number
+  }
+  updated: {
+    categories: number
+    journals: number
+    issues: number
+    authors: number
+    articles: number
+    pdf_files: number
+    article_authors: number
+  }
+  skipped: {
+    pdf_files_deleted: number
+  }
+  errors: number
+}
+
+export function emptySeedRunStats(): SeedRunStats {
+  return {
+    inserted: {
+      categories: 0,
+      journals: 0,
+      issues: 0,
+      authors: 0,
+      articles: 0,
+      pdf_files: 0,
+      article_authors: 0,
+    },
+    updated: {
+      categories: 0,
+      journals: 0,
+      issues: 0,
+      authors: 0,
+      articles: 0,
+      pdf_files: 0,
+      article_authors: 0,
+    },
+    skipped: { pdf_files_deleted: 0 },
+    errors: 0,
+  }
+}
+
+export async function summarizeFixtureCounts() {
+  const marker = DEV_FIXTURE_MARKER
+  const [categories, journals, issues, articles, pdfFiles, authors, articleAuthors] =
+    await Promise.all([
+      prisma.category.count({ where: { slug: { startsWith: `${marker}-cat-` } } }),
+      prisma.journal.count({ where: { slug: { startsWith: `${marker}-j-` } } }),
+      prisma.issue.count({
+        where: { journal: { slug: { startsWith: `${marker}-j-` } } },
+      }),
+      prisma.article.count({ where: { slug: { startsWith: `${marker}-article-` } } }),
+      prisma.pdfFile.count({
+        where: { legacyPdfPath: { contains: marker } },
+      }),
+      prisma.author.count({ where: { sourceKey: { startsWith: `${marker}-author-` } } }),
+      prisma.articleAuthor.count({
+        where: { article: { slug: { startsWith: `${marker}-article-` } } },
+      }),
+    ])
+  return {
+    marker,
+    synthetic: true,
+    categories,
+    journals,
+    issues,
+    articles,
+    pdf_files: pdfFiles,
+    authors,
+    article_authors: articleAuthors,
+    url_aliases: await prisma.urlAlias.count(),
+  }
+}
+
+async function upsertCategories(stats: SeedRunStats) {
   for (let i = 0; i < CATEGORY_IDS.length; i++) {
     const id = CATEGORY_IDS[i]
+    const existing = await prisma.category.findUnique({ where: { id: BigInt(id) } })
     await prisma.category.upsert({
       where: { id: BigInt(id) },
       create: {
@@ -83,12 +166,15 @@ async function upsertCategories() {
         active: true,
       },
     })
+    if (existing) stats.updated.categories++
+    else stats.inserted.categories++
   }
 }
 
-async function upsertJournals() {
+async function upsertJournals(stats: SeedRunStats) {
   for (let j = 0; j < JOURNAL_COUNT; j++) {
     const id = JOURNAL_ID_START + j
+    const existing = await prisma.journal.findUnique({ where: { id: BigInt(id) } })
     const slug = `${DEV_FIXTURE_MARKER}-j-${j + 1}`
     await prisma.journal.upsert({
       where: { id: BigInt(id) },
@@ -107,16 +193,19 @@ async function upsertJournals() {
         status: 'published',
       },
     })
+    if (existing) stats.updated.journals++
+    else stats.inserted.journals++
   }
 }
 
-async function upsertIssues() {
+async function upsertIssues(stats: SeedRunStats) {
   let issueIdx = 0
   for (let j = 0; j < JOURNAL_COUNT; j++) {
     const journalId = JOURNAL_ID_START + j
     for (let s = 0; s < ISSUES_PER_JOURNAL; s++) {
       const id = ISSUE_ID_START + issueIdx
       issueIdx++
+      const existing = await prisma.issue.findUnique({ where: { id: BigInt(id) } })
       const isEmptyIssue = issueIdx === JOURNAL_COUNT * ISSUES_PER_JOURNAL
       await prisma.issue.upsert({
         where: { id: BigInt(id) },
@@ -133,11 +222,13 @@ async function upsertIssues() {
           status: 'published',
         },
       })
+      if (existing) stats.updated.issues++
+      else stats.inserted.issues++
     }
   }
 }
 
-async function upsertAuthors() {
+async function upsertAuthors(stats: SeedRunStats) {
   const authors = [
     { key: '1', name: 'Tek Yazar Fixture', provisional: false },
     { key: '2', name: 'İkinci Yazar Fixture', provisional: false },
@@ -145,6 +236,7 @@ async function upsertAuthors() {
   ]
   for (const a of authors) {
     const sourceKey = `${DEV_FIXTURE_MARKER}-author-${a.key}`
+    const existing = await prisma.author.findUnique({ where: { sourceKey } })
     await prisma.author.upsert({
       where: { sourceKey },
       create: {
@@ -158,10 +250,12 @@ async function upsertAuthors() {
         isProvisional: a.provisional,
       },
     })
+    if (existing) stats.updated.authors++
+    else stats.inserted.authors++
   }
 }
 
-async function upsertArticlesAndRelations() {
+async function upsertArticlesAndRelations(stats: SeedRunStats) {
   const issueCount = JOURNAL_COUNT * ISSUES_PER_JOURNAL
   const emptyIssueId = ISSUE_ID_START + issueCount - 1
 
@@ -185,6 +279,7 @@ async function upsertArticlesAndRelations() {
     const titleEn = isEnglish ? (isLongTitle ? LONG_TITLE_EN : `Development article ${a + 1}`) : null
     const slug = `${DEV_FIXTURE_MARKER}-article-${a + 1}`
 
+    const existingArticle = await prisma.article.findUnique({ where: { id: BigInt(id) } })
     await prisma.article.upsert({
       where: { id: BigInt(id) },
       create: {
@@ -211,8 +306,11 @@ async function upsertArticlesAndRelations() {
         status: 'published',
       },
     })
+    if (existingArticle) stats.updated.articles++
+    else stats.inserted.articles++
 
     if (hasPdf) {
+      const existingPdf = await prisma.pdfFile.findUnique({ where: { articleId: BigInt(id) } })
       await prisma.pdfFile.upsert({
         where: { articleId: BigInt(id) },
         create: {
@@ -225,8 +323,11 @@ async function upsertArticlesAndRelations() {
           fileStatus: 'legacy',
         },
       })
+      if (existingPdf) stats.updated.pdf_files++
+      else stats.inserted.pdf_files++
     } else {
-      await prisma.pdfFile.deleteMany({ where: { articleId: BigInt(id) } })
+      const deleted = await prisma.pdfFile.deleteMany({ where: { articleId: BigInt(id) } })
+      if (deleted.count > 0) stats.skipped.pdf_files_deleted += deleted.count
     }
 
     const authorKeys = isMultiAuthor
@@ -236,6 +337,14 @@ async function upsertArticlesAndRelations() {
     for (let pos = 0; pos < authorKeys.length; pos++) {
       const author = await prisma.author.findUnique({ where: { sourceKey: authorKeys[pos] } })
       if (!author) continue
+      const existingLink = await prisma.articleAuthor.findUnique({
+        where: {
+          articleId_authorId: {
+            articleId: BigInt(id),
+            authorId: author.id,
+          },
+        },
+      })
       await prisma.articleAuthor.upsert({
         where: {
           articleId_authorId: {
@@ -254,6 +363,8 @@ async function upsertArticlesAndRelations() {
           rawAuthorName: author.name,
         },
       })
+      if (existingLink) stats.updated.article_authors++
+      else stats.inserted.article_authors++
     }
   }
 }
@@ -264,22 +375,23 @@ async function recordSeedRun() {
     create: {
       runId: DEV_SEED_RUN_ID,
       script: 'scripts/db/seed-dev.ts',
-      mode: 'dev-fixture',
+      mode: 'pilot',
       targetTable: 'catalog',
       rowsInserted: ARTICLES_TOTAL,
-      status: 'completed',
+      status: 'success',
       finishedAt: new Date(),
-      notes: DEV_FIXTURE_MARKER,
+      notes: `${DEV_FIXTURE_MARKER} — synthetic development fixture`,
     },
     update: {
-      status: 'completed',
+      status: 'success',
       finishedAt: new Date(),
       rowsInserted: ARTICLES_TOTAL,
+      notes: `${DEV_FIXTURE_MARKER} — synthetic development fixture`,
     },
   })
 }
 
-export async function runDevFixtureSeed(write: boolean): Promise<void> {
+export async function runDevFixtureSeed(write: boolean): Promise<SeedRunStats | null> {
   assertSeedAllowed()
 
   if (!write) {
@@ -288,22 +400,30 @@ export async function runDevFixtureSeed(write: boolean): Promise<void> {
     console.log(JSON.stringify(plan, null, 2))
     const present = await isDevFixturePresent()
     console.log(`[dry-run] Fixture already present: ${present}`)
+    const counts = await summarizeFixtureCounts()
+    console.log('[dry-run] Current fixture row counts:', JSON.stringify(counts))
     console.log('[dry-run] Yazmak için: npm run db:seed:dev -- --write')
-    return
+    return null
   }
+
+  const stats = emptySeedRunStats()
 
   if (await isDevFixturePresent()) {
     console.log('Fixture zaten mevcut — idempotent upsert ile güncelleniyor.')
   }
 
-  await upsertCategories()
-  await upsertJournals()
-  await upsertIssues()
-  await upsertAuthors()
-  await upsertArticlesAndRelations()
+  await upsertCategories(stats)
+  await upsertJournals(stats)
+  await upsertIssues(stats)
+  await upsertAuthors(stats)
+  await upsertArticlesAndRelations(stats)
   await recordSeedRun()
 
+  const counts = await summarizeFixtureCounts()
   console.log(`Development fixture seed tamamlandı (${DEV_FIXTURE_MARKER}).`)
+  console.log('[seed-stats]', JSON.stringify(stats))
+  console.log('[fixture-counts]', JSON.stringify(counts))
+  return stats
 }
 
 async function main() {
@@ -312,7 +432,10 @@ async function main() {
   await prisma.$disconnect()
 }
 
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+const entryScript = process.argv[1]?.replace(/\\/g, '/')
+if (entryScript?.endsWith('scripts/db/seed-dev.ts')) {
+  main().catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })
+}
