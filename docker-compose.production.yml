@@ -1,22 +1,36 @@
-# Production stack taslağı — sunucuda düzenleyin, otomatik deploy yapılmadı
+# Production stack — sunucuda .env.production ile (secret Git dışında)
+name: acarindex-production
+
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: acarindex_prod_pg
     restart: unless-stopped
+    env_file:
+      - .env.production
     environment:
-      POSTGRES_USER: acarindex
+      POSTGRES_USER: ${POSTGRES_USER:-acarindex}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: acarindex
+      POSTGRES_DB: ${POSTGRES_DB:-acarindex}
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U acarindex -d acarindex"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-acarindex} -d ${POSTGRES_DB:-acarindex}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: acarindex-web:${APP_IMAGE_TAG:-latest}
+    container_name: acarindex_prod_app
     restart: unless-stopped
     depends_on:
       postgres:
@@ -30,7 +44,12 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 60s
+      start_period: 90s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
 
 volumes:
   pg_data:
