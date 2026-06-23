@@ -8,3 +8,13 @@ export function normalizeSearchTerm(q: string): string {
     .replace(/[öÖ]/g, 'o')
     .replace(/[ıİ]/g, 'i')
 }
+
+/** Orijinal ve normalize edilmiş terimlerle eşleşme (Prisma contains). */
+export function expandSearchTerms(q: string): string[] {
+  const raw = q.trim()
+  if (!raw) return []
+  const norm = normalizeSearchTerm(raw)
+  const terms = new Set<string>([raw])
+  if (norm && norm !== raw) terms.add(norm)
+  return [...terms]
+}

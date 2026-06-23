@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
 import { mapPdfFile } from './serialize'
-import { normalizeSearchTerm } from '@/lib/search/normalize'
+import { expandSearchTerms } from '@/lib/search/normalize'
 
 type SearchArea = 'all' | 'title' | 'author' | 'keywords'
 
@@ -48,21 +48,23 @@ export async function searchArticlesPrisma(
   params: PrismaSearchParams,
 ): Promise<{ data: ArticleResult[]; total: number }> {
   const { q, area, language, journalId, yearFrom, yearTo, page, perPage } = params
-  const nq = normalizeSearchTerm(q)
+  const terms = expandSearchTerms(q)
   const offset = (page - 1) * perPage
 
   const textOr: Record<string, unknown>[] = []
-  if (nq) {
-    if (area === 'title' || area === 'all') {
-      textOr.push({ titleTr: { contains: nq, mode: 'insensitive' } })
-      textOr.push({ titleEn: { contains: nq, mode: 'insensitive' } })
-    }
-    if (area === 'author' || area === 'all') {
-      textOr.push({ authorsRaw: { contains: nq, mode: 'insensitive' } })
-    }
-    if (area === 'keywords' || area === 'all') {
-      textOr.push({ keywordsTr: { contains: nq, mode: 'insensitive' } })
-      textOr.push({ keywordsEn: { contains: nq, mode: 'insensitive' } })
+  if (terms.length) {
+    for (const term of terms) {
+      if (area === 'title' || area === 'all') {
+        textOr.push({ titleTr: { contains: term, mode: 'insensitive' } })
+        textOr.push({ titleEn: { contains: term, mode: 'insensitive' } })
+      }
+      if (area === 'author' || area === 'all') {
+        textOr.push({ authorsRaw: { contains: term, mode: 'insensitive' } })
+      }
+      if (area === 'keywords' || area === 'all') {
+        textOr.push({ keywordsTr: { contains: term, mode: 'insensitive' } })
+        textOr.push({ keywordsEn: { contains: term, mode: 'insensitive' } })
+      }
     }
   }
 
@@ -112,15 +114,17 @@ export async function searchArticlesPrisma(
 }
 
 export async function searchJournalsPrisma(q: string, page: number, perPage: number) {
-  const nq = normalizeSearchTerm(q)
+  const terms = expandSearchTerms(q)
   const offset = (page - 1) * perPage
+  const textOr: Record<string, unknown>[] = []
+  for (const term of terms) {
+    textOr.push({ titleTr: { contains: term, mode: 'insensitive' as const } })
+    textOr.push({ titleEn: { contains: term, mode: 'insensitive' as const } })
+    textOr.push({ issn: { contains: term, mode: 'insensitive' as const } })
+  }
   const where = {
     status: 'published' as const,
-    OR: [
-      { titleTr: { contains: nq, mode: 'insensitive' as const } },
-      { titleEn: { contains: nq, mode: 'insensitive' as const } },
-      { issn: { contains: q, mode: 'insensitive' as const } },
-    ],
+    ...(textOr.length ? { OR: textOr } : {}),
   }
   const [rows, total] = await prisma.$transaction([
     prisma.journal.findMany({
@@ -146,9 +150,12 @@ export async function searchJournalsPrisma(q: string, page: number, perPage: num
 }
 
 export async function searchAuthorsPrisma(q: string, page: number, perPage: number) {
-  const nq = normalizeSearchTerm(q)
+  const terms = expandSearchTerms(q)
   const offset = (page - 1) * perPage
-  const where = { name: { contains: nq, mode: 'insensitive' as const } }
+  const textOr = terms.map((term) => ({
+    name: { contains: term, mode: 'insensitive' as const },
+  }))
+  const where = textOr.length ? { OR: textOr } : {}
   const [rows, total] = await prisma.$transaction([
     prisma.author.findMany({
       where,

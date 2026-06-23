@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { parsePrefixQuery, buildSearchCondition } from '../lib/search/search'
+import { expandSearchTerms } from '../lib/search/normalize'
 
 // ─── parsePrefixQuery ─────────────────────────────────────────────────────────
 describe('parsePrefixQuery', () => {
@@ -83,9 +84,19 @@ describe('buildSearchCondition', () => {
     expect(condition).not.toContain('title_tr')
   })
 
-  it("tek tırnak karakteri SQL injection guard'a takılır", () => {
+  it('tek tırnak karakteri SQL injection guard\'a takılır', () => {
     const condition = buildSearchCondition('title', "O'Brien")
     expect(condition).toContain("O''Brien")
     expect(condition).not.toContain("O'Brien")
+  })
+})
+
+describe('expandSearchTerms', () => {
+  it('orijinal ve normalize terimleri birlikte döner', () => {
+    expect(expandSearchTerms('Geliştirme')).toEqual(['Geliştirme', 'Gelistirme'])
+  })
+
+  it('ASCII sorguda yalnızca bir terim', () => {
+    expect(expandSearchTerms('test')).toEqual(['test'])
   })
 })
