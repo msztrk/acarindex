@@ -27,6 +27,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:schema-report": "npx tsx scripts/db/schema-report.ts",
     "etl:pilot-dry-run": "npx tsx scripts/etl-pg/pilot-dry-run.ts",
+    "etl:pilot-run": "npx tsx scripts/etl-pg/pilot-run.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

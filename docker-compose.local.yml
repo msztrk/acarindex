@@ -1,23 +1,47 @@
 # Yerel geliştirme — PostgreSQL (localhost only)
+# Parola ve kullanıcı: .env.local (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB)
 services:
   postgres:
     image: postgres:16-alpine
     container_name: acarindex_dev_pg
     restart: unless-stopped
+    env_file:
+      - .env.local
     ports:
       - "127.0.0.1:5432:5432"
     environment:
-      POSTGRES_USER: acarindex
-      POSTGRES_PASSWORD: dev_password_change_me
-      POSTGRES_DB: acarindex_dev
+      POSTGRES_USER: ${POSTGRES_USER:-acarindex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-acarindex_dev}
     volumes:
       - acarindex_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U acarindex -d acarindex_dev"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-acarindex} -d ${POSTGRES_DB:-acarindex_dev}"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
 
+  # Opsiyonel salt-okunur MySQL/MariaDB kaynak (profile: source)
+  mysql_source:
+    profiles: ["source"]
+    image: mariadb:10.11
+    container_name: acarindex_source_mysql
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3307:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: ${SOURCE_MYSQL_ROOT_PASSWORD:-source_root_dev}
+      MARIADB_DATABASE: ${SOURCE_MYSQL_DATABASE:-acarindex_source}
+    volumes:
+      - acarindex_mysql_source_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p$$MARIADB_ROOT_PASSWORD || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
 volumes:
   acarindex_pg_data:
+  acarindex_mysql_source_data:
