@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
-import { loadStatsPageData } from '@/lib/data/stats'
-import { prisma } from '@/lib/db/prisma'
+import { loadStatsPageData, getArticlesByYearGrouped } from '@/lib/data/stats'
 import { BookOpen, FileText, Users, Building2 } from 'lucide-react'
+import { CatalogErrorAlert } from '@/components/catalog/CatalogErrorAlert'
+import { CatalogEmptyState } from '@/components/catalog/CatalogEmptyState'
+import { catalogErrorMessage } from '@/lib/data/query'
 
 export const metadata: Metadata = {
   title: 'İstatistikler — AcarIndex',
@@ -10,25 +12,28 @@ export const metadata: Metadata = {
 
 export const revalidate = 3600
 
-async function getArticlesByYear() {
-  const rows = await prisma.article.findMany({
-    where: { status: 'published', publishedYear: { not: null } },
-    select: { publishedYear: true },
-  })
-  const counts: Record<number, number> = {}
-  for (const row of rows) {
-    const y = row.publishedYear!
-    counts[y] = (counts[y] ?? 0) + 1
-  }
-  return Object.entries(counts)
-    .map(([year, count]) => ({ year: Number(year), count }))
-    .sort((a, b) => a.year - b.year)
-    .slice(-20)
-}
-
 export default async function IstatistiklerPage() {
-  const pageData = await loadStatsPageData()
-  const yearlyData = await getArticlesByYear()
+  const result = await loadStatsPageData()
+  if (result.status === 'error') {
+    return (
+      <div className="content-width py-8">
+        <h1 className="font-serif text-3xl font-bold mb-6">Platform İstatistikleri</h1>
+        <CatalogErrorAlert message={catalogErrorMessage(result)} />
+      </div>
+    )
+  }
+
+  if (result.status === 'empty') {
+    return (
+      <div className="content-width py-8">
+        <h1 className="font-serif text-3xl font-bold mb-6">Platform İstatistikleri</h1>
+        <CatalogEmptyState title="İstatistik verisi yok" description="Katalog henüz doldurulmadı." />
+      </div>
+    )
+  }
+
+  const pageData = result.data
+  const yearlyData = await getArticlesByYearGrouped(20)
   const stats = pageData.stats
   const topJournals = pageData.topJournals
   const authorCount = pageData.authorCount

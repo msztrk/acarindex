@@ -4,9 +4,13 @@ import { Search, User, FileText } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn, buttonVariants } from '@/lib/utils'
 import {
-  searchArticles, searchJournals, searchAuthors,
   parsePrefixQuery, type SearchType, type SearchArea,
+  searchArticles, searchJournals, searchAuthors,
 } from '@/lib/search/search'
+import { loadSearchPageData } from '@/lib/data/page-loaders'
+import { SEARCH_PER_PAGE } from '@/lib/data/constants'
+import { CatalogErrorAlert } from '@/components/catalog/CatalogErrorAlert'
+import { catalogErrorMessage } from '@/lib/data/query'
 
 export const metadata: Metadata = {
   title: 'Arama — AcarIndex',
@@ -25,7 +29,7 @@ interface PageProps {
   }>
 }
 
-const PER_PAGE = 20
+const PER_PAGE = SEARCH_PER_PAGE
 
 function formatAuthors(raw: string | null, max = 4): string {
   if (!raw) return ''
@@ -53,16 +57,28 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const yearFrom = sp.year_from ? parseInt(sp.year_from, 10) : undefined
   const yearTo = sp.year_to ? parseInt(sp.year_to, 10) : undefined
 
-  let articleResults = { data: [] as Awaited<ReturnType<typeof searchArticles>>['data'], total: 0 }
-  let journalResults = { data: [] as Awaited<ReturnType<typeof searchJournals>>['data'], total: 0 }
-  let authorResults = { data: [] as Awaited<ReturnType<typeof searchAuthors>>['data'], total: 0 }
+  let articleResults: Awaited<ReturnType<typeof searchArticles>> = { data: [], total: 0 }
+  let journalResults: Awaited<ReturnType<typeof searchJournals>> = { data: [], total: 0 }
+  let authorResults: Awaited<ReturnType<typeof searchAuthors>> = { data: [], total: 0 }
+  let searchError: string | null = null
 
-  if (q && type === 'article') {
-    articleResults = await searchArticles({ q, type, area, language, yearFrom, yearTo, page, perPage: PER_PAGE })
-  } else if (q && type === 'journal') {
-    journalResults = await searchJournals(q, page, PER_PAGE)
-  } else if (q && type === 'author') {
-    authorResults = await searchAuthors(q, page, PER_PAGE)
+  if (q) {
+    const result = await loadSearchPageData({
+      q,
+      type,
+      area,
+      language,
+      yearFrom,
+      yearTo,
+      page,
+    })
+    if (result.status === 'error') {
+      searchError = catalogErrorMessage(result)
+    } else if (result.status === 'ok') {
+      articleResults = result.data.articleResults
+      journalResults = result.data.journalResults
+      authorResults = result.data.authorResults
+    }
   }
 
   const total = articleResults.total || journalResults.total || authorResults.total
@@ -199,6 +215,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
       {!q ? (
         <EmptySearch />
+      ) : searchError ? (
+        <CatalogErrorAlert message={searchError} className="mt-6" />
       ) : !hasResults ? (
         <NoResults q={q} />
       ) : (

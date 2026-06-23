@@ -1,34 +1,24 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import * as journalData from '@/lib/data/journals'
-import * as catalogData from '@/lib/data/catalog'
 import { Badge } from '@/components/ui/badge'
 import { BookOpen, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn, buttonVariants } from '@/lib/utils'
-import type { Journal, Category } from '@/types/database'
+import type { Journal } from '@/types/database'
+import { loadJournalsPageData } from '@/lib/data/page-loaders'
+import { JOURNALS_PER_PAGE } from '@/lib/data/constants'
+import { CatalogEmptyState } from '@/components/catalog/CatalogEmptyState'
+import { CatalogErrorAlert } from '@/components/catalog/CatalogErrorAlert'
+import { catalogErrorMessage } from '@/lib/data/query'
 
 export const metadata: Metadata = {
   title: 'Dergiler — AcarIndex',
   description: 'AcarIndex\'te indekslenmiş tüm akademik dergilere göz atın.',
 }
 
-const PER_PAGE = 60
+const PER_PAGE = JOURNALS_PER_PAGE
 
 interface PageProps {
   searchParams: Promise<{ category?: string; q?: string; page?: string }>
-}
-
-async function getJournals(categoryId?: number, q?: string, page = 1) {
-  return journalData.listJournalsPaginated({
-    categoryId,
-    q,
-    page,
-    perPage: PER_PAGE,
-  })
-}
-
-async function getCategories() {
-  return catalogData.listActiveCategories()
 }
 
 export default async function JournalsPage({ searchParams }: PageProps) {
@@ -36,12 +26,32 @@ export default async function JournalsPage({ searchParams }: PageProps) {
   const categoryId = category ? parseInt(category, 10) : undefined
   const page = Math.max(1, parseInt(pageStr ?? '1', 10))
 
-  const [{ journals, total }, categories] = await Promise.all([
-    getJournals(isNaN(categoryId ?? NaN) ? undefined : categoryId, q, page),
-    getCategories(),
-  ])
+  const result = await loadJournalsPageData({
+    categoryId: isNaN(categoryId ?? NaN) ? undefined : categoryId,
+    q,
+    page,
+  })
 
-  const totalPages = Math.ceil(total / PER_PAGE)
+  if (result.status === 'error') {
+    return (
+      <div className="content-width py-8">
+        <h1 className="font-serif text-3xl font-bold mb-6">Dergiler</h1>
+        <CatalogErrorAlert message={catalogErrorMessage(result)} />
+      </div>
+    )
+  }
+
+  if (result.status === 'empty') {
+    return (
+      <div className="content-width py-8">
+        <h1 className="font-serif text-3xl font-bold mb-6">Dergiler</h1>
+        <CatalogEmptyState icon={BookOpen} title="Dergi bulunamadı" />
+      </div>
+    )
+  }
+
+  const { journals, total, categories } = result.data
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE))
 
   function qs(overrides: Record<string, string | undefined>) {
     const base: Record<string, string> = {}
@@ -113,10 +123,15 @@ export default async function JournalsPage({ searchParams }: PageProps) {
         {/* Liste */}
         <div>
           {journals.length === 0 ? (
-            <div className="py-16 text-center text-muted-foreground">
-              <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p>Dergi bulunamadı.</p>
-            </div>
+            <CatalogEmptyState
+              icon={BookOpen}
+              title="Dergi bulunamadı"
+              description={
+                q || category
+                  ? 'Filtreleri değiştirmeyi veya aramayı temizlemeyi deneyin.'
+                  : 'Katalogda henüz yayımlanmış dergi görünmüyor.'
+              }
+            />
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
