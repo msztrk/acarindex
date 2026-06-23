@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
-import { mapArticle, mapIssue, mapJournal } from './serialize'
+import { ISSUE_ARTICLES_MAX } from './constants'
+import { mapIssue, mapJournal } from './serialize'
 
 export async function listJournalsPaginated(options: {
   categoryId?: number
@@ -79,6 +80,7 @@ export async function listArticlesForIssue(issueId: number) {
   const rows = await prisma.article.findMany({
     where: { issueId: BigInt(issueId), status: 'published' },
     orderBy: { pageStart: 'asc' },
+    take: ISSUE_ARTICLES_MAX,
     select: {
       id: true,
       slug: true,
