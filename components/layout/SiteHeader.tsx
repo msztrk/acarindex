@@ -7,6 +7,7 @@ import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn, buttonVariants } from '@/lib/utils'
 import { SearchBar } from '@/components/search/SearchBar'
+import { isUserAuthPublicEnabled } from '@/lib/features/user-auth'
 import {
   MobileNavDrawer,
   MOBILE_NAV_DRAWER_ID,
@@ -17,6 +18,7 @@ export function SiteHeader() {
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const pathname = usePathname()
   const isHome = pathname === '/'
+  const showAuth = isUserAuthPublicEnabled()
 
   const handleMenuOpenChange = (open: boolean) => {
     setMobileMenuOpen(open)
@@ -67,6 +69,7 @@ export function SiteHeader() {
 
           <div className="hidden lg:flex items-center gap-3 flex-1 max-w-sm justify-end">
             {!isHome && <SearchBar variant="compact" className="flex-1 max-w-xs" />}
+            {showAuth && (
             <Link
               href="/login"
               className={cn(
@@ -76,6 +79,7 @@ export function SiteHeader() {
             >
               Giriş
             </Link>
+            )}
           </div>
 
           <div className="flex lg:hidden items-center">

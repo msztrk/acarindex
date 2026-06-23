@@ -1,10 +1,12 @@
 import Link from 'next/link'
+import { isUserAuthEnabled } from '@/lib/features/user-auth'
 
 const footerLinkClass =
   'hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
 
 export function SiteFooter() {
   const currentYear = new Date().getFullYear()
+  const showAuth = isUserAuthEnabled()
 
   return (
     <footer className="border-t border-border bg-secondary/50 mt-12">
@@ -48,6 +50,7 @@ export function SiteFooter() {
           </div>
 
           {/* Hesap */}
+          {showAuth && (
           <div>
             <h3 className="text-sm font-semibold text-foreground mb-3">Hesap</h3>
             <ul className="space-y-2 text-[0.9375rem] text-muted-foreground">
@@ -56,6 +59,7 @@ export function SiteFooter() {
               <li><Link href="/profile" className={footerLinkClass}>Profilim</Link></li>
             </ul>
           </div>
+          )}
         </div>
 
         {/* Alt çizgi */}

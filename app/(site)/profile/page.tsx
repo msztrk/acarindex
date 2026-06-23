@@ -1,10 +1,14 @@
-import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { isUserAuthEnabled } from '@/lib/features/user-auth'
+import { createClient } from '@/lib/supabase/server'
 
 export const metadata = { title: 'Profilim | AcarIndex' }
 
 export default async function ProfilePage() {
+  if (!isUserAuthEnabled()) {
+    redirect('/')
+  }
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
