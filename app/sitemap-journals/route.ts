@@ -6,21 +6,14 @@
  */
 
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { listJournalsForSitemap } from '@/lib/data/journals'
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 3600
 
 export async function GET() {
   const base = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
-  const sb = await createClient()
-
-  const { data } = await sb
-    .from('journals')
-    .select('id, slug, updated_at')
-    .eq('status', 'published')
-    .order('id', { ascending: true })
-
-  const journals = (data ?? []) as { id: number; slug: string; updated_at: string }[]
+  const journals = await listJournalsForSitemap(100000)
 
   const urls = journals.map((j) => {
     const lastmod = j.updated_at ? j.updated_at.slice(0, 10) : new Date().toISOString().slice(0, 10)

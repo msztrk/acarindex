@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import * as articleData from '@/lib/data/articles'
 import { parseArticlePath, extractArticleId } from '@/lib/urls/article'
 import { buildAuthorUrl } from '@/lib/urls/author'
 import { buildLegacyPdfUrl, buildPdfViewerUrl, hasPdf } from '@/lib/pdf/legacy-url'
@@ -77,53 +77,19 @@ interface PageProps {
 
 // ─── Veri çekme ──────────────────────────────────────────────────────────────
 
-async function getArticle(articleId: number): Promise<ArticleRow | null> {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase
-    .from('articles')
-    .select(`
-      id, slug, legacy_journal_slug, journal_id, issue_id,
-      title_tr, title_en, abstract_tr, abstract_en,
-      keywords_tr, keywords_en, references_raw,
-      authors_raw, institution_raw,
-      page_start, page_end, published_year, published_at,
-      language, status, hit_count, doi,
-      journal:journals (
-        id, slug, title_tr, title_en, issn, eissn, publisher, cover_path
-      ),
-      issue:issues (
-        id, year, issue_label, volume, issue_number
-      ),
-      pdf:pdf_files (
-        legacy_pdf_path, file_status, cdn_url
-      )
-    `)
-    .eq('id', articleId)
-    .eq('status', 'published')
-    .single()
-
-  if (error || !data) return null
-  return data as unknown as ArticleRow
+async function getArticle(articleId: number) {
+  return articleData.getPublishedArticleDetailById(articleId)
 }
 
 async function getArticleAuthorLinks(articleId: number) {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('article_authors')
-    .select(`
-      author_position,
-      raw_author_name,
-      author:authors ( id, slug, name )
-    `)
-    .eq('article_id', articleId)
-    .order('author_position', { ascending: true })
-
-  return (data ?? []) as Array<{
-    author_position: number | null
-    raw_author_name: string | null
-    author: { id: number; slug: string | null; name: string } | null
-  }>
+  const rows = await articleData.listArticleAuthorsForArticle(articleId)
+  return rows.map((r) => ({
+    author_position: r.author_position,
+    raw_author_name: r.raw_author_name,
+    author: r.author
+      ? { id: r.author.id, slug: r.author.slug, name: r.author.name }
+      : null,
+  }))
 }
 
 // ─── Metadata ────────────────────────────────────────────────────────────────

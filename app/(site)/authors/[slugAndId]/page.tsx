@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { cache } from 'react'
-import { createClient } from '@/lib/supabase/server'
+import * as authorData from '@/lib/data/authors'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { dedupeAndSortAuthorArticles } from '@/lib/authors/articles'
 import {
@@ -39,37 +39,13 @@ const linkFocusClass =
   'rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
 
 async function getAuthorUncached(id: number) {
-  const sb = await createClient()
-  const { data, error } = await sb.from('authors').select('*').eq('id', id).single()
-  if (error || !data) return null
-  return data as Author
+  return authorData.getAuthorById(id)
 }
 
 const getAuthor = cache(getAuthorUncached)
 
 async function getAuthorPublishedArticlesUncached(authorId: number): Promise<AuthorArticleRow[]> {
-  const sb = await createClient()
-  const { data, error } = await sb
-    .from('article_authors')
-    .select(`
-      author_position,
-      article:articles!inner (
-        id, slug, legacy_journal_slug, title_tr, title_en, published_year, published_at,
-        journal:journals!journal_id ( id, slug, title_tr ),
-        pdf:pdf_files ( legacy_pdf_path, file_status )
-      )
-    `)
-    .eq('author_id', authorId)
-    .eq('article.status', 'published')
-
-  if (error) {
-    throw error
-  }
-
-  const articles = (data ?? [])
-    .map((row: { article: AuthorArticleRow | null }) => row.article)
-    .filter((article): article is AuthorArticleRow => Boolean(article?.id))
-
+  const articles = await authorData.listAuthorPublishedArticles(authorId)
   return dedupeAndSortAuthorArticles(articles)
 }
 

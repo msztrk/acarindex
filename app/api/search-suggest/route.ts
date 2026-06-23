@@ -1,16 +1,10 @@
 /**
- * GET /api/search-suggest?q={query}&limit={n}
- *
- * Autocomplete önerileri:
- * - Makale başlıkları (ilk 3)
- * - Dergi adları (ilk 2)
- * - Yazar isimleri (ilk 2)
- *
- * Faz-3'te Meilisearch'e bağlanacak; şu an Postgres ILIKE.
+ * GET /api/search-suggest — Prisma autocomplete.
  */
-
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { suggestArticles } from '@/lib/data/articles'
+import { suggestAuthors } from '@/lib/data/authors'
+import { prisma } from '@/lib/db/prisma'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,40 +24,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results: [] })
   }
 
-  const sb = await createClient()
-
-  // Paralel sorgu
-  const [articleRes, journalRes, authorRes] = await Promise.all([
-    sb
-      .from('articles')
-      .select('id, slug, legacy_journal_slug, title_tr, title_en, published_year')
-      .eq('status', 'published')
-      .or(`title_tr.ilike.%${q}%,title_en.ilike.%${q}%`)
-      .order('hit_count', { ascending: false })
-      .limit(3),
-
-    sb
-      .from('journals')
-      .select('id, slug, title_tr, title_en')
-      .eq('status', 'published')
-      .or(`title_tr.ilike.%${q}%,title_en.ilike.%${q}%`)
-      .order('hit_count', { ascending: false })
-      .limit(2),
-
-    sb
-      .from('authors')
-      .select('id, slug, name')
-      .ilike('name', `%${q}%`)
-      .order('name', { ascending: true })
-      .limit(2),
+  const [articleRows, journalRows, authorRows] = await Promise.all([
+    suggestArticles(q, 3),
+    prisma.journal.findMany({
+      where: {
+        status: 'published',
+        OR: [
+          { titleTr: { contains: q, mode: 'insensitive' } },
+          { titleEn: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      take: 2,
+      orderBy: { hitCount: 'desc' },
+      select: { id: true, slug: true, titleTr: true, titleEn: true },
+    }),
+    suggestAuthors(q, 2),
   ])
 
   const results: SuggestItem[] = []
 
-  for (const a of (articleRes.data ?? []) as {
-    id: number; slug: string; legacy_journal_slug: string
-    title_tr: string | null; title_en: string | null; published_year: number | null
-  }[]) {
+  for (const a of articleRows) {
     results.push({
       type: 'article',
       id: a.id,
@@ -73,18 +53,16 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  for (const j of (journalRes.data ?? []) as {
-    id: number; slug: string; title_tr: string | null; title_en: string | null
-  }[]) {
+  for (const j of journalRows) {
     results.push({
       type: 'journal',
-      id: j.id,
-      label: j.title_tr ?? j.title_en ?? '',
+      id: Number(j.id),
+      label: j.titleTr ?? j.titleEn ?? '',
       href: `/journals/${j.slug}-${j.id}`,
     })
   }
 
-  for (const a of (authorRes.data ?? []) as { id: number; slug: string | null; name: string }[]) {
+  for (const a of authorRows) {
     results.push({
       type: 'author',
       id: a.id,

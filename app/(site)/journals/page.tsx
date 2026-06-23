@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import * as journalData from '@/lib/data/journals'
+import * as catalogData from '@/lib/data/catalog'
 import { Badge } from '@/components/ui/badge'
 import { BookOpen, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn, buttonVariants } from '@/lib/utils'
@@ -18,29 +19,16 @@ interface PageProps {
 }
 
 async function getJournals(categoryId?: number, q?: string, page = 1) {
-  const sb = await createClient()
-  const offset = (page - 1) * PER_PAGE
-
-  let query = sb
-    .from('journals')
-    .select('id, slug, title_tr, title_en, issn, eissn, publisher, frequency, cover_path, hit_count, category_id', { count: 'exact' })
-    .eq('status', 'published')
-    .order('title_tr', { ascending: true })
-
-  if (categoryId) query = query.eq('category_id', categoryId)
-  if (q) query = query.ilike('title_tr', `%${q}%`)
-
-  const { data, count } = await query.range(offset, offset + PER_PAGE - 1)
-  return {
-    journals: (data ?? []) as Partial<Journal>[],
-    total: count ?? 0,
-  }
+  return journalData.listJournalsPaginated({
+    categoryId,
+    q,
+    page,
+    perPage: PER_PAGE,
+  })
 }
 
 async function getCategories() {
-  const sb = await createClient()
-  const { data } = await sb.from('categories').select('id, name_tr, name_en').eq('active', true).order('name_tr')
-  return (data ?? []) as Partial<Category>[]
+  return catalogData.listActiveCategories()
 }
 
 export default async function JournalsPage({ searchParams }: PageProps) {

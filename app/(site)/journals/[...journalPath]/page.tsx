@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import * as journalData from '@/lib/data/journals'
 import { parseJournalSegment, parseIssueIdSegment } from '@/lib/urls/journal'
 import { cn, buttonVariants } from '@/lib/utils'
 import {
@@ -62,68 +62,29 @@ const linkFocusClass =
 // ─── Veri ────────────────────────────────────────────────────────────────────
 
 async function getJournal(journalId: number) {
-  const sb = await createClient()
-  const { data } = await sb.from('journals').select('*').eq('id', journalId).eq('status', 'published').single()
-  return data as Journal | null
+  return journalData.getPublishedJournalById(journalId)
 }
 
 async function getIssuesUncached(journalId: number) {
-  const sb = await createClient()
-  const { data, error } = await sb
-    .from('issues')
-    .select('id, journal_id, year, volume, issue_number, issue_label')
-    .eq('journal_id', journalId)
-    .eq('status', 'published')
-    .order('year', { ascending: false })
-
-  if (error) {
-    throw error
-  }
-
-  return (data ?? []) as Issue[]
+  return journalData.listPublishedIssuesForJournal(journalId)
 }
 
 const getIssues = cache(getIssuesUncached)
 
 async function getIssueArticlesUncached(issueId: number) {
-  const sb = await createClient()
-  const { data } = await sb
-    .from('articles')
-    .select('id, slug, legacy_journal_slug, title_tr, title_en, authors_raw, page_start, page_end, published_year')
-    .eq('issue_id', issueId)
-    .eq('status', 'published')
-    .order('page_start', { ascending: true })
-  return (data ?? []) as Partial<Article>[]
+  return journalData.listArticlesForIssue(issueId)
 }
 
 const getIssueArticles = cache(getIssueArticlesUncached)
 
 async function countIssueArticlesUncached(issueId: number): Promise<number> {
-  const sb = await createClient()
-  const { count, error } = await sb
-    .from('articles')
-    .select('id', { count: 'exact', head: true })
-    .eq('issue_id', issueId)
-    .eq('status', 'published')
-
-  if (error) {
-    throw error
-  }
-
-  return count ?? 0
+  return journalData.countArticlesForIssue(issueId)
 }
 
 const countIssueArticles = cache(countIssueArticlesUncached)
 
 async function getIssueUncached(issueId: number) {
-  const sb = await createClient()
-  const { data } = await sb
-    .from('issues')
-    .select('*')
-    .eq('id', issueId)
-    .eq('status', 'published')
-    .single()
-  return data as Issue | null
+  return journalData.getPublishedIssueById(issueId)
 }
 
 const getIssue = cache(getIssueUncached)
@@ -137,15 +98,7 @@ async function requireJournalIssue(journalId: number, issueId: number): Promise<
 }
 
 async function getLatestArticles(journalId: number, limit = 10) {
-  const sb = await createClient()
-  const { data } = await sb
-    .from('articles')
-    .select('id, slug, legacy_journal_slug, title_tr, title_en, authors_raw, published_year, issue_id')
-    .eq('journal_id', journalId)
-    .eq('status', 'published')
-    .order('published_year', { ascending: false })
-    .limit(limit)
-  return (data ?? []) as Partial<Article>[]
+  return journalData.listLatestArticlesForJournal(journalId, limit)
 }
 
 // ─── Metadata ────────────────────────────────────────────────────────────────

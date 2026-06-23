@@ -12,8 +12,9 @@
  */
 
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { countPublishedArticles } from '@/lib/data/articles'
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 3600
 
 const PAGE_SIZE = 5000
@@ -22,15 +23,7 @@ export async function GET() {
   const base = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
   const now = new Date().toISOString().slice(0, 10)
 
-  const sb = await createClient()
-
-  // Toplam makale sayısına göre kaç sayfa sitemap lazım?
-  const { count: articleCount } = await sb
-    .from('articles')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'published')
-
-  const total = articleCount ?? 0
+  const total = await countPublishedArticles()
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const sitemaps: string[] = []

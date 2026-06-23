@@ -10,8 +10,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { listArticlesForSitemapPage } from '@/lib/data/articles'
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 3600
 
 const PAGE_SIZE = 5000
@@ -28,23 +29,7 @@ export async function GET(
   }
 
   const base = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
-  const sb = await createClient()
-
-  const offset = (page - 1) * PAGE_SIZE
-
-  const { data } = await sb
-    .from('articles')
-    .select('id, slug, legacy_journal_slug, updated_at')
-    .eq('status', 'published')
-    .order('id', { ascending: true })
-    .range(offset, offset + PAGE_SIZE - 1)
-
-  const articles = (data ?? []) as {
-    id: number
-    slug: string
-    legacy_journal_slug: string
-    updated_at: string
-  }[]
+  const articles = await listArticlesForSitemapPage(page, PAGE_SIZE)
 
   if (articles.length === 0 && page > 1) {
     return new NextResponse('Not Found', { status: 404 })

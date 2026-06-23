@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import * as articleData from '@/lib/data/articles'
 import { buildLegacyPdfUrl } from '@/lib/pdf/legacy-url'
 import { cn, buttonVariants } from '@/lib/utils'
 import {
@@ -26,20 +26,29 @@ interface ArticleWithPdf {
 }
 
 async function getArticleWithPdf(articleId: number): Promise<ArticleWithPdf | null> {
-  const sb = await createClient()
-  const { data, error } = await sb
-    .from('articles')
-    .select(`
-      id, slug, legacy_journal_slug, title_tr, title_en, authors_raw,
-      journal:journals!journal_id ( id, slug, title_tr ),
-      pdf:pdf_files ( legacy_pdf_path, file_status )
-    `)
-    .eq('id', articleId)
-    .eq('status', 'published')
-    .single()
-
-  if (error || !data) return null
-  return data as unknown as ArticleWithPdf
+  const detail = await articleData.getPublishedArticleDetailById(articleId)
+  if (!detail) return null
+  return {
+    id: detail.id,
+    slug: detail.slug,
+    legacy_journal_slug: detail.legacy_journal_slug,
+    title_tr: detail.title_tr,
+    title_en: detail.title_en,
+    authors_raw: detail.authors_raw,
+    journal: detail.journal
+      ? {
+          id: detail.journal.id,
+          slug: detail.journal.slug,
+          title_tr: detail.journal.title_tr,
+        }
+      : null,
+    pdf: detail.pdf
+      ? {
+          legacy_pdf_path: detail.pdf.legacy_pdf_path,
+          file_status: detail.pdf.file_status,
+        }
+      : null,
+  }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

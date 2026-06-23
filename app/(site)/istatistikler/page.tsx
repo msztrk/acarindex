@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { loadStatsPageData } from '@/lib/data/stats'
+import { prisma } from '@/lib/db/prisma'
 import { BookOpen, FileText, Users, Building2 } from 'lucide-react'
-import type { PlatformStats } from '@/types/database'
 
 export const metadata: Metadata = {
   title: 'İstatistikler — AcarIndex',
@@ -10,60 +10,28 @@ export const metadata: Metadata = {
 
 export const revalidate = 3600
 
-async function getStats(): Promise<PlatformStats | null> {
-  try {
-    const sb = await createClient()
-    const { data } = await sb.from('platform_stats').select('*').single()
-    return (data as PlatformStats | null) ?? null
-  } catch {
-    return null
-  }
-}
-
-async function getTopJournals(limit = 10) {
-  const sb = await createClient()
-  const { data } = await sb
-    .from('journals')
-    .select('id, slug, title_tr, hit_count')
-    .eq('status', 'published')
-    .order('hit_count', { ascending: false })
-    .limit(limit)
-  return data ?? []
-}
-
 async function getArticlesByYear() {
-  const sb = await createClient()
-  const { data } = await sb
-    .from('articles')
-    .select('published_year')
-    .eq('status', 'published')
-    .not('published_year', 'is', null)
-
-  if (!data) return []
+  const rows = await prisma.article.findMany({
+    where: { status: 'published', publishedYear: { not: null } },
+    select: { publishedYear: true },
+  })
   const counts: Record<number, number> = {}
-  for (const row of data as { published_year: number }[]) {
-    const y = row.published_year
+  for (const row of rows) {
+    const y = row.publishedYear!
     counts[y] = (counts[y] ?? 0) + 1
   }
   return Object.entries(counts)
     .map(([year, count]) => ({ year: Number(year), count }))
     .sort((a, b) => a.year - b.year)
-    .slice(-20) // son 20 yıl
-}
-
-async function getAuthorCount(): Promise<number> {
-  const sb = await createClient()
-  const { count } = await sb.from('authors').select('*', { count: 'exact', head: true })
-  return count ?? 0
+    .slice(-20)
 }
 
 export default async function IstatistiklerPage() {
-  const [stats, topJournals, yearlyData, authorCount] = await Promise.all([
-    getStats(),
-    getTopJournals(),
-    getArticlesByYear(),
-    getAuthorCount(),
-  ])
+  const pageData = await loadStatsPageData()
+  const yearlyData = await getArticlesByYear()
+  const stats = pageData.stats
+  const topJournals = pageData.topJournals
+  const authorCount = pageData.authorCount
 
   const displayAuthorCount = authorCount > 0 ? authorCount : (stats?.author_count ?? 0)
 

@@ -13,7 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getPdfFileForArticle } from '@/lib/data/search'
 import { buildLegacyPdfUrl } from '@/lib/pdf/legacy-url'
 
 // Proxy edilebilir domain listesi — dışına çıkılamaz
@@ -51,19 +51,11 @@ export async function GET(
     return NextResponse.json({ error: 'Geçersiz makale ID' }, { status: 400 })
   }
 
-  // DB'den legacy_pdf_path doğrula (RLS: sadece published makalelerin PDF'i görünür)
-  const sb = await createClient()
-  const { data: raw, error } = await sb
-    .from('pdf_files')
-    .select('legacy_pdf_path, file_status')
-    .eq('article_id', articleId)
-    .single()
+  const record = await getPdfFileForArticle(articleId)
 
-  if (error || !raw) {
+  if (!record) {
     return NextResponse.json({ error: 'PDF kaydı bulunamadı' }, { status: 404 })
   }
-
-  const record = raw as { legacy_pdf_path: string | null; file_status: string }
 
   if (record.file_status === 'missing') {
     return NextResponse.json({ error: 'PDF mevcut değil' }, { status: 404 })

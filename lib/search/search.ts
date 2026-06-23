@@ -1,11 +1,15 @@
 /**
- * Arama mantığı — Faz-2: Postgres ILIKE + tsvector
- * Faz-3'te Meilisearch ile değiştirilecek; arayüz aynı kalır.
+ * Arama mantığı — Prisma / standart PostgreSQL.
  */
-
-import { createClient } from '@/lib/supabase/server'
+import {
+  searchArticlesPrisma,
+  searchAuthorsPrisma,
+  searchJournalsPrisma,
+} from '@/lib/data/search'
+import { normalizeSearchTerm } from '@/lib/search/normalize'
 
 export type SearchType = 'article' | 'journal' | 'author'
+
 export type SearchArea = 'all' | 'title' | 'author' | 'keywords'
 
 export interface SearchParams {
@@ -56,25 +60,11 @@ export interface SearchResults {
   total: number
 }
 
-// ─── Türkçe karakter normalizasyonu ─────────────────────────────────────────
-// Eski MySQL verisi ğ/ş/ç/ü/ö/ı'yı ASCII'ye dönüştürerek saklamış.
-// Kullanıcının yazdığı doğru Türkçe → ASCII'ye çevrilerek arama yapılır.
-function normalizeSearchTerm(q: string): string {
-  return q
-    .replace(/[ğĞ]/g, 'g')
-    .replace(/[şŞ]/g, 's')
-    .replace(/[çÇ]/g, 'c')
-    .replace(/[üÜ]/g, 'u')
-    .replace(/[öÖ]/g, 'o')
-    .replace(/[ıİ]/g, 'i')
-}
-
-// ─── Legacy prefix desteği: "author:xxx" → area + q ayrıştır ────────────────
 export function parsePrefixQuery(raw: string): { q: string; area: SearchArea } {
   const prefixMap: Record<string, SearchArea> = {
-    'author': 'author',
-    'title': 'title',
-    'keyword': 'keywords',
+    author: 'author',
+    title: 'title',
+    keyword: 'keywords',
   }
   const colonIdx = raw.indexOf(':')
   if (colonIdx > 0) {
@@ -87,12 +77,8 @@ export function parsePrefixQuery(raw: string): { q: string; area: SearchArea } {
   return { q: raw, area: 'all' }
 }
 
-/**
- * Arama alanlarına göre ILIKE OR koşulu üretir.
- * Faz-3'te Meilisearch adapter değiştiğinde bu fonksiyon silinir.
- */
+/** PostgREST uyumluluk testleri için ILIKE koşul üretici (Prisma’da kullanılmaz). */
 export function buildSearchCondition(area: SearchArea, q: string): string {
-  // PostgREST .or() stringinde % yerine * kullanılır (URL kodlama uyumu)
   const esc = normalizeSearchTerm(q).replace(/'/g, "''").replace(/[*?\\]/g, '\\$&')
   switch (area) {
     case 'title':
@@ -103,8 +89,6 @@ export function buildSearchCondition(area: SearchArea, q: string): string {
       return `keywords_tr.ilike.*${esc}*,keywords_en.ilike.*${esc}*`
     case 'all':
     default:
-      // abstract_tr/abstract_en hariç — büyük text alanları timeout'a yol açıyor
-      // trgm index'leri yalnızca title_tr, title_en, authors_raw alanlarında var
       return [
         `title_tr.ilike.*${esc}*`,
         `title_en.ilike.*${esc}*`,
@@ -115,83 +99,15 @@ export function buildSearchCondition(area: SearchArea, q: string): string {
   }
 }
 
-// ─── Makale arama ────────────────────────────────────────────────────────────
-export async function searchArticles(params: SearchParams): Promise<{ data: ArticleResult[]; total: number }> {
-  const sb = await createClient()
-  const { q, area, language, journalId, yearFrom, yearTo, page, perPage } = params
-  const offset = (page - 1) * perPage
-  const condition = buildSearchCondition(area, q)
 
-  let query = sb
-    .from('articles')
-    .select(`
-      id, slug, legacy_journal_slug,
-      title_tr, title_en, authors_raw, keywords_tr, published_year,
-      journal:journals!journal_id ( id, slug, title_tr )
-    `, { count: 'exact' })
-    .eq('status', 'published')
-
-  if (q) {
-    query = query.or(condition)
-  }
-
-  if (language) query = query.eq('language', language)
-  if (journalId) query = query.eq('journal_id', journalId)
-  if (yearFrom) query = query.gte('published_year', yearFrom)
-  if (yearTo) query = query.lte('published_year', yearTo)
-
-  query = query.order('published_year', { ascending: false }).range(offset, offset + perPage - 1)
-
-  const { data, count } = await query
-
-  const results: ArticleResult[] = (data ?? []).map((row: Record<string, unknown>) => {
-    const j = row.journal as { id: number; slug: string; title_tr: string | null } | null
-    return {
-      id: row.id as number,
-      slug: row.slug as string,
-      legacy_journal_slug: row.legacy_journal_slug as string,
-      title_tr: row.title_tr as string | null,
-      title_en: row.title_en as string | null,
-      authors_raw: row.authors_raw as string | null,
-      keywords_tr: row.keywords_tr as string | null,
-      published_year: row.published_year as number | null,
-      journal_title: j?.title_tr ?? null,
-      journal_slug: j?.slug ?? null,
-      journal_id: j?.id ?? null,
-    }
-  })
-
-  return { data: results, total: count ?? 0 }
+export async function searchArticles(params: SearchParams) {
+  return searchArticlesPrisma(params)
 }
 
-// ─── Dergi arama ─────────────────────────────────────────────────────────────
 export async function searchJournals(q: string, page: number, perPage: number) {
-  const sb = await createClient()
-  const offset = (page - 1) * perPage
-  const nq = normalizeSearchTerm(q)
-
-  const { data, count } = await sb
-    .from('journals')
-    .select('id, slug, title_tr, title_en, issn, publisher', { count: 'exact' })
-    .eq('status', 'published')
-    .or(`title_tr.ilike.%${nq}%,title_en.ilike.%${nq}%,issn.ilike.%${q}%`)
-    .order('title_tr', { ascending: true })
-    .range(offset, offset + perPage - 1)
-
-  return { data: (data ?? []) as JournalResult[], total: count ?? 0 }
+  return searchJournalsPrisma(q, page, perPage)
 }
 
-// ─── Yazar arama ─────────────────────────────────────────────────────────────
 export async function searchAuthors(q: string, page: number, perPage: number) {
-  const sb = await createClient()
-  const offset = (page - 1) * perPage
-
-  const { data, count } = await sb
-    .from('authors')
-    .select('id, slug, name', { count: 'exact' })
-    .ilike('name', `%${normalizeSearchTerm(q)}%`)
-    .order('name', { ascending: true })
-    .range(offset, offset + perPage - 1)
-
-  return { data: (data ?? []) as AuthorResult[], total: count ?? 0 }
+  return searchAuthorsPrisma(q, page, perPage)
 }
