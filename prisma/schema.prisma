@@ -26,41 +26,41 @@ model Category {
 }
 
 model Journal {
-  id               BigInt   @id
-  legacyId         BigInt?  @unique @map("legacy_id")
-  slug             String
-  titleTr          String?  @map("title_tr")
-  titleEn          String?  @map("title_en")
-  oldName          String?  @map("old_name")
-  issn             String?
-  eissn            String?
-  publisher        String?
-  frequency        String?
-  startYear        String?  @map("start_year")
-  publicationFormat String? @map("publication_format")
-  publishLanguage  String?  @map("publish_language")
-  subjectCategory  String?  @map("subject_category")
-  topics           String?
-  editorInChief    String?  @map("editor_in_chief")
-  editorialBoard   String?  @map("editorial_board")
-  colophon         String?
-  description      String?
-  about            String?
-  aimAndScope      String?  @map("aim_and_scope")
-  policy           String?
-  writingRules     String?  @map("writing_rules")
-  pricePolicy      String?  @map("price_policy")
-  indexesText      String?  @map("indexes_text")
-  yearsIndexed     String?  @map("years_indexed")
-  contactText      String?  @map("contact_text")
-  contactJson      Json?    @map("contact_json")
-  coverPath        String?  @map("cover_path")
-  legacyLink       String?  @map("legacy_link")
-  categoryId       BigInt?  @map("category_id")
-  status           String   @default("published")
-  hitCount         Int      @default(0) @map("hit_count")
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                BigInt   @id
+  legacyId          BigInt?  @unique @map("legacy_id")
+  slug              String
+  titleTr           String?  @map("title_tr")
+  titleEn           String?  @map("title_en")
+  oldName           String?  @map("old_name")
+  issn              String?
+  eissn             String?
+  publisher         String?
+  frequency         String?
+  startYear         String?  @map("start_year")
+  publicationFormat String?  @map("publication_format")
+  publishLanguage   String?  @map("publish_language")
+  subjectCategory   String?  @map("subject_category")
+  topics            String?
+  editorInChief     String?  @map("editor_in_chief")
+  editorialBoard    String?  @map("editorial_board")
+  colophon          String?
+  description       String?
+  about             String?
+  aimAndScope       String?  @map("aim_and_scope")
+  policy            String?
+  writingRules      String?  @map("writing_rules")
+  pricePolicy       String?  @map("price_policy")
+  indexesText       String?  @map("indexes_text")
+  yearsIndexed      String?  @map("years_indexed")
+  contactText       String?  @map("contact_text")
+  contactJson       Json?    @map("contact_json")
+  coverPath         String?  @map("cover_path")
+  legacyLink        String?  @map("legacy_link")
+  categoryId        BigInt?  @map("category_id")
+  status            String   @default("published")
+  hitCount          Int      @default(0) @map("hit_count")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   issues   Issue[]
@@ -144,17 +144,17 @@ model Article {
 }
 
 model PdfFile {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  articleId       BigInt   @unique @map("article_id")
-  legacyPdfPath   String?  @map("legacy_pdf_path")
-  storageKey      String?  @map("storage_key")
-  cdnUrl          String?  @map("cdn_url")
-  fileSizeBytes   BigInt?  @map("file_size_bytes")
-  pageCount       Int?     @map("page_count")
-  checksumSha256  String?  @map("checksum_sha256")
-  fileStatus      String   @default("legacy") @map("file_status")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  articleId      BigInt   @unique @map("article_id")
+  legacyPdfPath  String?  @map("legacy_pdf_path")
+  storageKey     String?  @map("storage_key")
+  cdnUrl         String?  @map("cdn_url")
+  fileSizeBytes  BigInt?  @map("file_size_bytes")
+  pageCount      Int?     @map("page_count")
+  checksumSha256 String?  @map("checksum_sha256")
+  fileStatus     String   @default("legacy") @map("file_status")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
 
@@ -184,10 +184,10 @@ model Author {
 }
 
 model ArticleAuthor {
-  articleId       BigInt  @map("article_id")
-  authorId        BigInt  @map("author_id")
-  authorPosition  Int?    @map("author_position")
-  rawAuthorName   String? @map("raw_author_name")
+  articleId      BigInt  @map("article_id")
+  authorId       BigInt  @map("author_id")
+  authorPosition Int?    @map("author_position")
+  rawAuthorName  String? @map("raw_author_name")
 
   article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
   author  Author  @relation(fields: [authorId], references: [id], onDelete: Cascade)
