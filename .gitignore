@@ -55,8 +55,11 @@ yarn-error.log*
 /local-data/
 /database-backups/
 
-# vercel
-.vercel
+# rehearsal / probe runtime çıktıları
+route-probe-output.json
+*-probe-output.json
+deploy/rehearsal-backups/
+deploy/.env.rehearsal
 
 # typescript
 *.tsbuildinfo
