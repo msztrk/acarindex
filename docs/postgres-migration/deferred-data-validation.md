@@ -92,6 +92,9 @@ docker compose --env-file .env.local -f docker-compose.local.yml --profile sourc
 - [Yerel kurulum](./local-setup.md)
 - [Bağımlılık raporu](./dependency-report.md)
 - [Supabase kaldırma planı](./supabase-removal-plan.md)
+- [Production geçiş kapıları](./production-gates.md)
+- [Beta güvenlik politikası](./beta-security-policy.md)
+- [Commit geçmişi notları](./commit-history-notes.md)
 - Faz 2 / Faz 3 sohbet raporları: branch `redesign-v2`, commit `e381845` … `a3f6700`
 
 ## Bu sprintte yapılan alternatif işler
