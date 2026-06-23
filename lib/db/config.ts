@@ -1,16 +1,47 @@
 /**
- * Veritabanı backend seçimi — Supabase SDK yerine standart PostgreSQL (Prisma).
+ * Katalog veritabanı backend — fail-closed; varsayılan Supabase fallback yok.
  */
-export type DbBackend = 'prisma' | 'supabase'
+import { CatalogDatabaseConfigError } from './errors'
 
-/** DATABASE_URL tanımlı ve USE_SUPABASE_DB=1 değilse Prisma kullan. */
+export type DbBackend = 'prisma'
+
+/** Beta veya production ortamı (Supabase katalog fallback kapalı). */
+export function isCatalogStrictEnvironment(): boolean {
+  if (process.env.NODE_ENV === 'production') return true
+  const site = process.env.NEXT_PUBLIC_SITE_URL?.toLowerCase() ?? ''
+  return site.includes('beta.acarindex.com') || site.includes('www.acarindex.com')
+}
+
+/** Geçici geliştirici override — yalnızca non-strict ortamda. */
+export function isSupabaseCatalogOverride(): boolean {
+  return process.env.USE_SUPABASE_DB === '1' && !isCatalogStrictEnvironment()
+}
+
+export function requireCatalogDatabaseUrl(): string {
+  const url = process.env.DATABASE_URL?.trim()
+  if (!url) {
+    throw new CatalogDatabaseConfigError(
+      'DATABASE_URL tanımlı değil. Katalog uygulaması standart PostgreSQL (Prisma) gerektirir.',
+    )
+  }
+  if (isSupabaseCatalogOverride()) {
+    throw new CatalogDatabaseConfigError(
+      'USE_SUPABASE_DB=1 katalog okumaları için kullanılamaz. Yalnızca legacy scriptler için geçici seçenek.',
+    )
+  }
+  return url
+}
+
 export function resolveDbBackend(): DbBackend {
-  const forceSupabase = process.env.USE_SUPABASE_DB === '1'
-  const hasDatabaseUrl = Boolean(process.env.DATABASE_URL?.trim())
-  if (hasDatabaseUrl && !forceSupabase) return 'prisma'
-  return 'supabase'
+  requireCatalogDatabaseUrl()
+  return 'prisma'
 }
 
 export function isPrismaBackend(): boolean {
-  return resolveDbBackend() === 'prisma'
+  try {
+    requireCatalogDatabaseUrl()
+    return true
+  } catch {
+    return false
+  }
 }
