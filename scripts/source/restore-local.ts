@@ -1,6 +1,9 @@
 /**
  * Yerel MySQL'e SQL dump restore (CLI). Production'a bağlanmaz.
  *
+ * İzin verilen hedef: yeni yerel Docker MariaDB (127.0.0.1:3307) — kaynak ETL için.
+ * Yasak: canlı/uzak MySQL, production host.
+ *
  * Gereksinimler:
  *   LOCAL_SOURCE_SQL_PATH
  *   LOCAL_MYSQL_BIN (mysql.exe yolu) veya PATH'te mysql

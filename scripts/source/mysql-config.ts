@@ -52,7 +52,9 @@ export function assertLocalSourceHost(host: string): void {
 }
 
 export function resolveSourceMysqlConfig(): SourceMysqlConfig {
-  const url = process.env.SOURCE_MYSQL_URL?.trim()
+  const url =
+    process.env.SOURCE_DATABASE_URL?.trim() ||
+    process.env.SOURCE_MYSQL_URL?.trim()
   if (url) {
     const cfg = parseMysqlUrl(url)
     assertLocalSourceHost(cfg.host)
