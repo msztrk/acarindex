@@ -89,12 +89,12 @@ csrf=$(curl -sS -b "$CJ" -c "$CJ" "$BASE_LOCAL/api/auth/csrf" | sed -n 's/.*"csr
 logout_code=$(curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE_LOCAL/api/auth/logout" \
   -H "x-csrf-token: $csrf" -o /dev/null -w '%{http_code}')
 [[ "$logout_code" == "200" ]] || fail "logout expected 200 got $logout_code"
-code=$(curl -sS $AUTH_NGX -b "$CJ" -o /dev/null -w '%{http_code}' "$BASE_LOCAL/api/auth/session")
-echo "session_after_logout:$code"
-[[ "$code" == "401" ]] || fail "session after logout should be 401"
 code=$(curl -sS $AUTH_NGX -b "$CJ" -o /dev/null -w '%{http_code}' "$BASE_LOCAL/admin")
 echo "admin_after_logout:$code"
 [[ "$code" != "200" ]] || fail "admin accessible after logout"
+session_body=$(curl -sS $AUTH_NGX -b "$CJ" "$BASE_LOCAL/api/auth/session")
+echo "session_after_logout:$session_body"
+echo "$session_body" | grep -q '"authenticated":false' || fail "session still authenticated after logout"
 
 echo "=== SEO ==="
 curl -sS -I $AUTH_NGX "$BASE_HTTPS/" | tr -d '\r' | grep -i x-robots-tag
