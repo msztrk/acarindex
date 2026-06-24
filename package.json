@@ -40,6 +40,9 @@
     "rehearsal:smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step smoke",
     "rehearsal:backup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step backup",
     "rehearsal:all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step all",
+    "test:user-panel": "npx tsx scripts/test/user-panel-security.ts",
+    "test:user-panel:acceptance": "npx tsx scripts/test/user-panel-acceptance.ts",
+    "db:seed:user-panel-users": "npx tsx scripts/db/seed-user-panel-users.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
