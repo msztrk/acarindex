@@ -700,7 +700,7 @@ async function main() {
   console.log(`  Tam katalog ipucu: ${JSON.stringify(FULL_CATALOG_ETL_HINTS)}`)
 
   let runId: string | null = null
-  let counters = {
+  const counters = {
     categories: 0,
     journals: 0,
     issues: 0,
