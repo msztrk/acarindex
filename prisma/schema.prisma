@@ -65,6 +65,7 @@ model Journal {
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   issues   Issue[]
   articles Article[]
+  followedBy FollowedJournal[]
 
   @@index([slug])
   @@index([status])
@@ -135,6 +136,8 @@ model Article {
   issue          Issue?          @relation(fields: [issueId], references: [id], onDelete: SetNull)
   pdfFile        PdfFile?
   articleAuthors ArticleAuthor[]
+  savedBy        SavedArticle[]
+  listItems      ReadingListItem[]
 
   @@index([journalId, publishedYear(sort: Desc)])
   @@index([issueId])
@@ -178,6 +181,7 @@ model Author {
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   articleAuthors ArticleAuthor[]
+  followedBy     FollowedAuthor[]
 
   @@index([isProvisional])
   @@map("authors")
@@ -271,6 +275,12 @@ model User {
   authorClaims          AuthorClaim[]
   passwordResetTokens   PasswordResetToken[]
   verificationTokens    VerificationToken[]
+  savedArticles         SavedArticle[]
+  readingLists          ReadingList[]
+  followedJournals      FollowedJournal[]
+  followedAuthors       FollowedAuthor[]
+  notificationPrefs     NotificationPreference?
+  recentViews           RecentView[]
 
   @@index([status])
   @@map("users")
@@ -397,4 +407,103 @@ model AuthorClaim {
   @@index([authorId])
   @@index([status])
   @@map("author_claims")
+}
+
+// ─── Kullanıcı paneli (Faz 6B) — bibliyografik Author ile birleştirilmez ───
+
+model SavedArticle {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  articleId BigInt   @map("article_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, articleId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("saved_articles")
+}
+
+model ReadingList {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ReadingListItem[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("reading_lists")
+}
+
+model ReadingListItem {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  listId    String   @map("list_id") @db.Uuid
+  articleId BigInt   @map("article_id")
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  list    ReadingList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  article Article     @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, articleId])
+  @@index([listId, position])
+  @@map("reading_list_items")
+}
+
+model FollowedJournal {
+  userId    String   @map("user_id") @db.Uuid
+  journalId BigInt @map("journal_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  journal Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
+
+  @@id([userId, journalId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("followed_journals")
+}
+
+model FollowedAuthor {
+  userId    String   @map("user_id") @db.Uuid
+  authorId  BigInt   @map("author_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  author Author @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@id([userId, authorId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("followed_authors")
+}
+
+model NotificationPreference {
+  userId                    String   @id @map("user_id") @db.Uuid
+  followedJournalNewIssue   Boolean  @default(false) @map("followed_journal_new_issue")
+  followedAuthorNewArticle  Boolean  @default(false) @map("followed_author_new_article")
+  savedSearchAlert          Boolean  @default(false) @map("saved_search_alert")
+  weeklyDigest              Boolean  @default(false) @map("weekly_digest")
+  productAnnouncements      Boolean  @default(false) @map("product_announcements")
+  updatedAt                 DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+model RecentView {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  entityType String   @map("entity_type")
+  entityId   BigInt   @map("entity_id")
+  viewedAt   DateTime @default(now()) @map("viewed_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, entityType, entityId])
+  @@index([userId, viewedAt(sort: Desc)])
+  @@map("recent_views")
 }
