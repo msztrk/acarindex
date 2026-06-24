@@ -22,32 +22,44 @@ import { resolveSourceMysqlConfig } from '../source/mysql-config'
 import { validateEtlEnv, logEtlConnectionSummary } from '../lib/etl-guard'
 import {
   finishPgEtlRun,
+  failPgEtlRun,
+  interruptPgEtlRun,
   logPgEtlErrors,
+  sanitizeEtlErrorMessage,
   startPgEtlRun,
   type PgEtlErrorEntry,
 } from './lib/pg-etl-run'
+import { resolvePgEtlRuntimeConfig, FULL_CATALOG_ETL_HINTS } from '../lib/pg-etl-config'
+import {
+  isAliasCycle,
+  resolveArticleSlug,
+} from '../../lib/etl/article-slug-policy'
 
 const PILOT_JOURNAL_COUNT = 15
 const DEFAULT_ARTICLE_LIMIT = 8000
-const DEFAULT_BATCH_SIZE = 500
 
 interface PilotArgs {
   write: boolean
   articleLimit: number
   batchSize: number
+  transactionTimeoutMs: number
+  transactionMaxWaitMs: number
 }
 
 function parseArgs(): PilotArgs {
   const write = process.argv.includes('--write')
   const limitArg = process.argv.find((a) => a.startsWith('--article-limit='))
-  const batchArg = process.argv.find((a) => a.startsWith('--batch-size='))
+  const runtime = resolvePgEtlRuntimeConfig(process.argv)
   const articleLimit = limitArg
     ? Math.max(1, parseInt(limitArg.split('=')[1] ?? '', 10) || DEFAULT_ARTICLE_LIMIT)
     : DEFAULT_ARTICLE_LIMIT
-  const batchSize = batchArg
-    ? Math.max(50, parseInt(batchArg.split('=')[1] ?? '', 10) || DEFAULT_BATCH_SIZE)
-    : DEFAULT_BATCH_SIZE
-  return { write, articleLimit, batchSize }
+  return {
+    write,
+    articleLimit,
+    batchSize: runtime.batchSize,
+    transactionTimeoutMs: runtime.transactionTimeoutMs,
+    transactionMaxWaitMs: runtime.transactionMaxWaitMs,
+  }
 }
 
 function buildIssueLabel(yil: string | null, sayi: string | null): string | null {
@@ -353,10 +365,11 @@ function mapMakaleToArticle(
   article: Prisma.ArticleCreateInput
   pdf: { hasPdf: boolean; path: string | null }
   authorFields: ReturnType<typeof mapMakaleAuthorFields>
+  baseSlug: string
 } {
   const legacyJournalSlug = journalSlugMap.get(raw.DergiID) ?? `dergi-${raw.DergiID}`
   const titleForSlug = raw.TitleTR?.trim() || raw.TitleEN?.trim()
-  const slug = (titleForSlug ? urlYap(titleForSlug) : '') || `makale-${raw.MakaleID}`
+  const baseSlug = (titleForSlug ? urlYap(titleForSlug) : '') || `makale-${raw.MakaleID}`
 
   const pageStart = raw.IlkSAYFA?.trim() ? parseInt(raw.IlkSAYFA.trim(), 10) || null : null
   const pageEnd = raw.SonSAYFA?.trim() ? parseInt(raw.SonSAYFA.trim(), 10) || null : null
@@ -384,7 +397,7 @@ function mapMakaleToArticle(
   const article: Prisma.ArticleCreateInput = {
     id: BigInt(raw.MakaleID),
     legacyId: BigInt(raw.MakaleID),
-    slug,
+    slug: baseSlug,
     legacyJournalSlug,
     journal: { connect: { id: BigInt(raw.DergiID) } },
     issue: raw.ArsivID ? { connect: { id: BigInt(raw.ArsivID) } } : undefined,
@@ -419,7 +432,7 @@ function mapMakaleToArticle(
     status: raw.Aktif === 1 ? 'published' : 'draft',
   }
 
-  return { article, pdf: { hasPdf, path: hasPdf ? pdfPath! : null }, authorFields }
+  return { article, pdf: { hasPdf, path: hasPdf ? pdfPath! : null }, authorFields, baseSlug }
 }
 
 async function migrateArticlesBatch(
@@ -427,6 +440,8 @@ async function migrateArticlesBatch(
   journalIds: number[],
   articleLimit: number,
   batchSize: number,
+  transactionTimeoutMs: number,
+  transactionMaxWaitMs: number,
   dryRun: boolean,
   registry: Awaited<ReturnType<typeof loadAuthorRegistry>>['registry'],
   counters: {
@@ -501,15 +516,62 @@ async function migrateArticlesBatch(
           continue
         }
 
-        const { article, pdf, authorFields } = mapMakaleToArticle(raw, journalSlugMap)
+        const { article, pdf, authorFields, baseSlug } = mapMakaleToArticle(raw, journalSlugMap)
         const articleId = BigInt(raw.MakaleID)
+        const legacyJournalSlug = article.legacyJournalSlug as string
 
         try {
+          const existing = await tx.article.findUnique({
+            where: { id: articleId },
+            select: { slug: true },
+          })
+          const conflict = await tx.article.findFirst({
+            where: { slug: baseSlug, id: { not: articleId } },
+            select: { id: true },
+            orderBy: { id: 'asc' },
+          })
+          const resolved = resolveArticleSlug({
+            baseSlug,
+            legacyId: raw.MakaleID,
+            legacyJournalSlug,
+            existingSlug: existing?.slug,
+            conflictingArticleLegacyId: conflict ? Number(conflict.id) : null,
+          })
+
+          if (resolved.urlAlias) {
+            const aliasRows = await tx.urlAlias.findMany({
+              select: { legacyPath: true, canonicalPath: true },
+            })
+            const aliasMap = new Map(aliasRows.map((a) => [a.legacyPath, a.canonicalPath]))
+            if (
+              !isAliasCycle(
+                resolved.urlAlias.legacyPath,
+                resolved.urlAlias.canonicalPath,
+                aliasMap,
+              )
+            ) {
+              await tx.urlAlias.upsert({
+                where: { legacyPath: resolved.urlAlias.legacyPath },
+                create: {
+                  legacyPath: resolved.urlAlias.legacyPath,
+                  canonicalPath: resolved.urlAlias.canonicalPath,
+                  entityType: resolved.urlAlias.entityType,
+                  entityId: BigInt(resolved.urlAlias.entityId),
+                  httpStatus: resolved.urlAlias.httpStatus,
+                },
+                update: {
+                  canonicalPath: resolved.urlAlias.canonicalPath,
+                  httpStatus: resolved.urlAlias.httpStatus,
+                },
+              })
+            }
+          }
+
           await tx.article.upsert({
             where: { id: articleId },
-            create: article,
+            create: { ...article, slug: resolved.slug },
             update: {
-              slug: article.slug as string,
+              slug: resolved.slug,
               titleTr: article.titleTr,
               titleEn: article.titleEn,
               authorsRaw: authorFields.authors_raw,
@@ -620,7 +682,7 @@ async function migrateArticlesBatch(
           })
         }
       }
-    })
+    }, { maxWait: transactionMaxWaitMs, timeout: transactionTimeoutMs })
 
     offset += rows.length
     process.stdout.write(`\r  Makale batch: ${Math.min(offset, articleLimit)}/${articleLimit}`)
@@ -630,35 +692,15 @@ async function migrateArticlesBatch(
 
 async function main() {
   const args = parseArgs()
-  const mode = args.write ? 'pilot-write' : 'pilot-dry-run'
+  const mode = args.write ? 'pilot' : 'dry-run'
 
-  console.log(`Pilot ETL [${mode}] article-limit=${args.articleLimit} batch=${args.batchSize}`)
+  console.log(
+    `Pilot ETL [${mode}] article-limit=${args.articleLimit} batch=${args.batchSize} tx_timeout_ms=${args.transactionTimeoutMs}`,
+  )
+  console.log(`  Tam katalog ipucu: ${JSON.stringify(FULL_CATALOG_ETL_HINTS)}`)
 
-  const guard = validateEtlEnv()
-  logEtlConnectionSummary(guard)
-
-  const mysqlCfg = resolveSourceMysqlConfig()
-  const conn = await mysql.createConnection({
-    host: mysqlCfg.host,
-    port: mysqlCfg.port,
-    user: mysqlCfg.user,
-    password: mysqlCfg.password,
-    database: mysqlCfg.database,
-    decimalNumbers: true,
-  })
-
-  const journalIds = await selectPilotJournalIds(conn)
-  if (journalIds.length === 0) {
-    throw new Error('Pilot dergi seçilemedi')
-  }
-
-  const registryLoad = await loadAuthorRegistry(conn)
-  assertAuthorRegistryReadyForWrite(registryLoad)
-
-  const errors: PgEtlErrorEntry[] = []
-  const sourceKeyConflicts: string[] = []
-  const legacyIdConflicts: string[] = []
-  const counters = {
+  let runId: string | null = null
+  let counters = {
     categories: 0,
     journals: 0,
     issues: 0,
@@ -670,78 +712,131 @@ async function main() {
     errors: 0,
   }
 
-  let runId: string | null = null
-  if (args.write) {
-    runId = await startPgEtlRun({
-      script: 'pilot-run',
-      mode: 'pilot-write',
-      sourceTable: 'dergiler+dergi_arsiv+makaleler',
-      targetTable: 'journals+issues+articles+pdf_files+authors',
-      limitRows: args.articleLimit,
-      notes: `journals=${journalIds.length}`,
+  const shutdown = async (signal: string) => {
+    if (runId) {
+      await interruptPgEtlRun(runId, `${signal} received`, {
+        rowsRead: counters.articles,
+        rowsInserted: counters.articles,
+        rowsSkipped: counters.skipped,
+        rowsError: counters.errors,
+      })
+    }
+    await disconnectPrisma()
+    process.exit(1)
+  }
+  process.once('SIGTERM', () => shutdown('SIGTERM'))
+  process.once('SIGINT', () => shutdown('SIGINT'))
+
+  try {
+    const guard = validateEtlEnv()
+    logEtlConnectionSummary(guard)
+
+    const mysqlCfg = resolveSourceMysqlConfig()
+    const conn = await mysql.createConnection({
+      host: mysqlCfg.host,
+      port: mysqlCfg.port,
+      user: mysqlCfg.user,
+      password: mysqlCfg.password,
+      database: mysqlCfg.database,
+      decimalNumbers: true,
     })
-  }
 
-  counters.categories = await migrateCategories(conn, journalIds, !args.write, errors)
-  counters.journals = await migrateJournals(conn, journalIds, !args.write, errors)
-  counters.issues = await migrateIssues(conn, journalIds, !args.write, errors)
+    const journalIds = await selectPilotJournalIds(conn)
+    if (journalIds.length === 0) {
+      throw new Error('Pilot dergi seçilemedi')
+    }
 
-  await migrateArticlesBatch(
-    conn,
-    journalIds,
-    args.articleLimit,
-    args.batchSize,
-    !args.write,
-    registryLoad.registry,
-    counters,
-    errors,
-    sourceKeyConflicts,
-    legacyIdConflicts,
-  )
+    const registryLoad = await loadAuthorRegistry(conn)
+    assertAuthorRegistryReadyForWrite(registryLoad)
 
-  await conn.end()
+    const errors: PgEtlErrorEntry[] = []
+    const sourceKeyConflicts: string[] = []
+    const legacyIdConflicts: string[] = []
 
-  const report = {
-    mode,
-    writes_to_postgres: args.write,
-    pilot_journal_count: journalIds.length,
-    journal_ids_sample: journalIds.slice(0, 5),
-    author_registry_mode: registryLoad.mode,
-    counters,
-    source_key_conflicts: sourceKeyConflicts.slice(0, 20),
-    legacy_id_conflicts: legacyIdConflicts.slice(0, 20),
-    error_count: errors.length,
-    errors_sample: errors.slice(0, 10).map((e) => ({
-      table: e.sourceTable,
-      id: e.sourceId,
-      type: e.errorType,
-      message: e.errorMessage,
-    })),
-  }
+    if (args.write) {
+      runId = await startPgEtlRun({
+        script: 'pilot-run',
+        mode: 'pilot',
+        sourceTable: 'dergiler+dergi_arsiv+makaleler',
+        targetTable: 'journals+issues+articles+pdf_files+authors',
+        limitRows: args.articleLimit,
+        notes: `journals=${journalIds.length}`,
+      })
+    }
 
-  console.log(JSON.stringify(report, null, 2))
+    counters.categories = await migrateCategories(conn, journalIds, !args.write, errors)
+    counters.journals = await migrateJournals(conn, journalIds, !args.write, errors)
+    counters.issues = await migrateIssues(conn, journalIds, !args.write, errors)
 
-  if (args.write && runId) {
-    await logPgEtlErrors(runId, errors)
-    await finishPgEtlRun(runId, {
-      rowsRead: counters.articles,
-      rowsInserted: counters.articles,
-      rowsSkipped: counters.skipped,
-      rowsError: counters.errors + errors.length,
-      status: errors.length > 0 || counters.errors > 0 ? 'partial' : 'success',
-      notes: JSON.stringify({ counters, sourceKeyConflicts: sourceKeyConflicts.length }),
-    })
-  }
+    await migrateArticlesBatch(
+      conn,
+      journalIds,
+      args.articleLimit,
+      args.batchSize,
+      args.transactionTimeoutMs,
+      args.transactionMaxWaitMs,
+      !args.write,
+      registryLoad.registry,
+      counters,
+      errors,
+      sourceKeyConflicts,
+      legacyIdConflicts,
+    )
 
-  await disconnectPrisma()
+    await conn.end()
 
-  if (errors.length > 0 && args.write) {
-    process.exitCode = 1
+    const report = {
+      mode,
+      writes_to_postgres: args.write,
+      pilot_journal_count: journalIds.length,
+      journal_ids_sample: journalIds.slice(0, 5),
+      author_registry_mode: registryLoad.mode,
+      counters,
+      source_key_conflicts: sourceKeyConflicts.slice(0, 20),
+      legacy_id_conflicts: legacyIdConflicts.slice(0, 20),
+      error_count: errors.length,
+      errors_sample: errors.slice(0, 10).map((e) => ({
+        table: e.sourceTable,
+        id: e.sourceId,
+        type: e.errorType,
+        message: e.errorMessage,
+      })),
+    }
+
+    console.log(JSON.stringify(report, null, 2))
+
+    if (args.write && runId) {
+      await logPgEtlErrors(runId, errors)
+      await finishPgEtlRun(runId, {
+        rowsRead: counters.articles,
+        rowsInserted: counters.articles,
+        rowsSkipped: counters.skipped,
+        rowsError: counters.errors + errors.length,
+        status: errors.length > 0 || counters.errors > 0 ? 'partial' : 'success',
+        notes: JSON.stringify({ counters, sourceKeyConflicts: sourceKeyConflicts.length }),
+      })
+    }
+
+    if (errors.length > 0 && args.write) {
+      process.exitCode = 1
+    }
+  } catch (e) {
+    const msg = sanitizeEtlErrorMessage(e instanceof Error ? e.message : String(e))
+    if (runId) {
+      await failPgEtlRun(runId, msg, {
+        rowsRead: counters.articles,
+        rowsInserted: counters.articles,
+        rowsSkipped: counters.skipped,
+        rowsError: counters.errors,
+      })
+    }
+    throw e
+  } finally {
+    await disconnectPrisma()
   }
 }
 
-main().catch(async (e) => {
-  console.error(e instanceof Error ? e.message : e)
-  await disconnectPrisma()
+main().catch((e) => {
+  console.error(sanitizeEtlErrorMessage(e instanceof Error ? e.message : String(e)))
   process.exit(1)
 })

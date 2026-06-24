@@ -34,7 +34,7 @@ export interface PgEtlRunFinish {
   rowsUpdated?: number
   rowsSkipped?: number
   rowsError?: number
-  status: 'success' | 'partial' | 'failed'
+  status: 'success' | 'partial' | 'failed' | 'interrupted'
   errorSummary?: string
   notes?: string
 }
@@ -50,9 +50,50 @@ export async function finishPgEtlRun(runId: string, result: PgEtlRunFinish): Pro
       rowsSkipped: result.rowsSkipped ?? 0,
       rowsError: result.rowsError ?? 0,
       status: result.status,
-      errorSummary: result.errorSummary,
+      errorSummary: result.errorSummary ? sanitizeEtlErrorMessage(result.errorSummary) : null,
       notes: result.notes,
     },
+  })
+}
+
+export function sanitizeEtlErrorMessage(msg: string): string {
+  return msg
+    .replace(/postgres(ql)?:\/\/[^\s'"]+/gi, 'postgresql://***')
+    .replace(/mysql:\/\/[^\s'"]+/gi, 'mysql://***')
+    .replace(/(password|MYSQL_PWD)[=:]\S+/gi, '$1=***')
+}
+
+export async function failPgEtlRun(
+  runId: string,
+  errorSummary: string,
+  partial?: Partial<PgEtlRunFinish>,
+): Promise<void> {
+  await finishPgEtlRun(runId, {
+    rowsRead: partial?.rowsRead ?? 0,
+    rowsInserted: partial?.rowsInserted ?? 0,
+    rowsUpdated: partial?.rowsUpdated ?? 0,
+    rowsSkipped: partial?.rowsSkipped ?? 0,
+    rowsError: partial?.rowsError ?? 0,
+    status: 'failed',
+    errorSummary,
+    notes: partial?.notes,
+  })
+}
+
+export async function interruptPgEtlRun(
+  runId: string,
+  errorSummary: string,
+  partial?: Partial<PgEtlRunFinish>,
+): Promise<void> {
+  await finishPgEtlRun(runId, {
+    rowsRead: partial?.rowsRead ?? 0,
+    rowsInserted: partial?.rowsInserted ?? 0,
+    rowsUpdated: partial?.rowsUpdated ?? 0,
+    rowsSkipped: partial?.rowsSkipped ?? 0,
+    rowsError: partial?.rowsError ?? 0,
+    status: 'interrupted',
+    errorSummary,
+    notes: partial?.notes,
   })
 }
 
