@@ -4,7 +4,7 @@ import { registerUser } from '@/lib/auth/login'
 import { isAppRole } from '@/lib/auth/roles'
 
 const email = process.argv[2]?.trim().toLowerCase()
-const role = process.argv[3]?.trim()
+const role = process.argv[3]?.trim().toUpperCase()
 const password = process.env.NEW_PASS ?? ''
 
 async function main() {
@@ -12,7 +12,7 @@ async function main() {
     console.error('usage: NEW_PASS=... create-role-test-user.ts email ROLE')
     process.exit(1)
   }
-  const roleIds = role === 'USER' ? ['USER'] : [role, 'USER']
+  const roleIds = role === 'USER' ? ['USER'] : Array.from(new Set([role, 'USER']))
   const res = await registerUser({
     email,
     password,
