@@ -22,6 +22,12 @@ import {
 } from '@/components/ui/breadcrumb'
 import { User, BookOpen, FileText, ExternalLink } from 'lucide-react'
 import type { Author } from '@/types/database'
+import { isUserAuthEnabled } from '@/lib/features/user-auth'
+import { getServerSession } from '@/lib/auth/session'
+import { recordRecentView } from '@/lib/user-panel/recent-views'
+import { isAuthorFollowed } from '@/lib/user-panel/follows'
+import { FollowAuthorButton } from '@/components/user-panel/FollowAuthorButton'
+import { buildLoginHref } from '@/lib/user-panel/login-redirect'
 
 export interface AuthorArticleRow {
   id: number
@@ -178,6 +184,21 @@ export default async function AuthorPage({
     .sort((a, b) => b - a)
   const journalCount = new Set(articles.map((article) => article.journal?.id).filter(Boolean)).size
 
+  const authEnabled = isUserAuthEnabled()
+  const session = authEnabled ? await getServerSession() : null
+  const isLoggedIn = session?.user.status === 'active'
+  const authorPath = `/authors/${slugAndId}`
+  const loginHref = buildLoginHref(authorPath)
+
+  if (isLoggedIn && session) {
+    await recordRecentView(session.user.id, 'author', parsed.authorId)
+  }
+
+  const following =
+    isLoggedIn && session
+      ? await isAuthorFollowed(session.user.id, parsed.authorId)
+      : false
+
   return (
     <>
       {authorJsonLd ? <JsonLd data={authorJsonLd} /> : null}
@@ -206,6 +227,15 @@ export default async function AuthorPage({
                 <h1 className="font-serif text-2xl sm:text-[1.75rem] font-bold text-foreground leading-snug break-words">
                   {displayName}
                 </h1>
+                {authEnabled && (
+                  <FollowAuthorButton
+                    authorId={parsed.authorId}
+                    initialFollowing={following}
+                    canFollow={!author.is_provisional}
+                    isProvisional={author.is_provisional}
+                    loginHref={loginHref}
+                  />
+                )}
                 {institution && (
                   <p className="text-sm text-muted-foreground break-words">{institution}</p>
                 )}

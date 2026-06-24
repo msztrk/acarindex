@@ -19,6 +19,13 @@ import {
 } from '@/components/ui/breadcrumb'
 import { FileText, BookOpen, ExternalLink } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { isUserAuthEnabled } from '@/lib/features/user-auth'
+import { getServerSession } from '@/lib/auth/session'
+import { recordRecentView } from '@/lib/user-panel/recent-views'
+import { isArticleSaved } from '@/lib/user-panel/saved-articles'
+import { listReadingLists } from '@/lib/user-panel/reading-lists'
+import { ArticleSaveActions } from '@/components/user-panel/ArticleSaveActions'
+import { buildLoginHref } from '@/lib/user-panel/login-redirect'
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 interface ArticleRow {
@@ -311,6 +318,21 @@ export default async function ArticlePage({ params }: PageProps) {
   const breadcrumbTitle =
     title.length > 48 ? `${title.slice(0, 45).trimEnd()}…` : title
 
+  const authEnabled = isUserAuthEnabled()
+  const session = authEnabled ? await getServerSession() : null
+  const isLoggedIn = session?.user.status === 'active'
+  const articlePath = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
+  const loginHref = buildLoginHref(articlePath)
+
+  if (isLoggedIn && session) {
+    await recordRecentView(session.user.id, 'article', articleId)
+  }
+
+  const initialSaved =
+    isLoggedIn && session ? await isArticleSaved(session.user.id, articleId) : false
+  const initialLists =
+    isLoggedIn && session ? await listReadingLists(session.user.id) : []
+
   const hasAuthors = authorLinks.length > 0 || authorsList.length > 0
   const hasPublicationMeta =
     journalTitle ||
@@ -382,6 +404,14 @@ export default async function ArticlePage({ params }: PageProps) {
                     {titleOther}
                   </p>
                 )}
+                <ArticleSaveActions
+                  articleId={articleId}
+                  initialSaved={initialSaved}
+                  initialLists={initialLists}
+                  authEnabled={authEnabled}
+                  isLoggedIn={isLoggedIn}
+                  loginHref={loginHref}
+                />
               </div>
 
               {hasAuthors && (

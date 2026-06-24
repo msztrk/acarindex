@@ -24,6 +24,12 @@ import {
 import type { Journal, Issue, Article } from '@/types/database'
 import type { ReactNode } from 'react'
 import { cache } from 'react'
+import { isUserAuthEnabled } from '@/lib/features/user-auth'
+import { getServerSession } from '@/lib/auth/session'
+import { recordRecentView } from '@/lib/user-panel/recent-views'
+import { isJournalFollowed } from '@/lib/user-panel/follows'
+import { FollowJournalButton } from '@/components/user-panel/FollowJournalButton'
+import { buildLoginHref } from '@/lib/user-panel/login-redirect'
 
 // ─── URL çözümleme ───────────────────────────────────────────────────────────
 
@@ -274,6 +280,21 @@ export default async function JournalPage({
   const showJournalPeriodicalJsonLd =
     resolved.subPage === 'home' || resolved.subPage === 'arsiv'
 
+  const authEnabled = isUserAuthEnabled()
+  const session = authEnabled ? await getServerSession() : null
+  const isLoggedIn = session?.user.status === 'active'
+  const journalPublicPath = `/journals/${resolved.journalSegment}`
+  const loginHref = buildLoginHref(journalPublicPath)
+
+  if (isLoggedIn && session) {
+    await recordRecentView(session.user.id, 'journal', parsed.journalId)
+  }
+
+  const journalFollowing =
+    isLoggedIn && session
+      ? await isJournalFollowed(session.user.id, parsed.journalId)
+      : false
+
   return (
     <>
       {showJournalPeriodicalJsonLd && <JsonLd data={schema} />}
@@ -325,6 +346,13 @@ export default async function JournalPage({
                 <h1 className="font-serif text-2xl sm:text-[1.75rem] font-bold text-foreground leading-snug">
                   {title}
                 </h1>
+                {authEnabled && (
+                  <FollowJournalButton
+                    journalId={parsed.journalId}
+                    initialFollowing={journalFollowing}
+                    loginHref={loginHref}
+                  />
+                )}
                 <JournalMetadataGrid journal={journal} />
               </div>
             </header>
