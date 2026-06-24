@@ -1,46 +1,59 @@
-import { redirect } from 'next/navigation'
-import { isUserAuthEnabled, isAdminPanelEnabled } from '@/lib/features/user-auth'
-import { requireUserAuth } from '@/lib/auth/guards'
-import { Card } from '@/components/ui/card'
-import Link from 'next/link'
-import { LogoutButton } from '@/components/auth/LogoutButton'
-import { canAccessAdminPanel } from '@/lib/auth/roles'
-
-export const dynamic = 'force-dynamic'
-
-export const metadata = { title: 'Hesabım | AcarIndex' }
-
-export default async function HesabimPage() {
-  if (!isUserAuthEnabled()) {
-    redirect('/')
-  }
-
-  const session = await requireUserAuth()
-  const showAdmin =
-    isAdminPanelEnabled() && canAccessAdminPanel(session.user.roles)
-
-  return (
-    <div className="container max-w-lg py-10 space-y-4">
-      <h1 className="text-2xl font-semibold">Hesabım</h1>
-      <Card className="p-4 space-y-2 text-sm">
-        <p><span className="text-muted-foreground">E-posta:</span> {session.user.email}</p>
-        <p><span className="text-muted-foreground">Ad:</span> {session.user.name ?? '—'}</p>
-        <p><span className="text-muted-foreground">Roller:</span> {session.user.roles.join(', ')}</p>
-        <p><span className="text-muted-foreground">E-posta doğrulama:</span>{' '}
-          {session.user.emailVerified ? 'Doğrulandı' : 'Bekliyor'}
-        </p>
-      </Card>
-      <Link href="/hesabim/security" className="text-sm text-primary hover:underline">
-        Parola ve güvenlik →
-      </Link>
-      <p className="text-sm text-muted-foreground">
-        Faz 6B: favoriler, bildirimler ve yazar sahiplenme bu sprintte henüz aktif değil.
-      </p>
-      {showAdmin && (
-        <Link href="/admin" className="text-sm text-primary hover:underline">Yönetim paneli →</Link>
-      )}
-      <LogoutButton />
-    </div>
-  )
-}
-
+import { getUserPanelSummary } from '@/lib/user-panel/summary'
+import { listRecentViews } from '@/lib/user-panel/recent-views'
+import { requireUserAuth } from '@/lib/auth/guards'
+import { Card } from '@/components/ui/card'
+import Link from 'next/link'
+
+export const metadata = { title: 'Genel Bakış | Hesabım' }
+
+export default async function HesabimOverviewPage() {
+  const session = await requireUserAuth()
+  const summary = await getUserPanelSummary(session.user.id)
+  const recent = await listRecentViews(session.user.id)
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Kaydedilen', value: summary.savedArticles, href: '/hesabim/kaydedilen' },
+          { label: 'Okuma listesi', value: summary.readingLists, href: '/hesabim/listeler' },
+          { label: 'Dergi takibi', value: summary.followedJournals, href: '/hesabim/takip-dergiler' },
+          { label: 'Yazar takibi', value: summary.followedAuthors, href: '/hesabim/takip-yazarlar' },
+        ].map((item) => (
+          <Link key={item.href} href={item.href}>
+            <Card className="p-4 hover:bg-muted/50 transition-colors">
+              <p className="text-2xl font-semibold">{item.value}</p>
+              <p className="text-xs text-muted-foreground">{item.label}</p>
+            </Card>
+          </Link>
+        ))}
+      </div>
+      <section className="space-y-2">
+        <h2 className="text-lg font-medium">Son görüntülenenler</h2>
+        {recent.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Henüz kayıt yok.</p>
+        ) : (
+          <ul className="space-y-2 text-sm">
+            {recent.slice(0, 8).map((r) => (
+              <li key={`${r.entityType}-${r.entityId}`} className="flex justify-between gap-2">
+                {r.href ? (
+                  <Link href={r.href} className="text-primary hover:underline line-clamp-2">
+                    {r.label}
+                  </Link>
+                ) : (
+                  <span className="line-clamp-2">{r.label}</span>
+                )}
+                <span className="text-muted-foreground shrink-0 text-xs">
+                  {new Date(r.viewedAt).toLocaleDateString('tr-TR')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Link href="/hesabim/son-goruntulenen" className="text-sm text-primary hover:underline">
+          Tüm geçmiş →
+        </Link>
+      </section>
+    </div>
+  )
+}
