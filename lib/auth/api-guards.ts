@@ -35,3 +35,13 @@ export async function getApiUserManagementSession(): Promise<SessionPayload | Ne
   }
   return sessionOrRes
 }
+
+/** Aktif oturum — pasif hesaplar reddedilir */
+export async function getApiActiveUserSession(): Promise<SessionPayload | NextResponse> {
+  const sessionOrRes = await getApiSession()
+  if (sessionOrRes instanceof NextResponse) return sessionOrRes
+  if (sessionOrRes.user.status !== 'active') {
+    return NextResponse.json({ error: 'Hesap pasif.' }, { status: 403 })
+  }
+  return sessionOrRes
+}
