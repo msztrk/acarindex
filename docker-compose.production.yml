@@ -25,6 +25,19 @@ services:
         max-size: "20m"
         max-file: "5"
 
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    image: acarindex-migrate:${MIGRATE_IMAGE_TAG:-latest}
+    env_file:
+      - .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["tools"]
+    restart: "no"
+
   app:
     build:
       context: .

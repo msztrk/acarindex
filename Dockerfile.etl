@@ -1,0 +1,14 @@
+# ETL runner — pilot stack içinde tsx scriptleri (kontrolsüz npx indirmesi yok)
+# syntax=docker/dockerfile:1
+FROM node:20-alpine
+WORKDIR /app
+RUN apk add --no-cache openssl libc6-compat mariadb-client
+COPY package.json package-lock.json ./
+RUN npm install --ignore-scripts && npm cache clean --force
+COPY prisma ./prisma
+COPY scripts ./scripts
+COPY lib ./lib
+COPY types ./types
+RUN npx prisma generate
+ENV NODE_ENV=production
+ENTRYPOINT ["npx", "tsx"]

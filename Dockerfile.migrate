@@ -1,0 +1,10 @@
+# Prisma migrate deploy — production/pilot app image'ından ayrı, sabit lockfile bağımlılıkları
+# syntax=docker/dockerfile:1
+FROM node:20-alpine
+WORKDIR /app
+RUN apk add --no-cache openssl libc6-compat
+COPY package.json package-lock.json ./
+RUN npm install --ignore-scripts && npm cache clean --force
+COPY prisma ./prisma
+COPY scripts/migrate-deploy.mjs ./scripts/migrate-deploy.mjs
+ENTRYPOINT ["node", "scripts/migrate-deploy.mjs"]
