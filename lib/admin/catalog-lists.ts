@@ -122,7 +122,10 @@ export async function loadPaginatedUrlAliases(searchParams: Record<string, strin
     prisma.urlAlias.count(),
   ])
   return {
-    rows,
+    rows: rows.map((r) => ({
+      ...r,
+      entityId: r.entityId != null ? Number(r.entityId) : null,
+    })),
     meta: paginationMeta(total, page, pageSize),
   }
 }

@@ -94,8 +94,6 @@ services:
       - /etc/acarindex/pilot.env
     environment:
       USE_SUPABASE_DB: "0"
-      ENABLE_USER_AUTH: "false"
-      NEXT_PUBLIC_ENABLE_USER_AUTH: "false"
     ports:
       - "127.0.0.1:3002:3000"
     healthcheck:

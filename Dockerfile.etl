@@ -9,6 +9,7 @@ COPY prisma ./prisma
 COPY scripts ./scripts
 COPY lib ./lib
 COPY types ./types
+COPY tsconfig.json ./
 RUN npx prisma generate
 ENV NODE_ENV=production
 ENTRYPOINT ["npx", "tsx"]
