@@ -26,9 +26,9 @@ export const metadata: Metadata = {
   description:
     'Türkçe ve uluslararası akademik makalelere, dergilere ve yazarlara açık erişim. AcarIndex akademik arama ve indeks platformu.',
   robots: {
-    // Beta'da noindex; cutover sonrası kaldırılacak
+    // Beta / staging: noindex, nofollow
     index: process.env.NEXT_PUBLIC_SITE_URL?.includes('beta') ? false : true,
-    follow: true,
+    follow: process.env.NEXT_PUBLIC_SITE_URL?.includes('beta') ? false : true,
   },
   openGraph: {
     type: 'website',
