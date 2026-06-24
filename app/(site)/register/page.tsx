@@ -5,5 +5,6 @@ export default function RegisterPage() {
   if (!isUserAuthEnabled()) {
     redirect('/')
   }
-  redirect('/login?mode=register')
+  // Açık kayıt kapalı — Faz 6A MVP
+  redirect('/login')
 }
