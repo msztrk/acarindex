@@ -132,13 +132,18 @@ export async function loadPaginatedUrlAliases(searchParams: Record<string, strin
 
 export async function loadPaginatedAuditLogs(searchParams: Record<string, string | string[] | undefined>) {
   const { page, pageSize, skip } = parsePagination(searchParams)
+  const rawResourceId = Array.isArray(searchParams.resourceId)
+    ? searchParams.resourceId[0]
+    : searchParams.resourceId
+  const where = rawResourceId?.trim() ? { resourceId: rawResourceId.trim() } : {}
   const [rows, total] = await Promise.all([
     prisma.auditLog.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       skip,
       take: pageSize,
     }),
-    prisma.auditLog.count(),
+    prisma.auditLog.count({ where }),
   ])
   return {
     rows: rows.map((r) => ({
@@ -151,14 +156,20 @@ export async function loadPaginatedAuditLogs(searchParams: Record<string, string
 
 export async function loadPaginatedUsers(searchParams: Record<string, string | string[] | undefined>) {
   const { page, pageSize, skip } = parsePagination(searchParams)
+  const rawQ = Array.isArray(searchParams.q) ? searchParams.q[0] : searchParams.q
+  const q = rawQ?.trim()
+  const where = q
+    ? { email: { contains: q, mode: 'insensitive' as const } }
+    : {}
   const [rows, total] = await Promise.all([
     prisma.user.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       skip,
       take: pageSize,
       include: { roles: { include: { role: true } } },
     }),
-    prisma.user.count(),
+    prisma.user.count({ where }),
   ])
   return {
     rows: rows.map((u) => ({

@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
-import { isUserAuthEnabled, usePgAuth } from '@/lib/features/user-auth'
+import { isUserAuthEnabled, isPgAuthEnabled } from '@/lib/features/user-auth'
 import LoginForm from './LoginForm'
 import PgLoginForm from './PgLoginForm'
 
@@ -11,7 +11,7 @@ export default function LoginPage() {
     redirect('/')
   }
 
-  const Form = usePgAuth() ? PgLoginForm : LoginForm
+  const Form = isPgAuthEnabled() ? PgLoginForm : LoginForm
 
   return (
     <Suspense fallback={<div className="min-h-[70vh] flex items-center justify-center"><span className="text-muted-foreground">Yükleniyor…</span></div>}>

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   canAccessAdminPanel,
   canAssignSuperAdmin,
+  canManageRole,
   canManageUsers,
   hasPermission,
   PERMISSION_MATRIX,
@@ -24,6 +25,13 @@ describe('role authorization', () => {
   it('only SUPER_ADMIN can assign super admin', () => {
     expect(canAssignSuperAdmin(['ADMIN'])).toBe(false)
     expect(canAssignSuperAdmin(['SUPER_ADMIN'])).toBe(true)
+  })
+
+  it('ADMIN cannot assign ADMIN or SUPER_ADMIN', () => {
+    expect(canManageRole(['ADMIN'], 'ADMIN')).toBe(false)
+    expect(canManageRole(['ADMIN'], 'SUPER_ADMIN')).toBe(false)
+    expect(canManageRole(['ADMIN'], 'EDITOR')).toBe(true)
+    expect(canManageRole(['SUPER_ADMIN'], 'ADMIN')).toBe(true)
   })
 
   it('permission matrix keys resolve', () => {

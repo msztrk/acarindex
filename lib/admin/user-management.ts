@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db/prisma'
 import { writeAuditLog } from '@/lib/auth/audit'
-import { canAssignSuperAdmin } from '@/lib/auth/roles'
+import { canAssignSuperAdmin, canManageRole } from '@/lib/auth/roles'
 import type { AppRole } from '@/lib/auth/roles'
 import { isAppRole, SUPER_ADMIN_ROLE } from '@/lib/auth/roles'
 import { countSuperAdmins } from '@/lib/auth/user'
@@ -22,6 +22,10 @@ export async function assignRoleToUser(input: {
 
   if (input.roleId === SUPER_ADMIN_ROLE && !canAssignSuperAdmin(input.actorRoles)) {
     return { ok: false, error: 'SUPER_ADMIN yalnızca SUPER_ADMIN atayabilir.' }
+  }
+
+  if (!canManageRole(input.actorRoles, input.roleId)) {
+    return { ok: false, error: 'Bu rolü atama yetkiniz yok.' }
   }
 
   const exists = target.roles.some((r) => r.roleId === input.roleId)
@@ -58,6 +62,14 @@ export async function removeRoleFromUser(input: {
 
   if (input.roleId === SUPER_ADMIN_ROLE && !canAssignSuperAdmin(input.actorRoles)) {
     return { ok: false, error: 'SUPER_ADMIN rolü yalnızca SUPER_ADMIN kaldırabilir.' }
+  }
+
+  if (!canManageRole(input.actorRoles, input.roleId)) {
+    return { ok: false, error: 'Bu rolü kaldırma yetkiniz yok.' }
+  }
+
+  if (input.roleId === SUPER_ADMIN_ROLE && input.actorId === input.targetUserId) {
+    return { ok: false, error: 'Kendi SUPER_ADMIN rolünüzü kaldıramazsınız.' }
   }
 
   if (input.roleId === SUPER_ADMIN_ROLE) {

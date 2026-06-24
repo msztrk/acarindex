@@ -53,6 +53,13 @@ export function canAssignSuperAdmin(actorRoles: AppRole[]): boolean {
   return actorRoles.includes(SUPER_ADMIN_ROLE)
 }
 
+/** ADMIN rolü yalnızca SUPER_ADMIN atayabilir/kaldırabilir */
+export function canManageRole(actorRoles: AppRole[], roleId: AppRole): boolean {
+  if (roleId === SUPER_ADMIN_ROLE) return canAssignSuperAdmin(actorRoles)
+  if (roleId === 'ADMIN') return actorRoles.includes(SUPER_ADMIN_ROLE)
+  return canManageUsers(actorRoles)
+}
+
 /**
  * Yetki matrisi — server-side kontrol için referans.
  * client-side gizleme yetkilendirme değildir.

@@ -10,7 +10,6 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { SearchBar } from '@/components/search/SearchBar'
-import { isUserAuthPublicEnabled } from '@/lib/features/user-auth'
 
 const NAV_ID = 'mobile-nav-drawer'
 
@@ -18,11 +17,11 @@ interface MobileNavDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   showSearch: boolean
+  showAuth?: boolean
 }
 
-export function MobileNavDrawer({ open, onOpenChange, showSearch }: MobileNavDrawerProps) {
+export function MobileNavDrawer({ open, onOpenChange, showSearch, showAuth = false }: MobileNavDrawerProps) {
   const pathname = usePathname()
-  const showAuth = isUserAuthPublicEnabled()
 
   const close = () => onOpenChange(false)
 

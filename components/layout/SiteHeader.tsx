@@ -7,18 +7,16 @@ import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn, buttonVariants } from '@/lib/utils'
 import { SearchBar } from '@/components/search/SearchBar'
-import { isUserAuthPublicEnabled } from '@/lib/features/user-auth'
 import {
   MobileNavDrawer,
   MOBILE_NAV_DRAWER_ID,
 } from '@/components/layout/MobileNavDrawer'
 
-export function SiteHeader() {
+export function SiteHeader({ showAuth = false }: { showAuth?: boolean }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const pathname = usePathname()
   const isHome = pathname === '/'
-  const showAuth = isUserAuthPublicEnabled()
 
   const handleMenuOpenChange = (open: boolean) => {
     setMobileMenuOpen(open)
@@ -104,6 +102,7 @@ export function SiteHeader() {
         open={mobileMenuOpen}
         onOpenChange={handleMenuOpenChange}
         showSearch={!isHome}
+        showAuth={showAuth}
       />
     </header>
   )

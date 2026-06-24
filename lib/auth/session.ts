@@ -51,6 +51,16 @@ export async function destroySessionByToken(token: string): Promise<void> {
   await prisma.session.delete({ where: { tokenHash } }).catch(() => undefined)
 }
 
+export async function revokeOtherSessions(userId: string, keepSessionId?: string): Promise<number> {
+  const result = await prisma.session.deleteMany({
+    where: {
+      userId,
+      ...(keepSessionId ? { id: { not: keepSessionId } } : {}),
+    },
+  })
+  return result.count
+}
+
 export async function getSessionFromToken(token: string | undefined): Promise<SessionPayload | null> {
   if (!token) return null
   const tokenHash = hashToken(token)

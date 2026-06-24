@@ -30,6 +30,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:seed:dev": "npx tsx --env-file=.env.local scripts/db/seed-dev.ts",
     "auth:bootstrap-super-admin": "npx tsx scripts/auth/bootstrap-super-admin.ts",
+    "auth:change-password": "npx tsx scripts/auth/change-password-cli.ts",
     "etl:pilot-dry-run": "npx tsx scripts/etl-pg/pilot-dry-run.ts",
     "etl:pilot-run": "npx tsx scripts/etl-pg/pilot-run.ts",
     "rehearsal:build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step build",

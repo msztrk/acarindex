@@ -9,8 +9,10 @@ PostgreSQL geçişi tamamlanmadan Supabase paketleri ve scriptler **silinmedi**.
 | `lib/supabase/server.ts` | Auth callback / geçici oturum |
 | `app/auth/callback/route.ts` | OAuth callback |
 | `app/auth/signout/route.ts` | Çıkış |
-| `app/(site)/login/*` | Giriş (feature flag kapalı) |
-| `app/(site)/profile/page.tsx` | Profil (geçici) |
+| `app/(site)/login/*` | Giriş — PG auth (`PgLoginForm`) veya legacy Supabase |
+| `app/(site)/profile/page.tsx` | PG auth aktifken `/hesabim` yönlendirmesi |
+| `app/(site)/hesabim/security` | Parola değişimi (PG auth) |
+| `app/auth/callback/route.ts` | OAuth callback — PG giriş akışında kullanılmıyor |
 
 ## Legacy ETL / migration (çalıştırma — arşiv hedefi)
 
