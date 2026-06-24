@@ -1,0 +1,116 @@
+# İzole 8.000 makale pilot — sentetik production-beta stack'e dokunmaz
+name: acarindex-pilot
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: acarindex_pilot_pg
+    restart: unless-stopped
+    env_file:
+      - /etc/acarindex/pilot.env
+    volumes:
+      - pilot_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: acarindex_pilot_mysql
+    restart: unless-stopped
+    env_file:
+      - /etc/acarindex/pilot-mysql.env
+    volumes:
+      - pilot_mysql_data:/var/lib/mysql
+    ports:
+      # Yalnızca host restore / admin — internete kapalı
+      - "127.0.0.1:3308:3306"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mariadb-admin ping -h 127.0.0.1 -uroot -p\"$$MARIADB_ROOT_PASSWORD\" || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    image: acarindex-migrate:pilot
+    env_file:
+      - /etc/acarindex/pilot.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["tools"]
+    restart: "no"
+
+  etl:
+    build:
+      context: .
+      dockerfile: Dockerfile.etl
+    image: acarindex-etl:pilot
+    env_file:
+      - /etc/acarindex/pilot.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
+    profiles: ["tools"]
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: acarindex-web:pilot
+    container_name: acarindex_pilot_app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - /etc/acarindex/pilot.env
+    environment:
+      USE_SUPABASE_DB: "0"
+      ENABLE_USER_AUTH: "false"
+      NEXT_PUBLIC_ENABLE_USER_AUTH: "false"
+    ports:
+      - "127.0.0.1:3002:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    profiles: ["app"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+volumes:
+  pilot_pg_data:
+  pilot_mysql_data:

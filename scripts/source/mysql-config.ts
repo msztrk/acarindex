@@ -13,6 +13,9 @@ export interface SourceMysqlConfig {
 
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1'])
 
+/** Pilot compose iç ağ hostları (internet dışı MariaDB). */
+const PILOT_SOURCE_HOSTS = new Set(['mariadb', 'acarindex_pilot_mysql', 'mysql'])
+
 export function maskMysqlUrl(url: string): string {
   try {
     const u = new URL(url.replace(/^mysql:\/\//, 'http://'))
@@ -44,11 +47,11 @@ function parseMysqlUrl(raw: string): SourceMysqlConfig {
 
 export function assertLocalSourceHost(host: string): void {
   const h = host.toLowerCase()
-  if (!LOCAL_HOSTS.has(h)) {
-    throw new Error(
-      `Kaynak MySQL yalnızca localhost olmalı (host=${h}). Uzak production kaynağına bağlanılmaz.`,
-    )
-  }
+  if (LOCAL_HOSTS.has(h)) return
+  if (process.env.ALLOW_PILOT_DOCKER_SOURCE === '1' && PILOT_SOURCE_HOSTS.has(h)) return
+  throw new Error(
+    `Kaynak MySQL yalnızca localhost veya izole pilot container olmalı (host=${h}). Uzak production kaynağına bağlanılmaz.`,
+  )
 }
 
 export function resolveSourceMysqlConfig(): SourceMysqlConfig {
