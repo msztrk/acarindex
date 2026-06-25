@@ -40,23 +40,30 @@ echo "$flags" | grep -q '"emailVerification":false' || fail "emailVerification n
 echo "$flags" | grep -q '"passwordReset":false' || fail "passwordReset not false"
 
 echo "=== DARK ROUTES ==="
+CJ_DARK="/tmp/faz6c-dark-$$.txt"
+rm -f "$CJ_DARK"
+csrf_dark=$(curl -sS -b "$CJ_DARK" -c "$CJ_DARK" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
+
 reg_html=$(curl -sS $AUTH_NGX "$BASE/register")
 echo "$reg_html" | grep -qi 'yakında' || echo "$reg_html" | grep -qi 'kapalı' || fail "register not closed message"
 
 code=$(curl -sS $AUTH_NGX -X POST "$BASE/api/auth/register" \
-  -H "Content-Type: application/json" -d '{"email":"dark@test.invalid","password":"SecurePass123!","acceptedDocumentIds":[]}' \
+  -H "Content-Type: application/json" -H "x-csrf-token: $csrf_dark" \
+  -d '{"email":"dark@test.invalid","password":"SecurePass123!","acceptedDocumentIds":[]}' \
   -o /dev/null -w '%{http_code}')
 [[ "$code" == "400" || "$code" == "403" ]] || fail "register API $code"
 
 fp=$(curl -sS $AUTH_NGX -X POST "$BASE/api/auth/forgot-password" \
-  -H "Content-Type: application/json" -d '{"email":"nobody@test.invalid"}')
+  -H "Content-Type: application/json" -H "x-csrf-token: $csrf_dark" \
+  -d '{"email":"nobody@test.invalid"}')
 echo "$fp"
 echo "$fp" | grep -qi 'gönderildi' || fail "forgot generic"
 
 vt_before=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -tAc \
   "SELECT count(*) FROM verification_tokens WHERE created_at > now() - interval '5 minutes';" | trim)
 curl -sS $AUTH_NGX -X POST "$BASE/api/auth/resend-verification" \
-  -H "Content-Type: application/json" -d '{"email":"msztrk@gmail.com"}' >/dev/null
+  -H "Content-Type: application/json" -H "x-csrf-token: $csrf_dark" \
+  -d '{"email":"msztrk@gmail.com"}' >/dev/null
 vt_after=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -tAc \
   "SELECT count(*) FROM verification_tokens WHERE created_at > now() - interval '5 minutes';" | trim)
 [[ "$vt_after" == "$vt_before" ]] || fail "verification tokens created when flag off"
@@ -64,10 +71,12 @@ vt_after=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_p
 prt_before=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -tAc \
   "SELECT count(*) FROM password_reset_tokens WHERE created_at > now() - interval '5 minutes';" | trim)
 curl -sS $AUTH_NGX -X POST "$BASE/api/auth/forgot-password" \
-  -H "Content-Type: application/json" -d '{"email":"msztrk@gmail.com"}' >/dev/null
+  -H "Content-Type: application/json" -H "x-csrf-token: $csrf_dark" \
+  -d '{"email":"msztrk@gmail.com"}' >/dev/null
 prt_after=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -tAc \
   "SELECT count(*) FROM password_reset_tokens WHERE created_at > now() - interval '5 minutes';" | trim)
 [[ "$prt_after" == "$prt_before" ]] || fail "reset tokens created when flag off"
+rm -f "$CJ_DARK"
 
 echo "=== CATALOG (abbrev) ==="
 for path in / /search?q=enerji /journals /istatistikler /sitemap.xml; do
