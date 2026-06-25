@@ -70,6 +70,7 @@ $ACAR_COMPOSE exec -T -e PGPASSWORD="$OLD_PG_PASS" postgres \
 echo "=== ALTER MariaDB root + ETL reader ==="
 $ACAR_COMPOSE exec -T mariadb mariadb -uroot -p"$OLD_MYSQL_ROOT" -e \
   "ALTER USER 'root'@'%' IDENTIFIED BY '${NEW_MYSQL_ROOT}';
+   ALTER USER 'root'@'localhost' IDENTIFIED BY '${NEW_MYSQL_ROOT}';
    ALTER USER '${ETL_USER}'@'%' IDENTIFIED BY '${NEW_ETL_PASS}';
    FLUSH PRIVILEGES;"
 
