@@ -181,7 +181,13 @@ async function main() {
   if (failed.length > 0) process.exit(1)
 }
 
-main().catch((e) => {
-  console.error(e)
-  process.exit(1)
-})
+const isCliEntry =
+  typeof process.argv[1] === 'string' &&
+  process.argv[1].replace(/\\/g, '/').includes('user-panel-acceptance')
+
+if (isCliEntry) {
+  main().catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+}

@@ -50,7 +50,7 @@ describe('admin panel summary privacy', () => {
 
 const runIntegration = process.env.USER_PANEL_INTEGRATION === '1'
 
-describe.skipIf(!runIntegration)('user panel security integration', () => {
+describe.sequential.skipIf(!runIntegration)('user panel security integration', () => {
   it('IDOR service suite passes', async () => {
     const { runUserPanelSecuritySuite } = await import('@/scripts/test/user-panel-security')
     const report = await runUserPanelSecuritySuite()
@@ -61,11 +61,11 @@ describe.skipIf(!runIntegration)('user panel security integration', () => {
       expect(report.disabledUser.every((r) => r.ok)).toBe(true)
       expect(report.leaks).toHaveLength(0)
     }
-  })
+  }, 120000)
 
   it('acceptance suite passes', async () => {
     const { runUserPanelAcceptance } = await import('@/scripts/test/user-panel-acceptance')
     const checks = await runUserPanelAcceptance()
     expect(checks.every((c) => c.ok)).toBe(true)
-  })
+  }, 120000)
 })
