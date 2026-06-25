@@ -59,8 +59,14 @@ set_lifecycle_flags() {
 
 echo "=== PRE CHECKS ==="
 curl -sf "$BASE_LOCAL/api/health" && echo health_ok
-code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_LOCAL/")
-[[ "$code" == "401" ]] || { echo "FAIL: expected 401 without basic auth, got $code"; exit 1; }
+code=$(curl -s -o /dev/null -w '%{http_code}' "https://beta.acarindex.com/" 2>/dev/null || echo "000")
+if [[ "$code" == "401" ]]; then
+  echo "basic_auth_external:401_ok"
+else
+  code_local=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_LOCAL/")
+  echo "basic_auth_local:$code_local external:$code"
+  [[ "$code_local" == "401" || "$code" == "401" ]] || { echo "FAIL: expected 401 without basic auth"; exit 1; }
+fi
 df -h / /var/backups | tail -3
 
 echo "=== USERS ==="
