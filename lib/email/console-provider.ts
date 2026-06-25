@@ -13,18 +13,9 @@ export class ConsoleEmailProvider implements TransactionEmailProvider {
       env: label,
       to: message.to,
       subject: message.subject,
-      textPreview: message.text.slice(0, 200),
+      textLength: message.text.length,
     }
     console.info('[acarindex-email]', JSON.stringify(safe))
     return { ok: true }
   }
-}
-
-export function getTransactionEmailProvider(): TransactionEmailProvider {
-  const provider = process.env.EMAIL_PROVIDER?.trim().toLowerCase()
-  if (provider && provider !== 'console' && provider !== 'log') {
-    // Gerçek sağlayıcı credential onayı sonrası adapter eklenecek
-    throw new Error('EMAIL_PROVIDER yapılandırılmadı — canlı gönderim kapalı.')
-  }
-  return new ConsoleEmailProvider()
 }

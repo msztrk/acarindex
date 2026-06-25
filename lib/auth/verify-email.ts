@@ -13,9 +13,7 @@ import { isAbuseRateLimited, recordAbuseEvent } from '@/lib/auth/abuse-rate-limi
 import { isEmailVerificationEnabled } from '@/lib/features/auth-lifecycle'
 import { createEmailService } from '@/lib/email/templates'
 
-function siteBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://127.0.0.1:3000').replace(/\/$/, '')
-}
+import { buildAuthActionUrl } from '@/lib/email/public-url'
 
 export async function createEmailVerificationToken(userId: string): Promise<string> {
   const raw = generateToken()
@@ -44,7 +42,7 @@ export async function sendVerificationEmailForUser(
 ): Promise<{ ok: boolean }> {
   if (!isEmailVerificationEnabled()) return { ok: true }
   const raw = await createEmailVerificationToken(userId)
-  const verifyUrl = `${siteBaseUrl()}/verify-email?token=${encodeURIComponent(raw)}`
+  const verifyUrl = buildAuthActionUrl('/verify-email', { token: raw })
   const emailService = createEmailService()
   return emailService.sendVerificationEmail({
     to: email,

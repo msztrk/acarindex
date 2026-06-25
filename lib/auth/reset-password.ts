@@ -18,9 +18,7 @@ import { createEmailService } from '@/lib/email/templates'
 const GENERIC_FORGOT_MESSAGE =
   'E-posta adresiniz kayıtlıysa parola sıfırlama bağlantısı gönderildi. Gelen kutunuzu kontrol edin.'
 
-function siteBaseUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://127.0.0.1:3000').replace(/\/$/, '')
-}
+import { buildAuthActionUrl } from '@/lib/email/public-url'
 
 export async function requestPasswordReset(
   email: string,
@@ -69,7 +67,7 @@ export async function requestPasswordReset(
     data: { userId: user.id, tokenHash, expiresAt },
   })
 
-  const resetUrl = `${siteBaseUrl()}/reset-password?token=${encodeURIComponent(raw)}`
+  const resetUrl = buildAuthActionUrl('/reset-password', { token: raw })
   const emailService = createEmailService()
   await emailService.sendPasswordResetEmail({
     to: user.email,

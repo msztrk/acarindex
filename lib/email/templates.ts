@@ -3,13 +3,20 @@ import type {
   PasswordResetEmailParams,
   VerificationEmailParams,
 } from '@/lib/email/types'
-import { getTransactionEmailProvider } from '@/lib/email/console-provider'
+import { getTransactionEmailProvider } from '@/lib/email/provider'
+
+function supportLine(): string {
+  const reply = process.env.EMAIL_REPLY_TO?.trim()
+  if (reply) return `Sorularınız için: ${reply}`
+  return 'Sorularınız için: https://beta.acarindex.com/contact'
+}
 
 function wrapBody(title: string, paragraphs: string[]): { text: string; html: string } {
-  const text = [`AcarIndex — ${title}`, '', ...paragraphs, '', '— AcarIndex'].join('\n')
+  const all = [...paragraphs, supportLine()]
+  const text = [`AcarIndex — ${title}`, '', ...all, '', '— AcarIndex'].join('\n')
   const html = [
     `<p><strong>AcarIndex</strong> — ${title}</p>`,
-    ...paragraphs.map((p) => `<p>${p}</p>`),
+    ...all.map((p) => `<p>${p}</p>`),
     '<p>— AcarIndex</p>',
   ].join('')
   return { text, html }

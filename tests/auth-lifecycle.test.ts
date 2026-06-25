@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeAll } from 'vitest'
 import { hashToken, generateToken } from '@/lib/auth/config'
 import {
   buildVerificationEmail,
@@ -89,6 +89,10 @@ const runLifecycleIntegration = process.env.AUTH_LIFECYCLE_INTEGRATION === '1'
 const describeLifecycle = runLifecycleIntegration ? describe.sequential : describe.sequential.skip
 
 describeLifecycle('auth lifecycle integration', () => {
+  beforeAll(() => {
+    process.env.APP_PUBLIC_URL = process.env.APP_PUBLIC_URL || 'http://127.0.0.1:3001'
+  })
+
   it('forgot password enumeration-safe message', async () => {
     process.env.ENABLE_PASSWORD_RESET = '1'
     const { requestPasswordReset } = await import('@/lib/auth/reset-password')
