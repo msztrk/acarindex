@@ -41,29 +41,60 @@ export function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="max-w-md mx-auto p-6 border rounded-lg bg-card">
-        <p className="text-sm text-destructive">Geçersiz veya eksik bağlantı.</p>
-        <Link href="/forgot-password" className="text-sm underline">Yeni talep oluştur</Link>
+      <div className="max-w-md w-full min-w-0 mx-auto p-6 border rounded-lg bg-card break-words">
+        <p className="text-sm text-destructive" role="alert">Geçersiz veya eksik bağlantı.</p>
+        <Link href="/forgot-password" className="text-sm underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">
+          Yeni talep oluştur
+        </Link>
       </div>
     )
   }
 
   if (success) {
     return (
-      <div className="max-w-md mx-auto p-6 border rounded-lg bg-card space-y-2">
-        <p className="text-sm text-green-700">Parolanız güncellendi. Tüm oturumlar kapatıldı.</p>
-        <Link href="/login" className="text-sm underline">Giriş yap</Link>
+      <div className="max-w-md w-full min-w-0 mx-auto p-6 border rounded-lg bg-card space-y-2 break-words">
+        <p className="text-sm text-green-700" role="status">Parolanız güncellendi. Tüm oturumlar kapatıldı.</p>
+        <Link href="/login" className="text-sm underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">
+          Giriş yap
+        </Link>
       </div>
     )
   }
 
   return (
-    <form onSubmit={submit} className="max-w-md mx-auto space-y-4 border rounded-lg p-6 bg-card">
+    <form onSubmit={submit} className="max-w-md w-full min-w-0 mx-auto space-y-4 border rounded-lg p-6 bg-card">
       <h1 className="text-xl font-semibold">Yeni parola</h1>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      <Input type="password" required minLength={12} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="Yeni parola" />
-      <Input type="password" required value={password2} onChange={(e) => setPassword2(e.target.value)} autoComplete="new-password" placeholder="Parola tekrar" />
-      <Button type="submit" disabled={loading} className="w-full">Parolayı kaydet</Button>
+      {error && <p className="text-sm text-destructive break-words" role="alert">{error}</p>}
+      <div className="space-y-2">
+        <label htmlFor="reset-password-new" className="text-sm font-medium">Yeni parola</label>
+        <Input
+          id="reset-password-new"
+          type="password"
+          required
+          minLength={12}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="new-password"
+          placeholder="En az 12 karakter"
+          className="w-full min-w-0"
+        />
+      </div>
+      <div className="space-y-2">
+        <label htmlFor="reset-password-confirm" className="text-sm font-medium">Parola tekrar</label>
+        <Input
+          id="reset-password-confirm"
+          type="password"
+          required
+          value={password2}
+          onChange={(e) => setPassword2(e.target.value)}
+          autoComplete="new-password"
+          placeholder="Parolayı tekrar girin"
+          className="w-full min-w-0"
+        />
+      </div>
+      <Button type="submit" disabled={loading} className="w-full min-w-0">
+        {loading ? 'Kaydediliyor…' : 'Parolayı kaydet'}
+      </Button>
     </form>
   )
 }

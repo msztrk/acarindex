@@ -29,16 +29,33 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form onSubmit={submit} className="max-w-md mx-auto space-y-4 border rounded-lg p-6 bg-card">
+    <form onSubmit={submit} className="max-w-md w-full min-w-0 mx-auto space-y-4 border rounded-lg p-6 bg-card">
       <h1 className="text-xl font-semibold">Şifremi unuttum</h1>
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground break-words">
         E-posta adresinizi girin. Kayıtlıysa sıfırlama bağlantısı gönderilir.
       </p>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {message && <p className="text-sm text-green-700">{message}</p>}
-      <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="E-posta" />
-      <Button type="submit" disabled={loading} className="w-full">Gönder</Button>
-      <Link href="/login" className="text-sm text-primary underline">Girişe dön</Link>
+      {error && <p className="text-sm text-destructive break-words" role="alert">{error}</p>}
+      {message && <p className="text-sm text-green-700 break-words" role="status">{message}</p>}
+      <div className="space-y-2">
+        <label htmlFor="forgot-email" className="text-sm font-medium">E-posta</label>
+        <Input
+          id="forgot-email"
+          name="email"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          placeholder="ornek@email.com"
+          className="w-full min-w-0"
+        />
+      </div>
+      <Button type="submit" disabled={loading} className="w-full min-w-0">
+        {loading ? 'Gönderiliyor…' : 'Gönder'}
+      </Button>
+      <Link href="/login" className="text-sm text-primary underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">
+        Girişe dön
+      </Link>
     </form>
   )
 }

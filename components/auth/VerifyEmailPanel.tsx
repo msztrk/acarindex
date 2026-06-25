@@ -49,25 +49,46 @@ export function VerifyEmailPanel() {
 
   if (verified) {
     return (
-      <div className="max-w-md mx-auto p-6 border rounded-lg bg-card">
+      <div className="max-w-md w-full min-w-0 mx-auto p-6 border rounded-lg bg-card break-words">
         <p className="text-sm text-green-700">E-posta adresiniz doğrulandı.</p>
-        <Link href="/hesabim" className="text-sm underline">Hesabıma git</Link>
+        <Link href="/hesabim" className="text-sm underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm">
+          Hesabıma git
+        </Link>
       </div>
     )
   }
 
   return (
-    <div className="max-w-md mx-auto space-y-4">
+    <div className="max-w-md w-full min-w-0 mx-auto space-y-4">
       {token && error && (
-        <div className="p-4 border rounded-lg bg-card text-sm text-destructive">{error}</div>
+        <div className="p-4 border rounded-lg bg-card text-sm text-destructive break-words" role="alert">
+          {error}
+        </div>
       )}
-      <form onSubmit={resend} className="space-y-4 border rounded-lg p-6 bg-card">
+      <form onSubmit={resend} className="space-y-4 border rounded-lg p-6 bg-card w-full min-w-0">
         <h1 className="text-xl font-semibold">E-posta doğrulama</h1>
-        <p className="text-sm text-muted-foreground">Doğrulama e-postasını tekrar göndermek için adresinizi girin.</p>
-        {message && <p className="text-sm text-green-700">{message}</p>}
-        {error && !token && <p className="text-sm text-destructive">{error}</p>}
-        <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
-        <Button type="submit" disabled={loading} className="w-full">Tekrar gönder</Button>
+        <p className="text-sm text-muted-foreground break-words">
+          Doğrulama e-postasını tekrar göndermek için adresinizi girin.
+        </p>
+        {message && <p className="text-sm text-green-700 break-words" role="status">{message}</p>}
+        {error && !token && <p className="text-sm text-destructive break-words" role="alert">{error}</p>}
+        <div className="space-y-2">
+          <label htmlFor="verify-resend-email" className="text-sm font-medium">E-posta</label>
+          <Input
+            id="verify-resend-email"
+            name="email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            placeholder="ornek@email.com"
+            className="w-full min-w-0"
+          />
+        </div>
+        <Button type="submit" disabled={loading} className="w-full min-w-0">
+          {loading ? 'Gönderiliyor…' : 'Tekrar gönder'}
+        </Button>
       </form>
     </div>
   )
