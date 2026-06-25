@@ -7,10 +7,21 @@ import { generateToken, hashToken, VERIFY_TOKEN_TTL_MS, RESET_TOKEN_TTL_MS } fro
 import { randomBytes } from 'crypto'
 
 const TEST_EMAIL = 'faz6c-responsive@acarindex-beta.invalid'
+const VERIFY_INVALID_PROBE = 'invalid-token-probe-beta-c'
+const RESET_INVALID_PROBE = 'invalid-reset-token-probe-beta-c'
 const OUT = process.env.ACAR_RESPONSIVE_ENV_FILE ?? '/tokens/tokens.env'
 
 async function main(): Promise<void> {
   const PASS = process.env.NEW_PASS ?? randomBytes(16).toString('hex')
+  await prisma.abuseEvent.deleteMany({
+    where: {
+      OR: [
+        { key: TEST_EMAIL },
+        { key: hashToken(VERIFY_INVALID_PROBE) },
+        { key: hashToken(RESET_INVALID_PROBE) },
+      ],
+    },
+  })
   await prisma.user.deleteMany({ where: { email: TEST_EMAIL } })
 
   const user = await prisma.user.create({
@@ -97,7 +108,8 @@ async function main(): Promise<void> {
     `TOKEN_RESET_SUCCESS_1366=${resetSuccess1366}`,
     `TOKEN_RESET_EXPIRED=${resetExpired}`,
     `TOKEN_RESET_USED=${resetUsedRaw}`,
-    `TOKEN_INVALID=invalid-token-probe-beta-c`,
+    `TOKEN_INVALID=${VERIFY_INVALID_PROBE}`,
+    `TOKEN_RESET_INVALID=${RESET_INVALID_PROBE}`,
   ]
 
   const { writeFileSync, chmodSync } = await import('fs')

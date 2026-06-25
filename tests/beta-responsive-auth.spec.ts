@@ -17,6 +17,7 @@ const TOKEN_RESET_SUCCESS_1366 = process.env.TOKEN_RESET_SUCCESS_1366 ?? ''
 const TOKEN_RESET_EXPIRED = process.env.TOKEN_RESET_EXPIRED ?? ''
 const TOKEN_RESET_USED = process.env.TOKEN_RESET_USED ?? ''
 const TOKEN_INVALID = process.env.TOKEN_INVALID ?? 'invalid-token-probe'
+const TOKEN_RESET_INVALID = process.env.TOKEN_RESET_INVALID ?? 'invalid-reset-token-probe'
 const TEST_EMAIL =
   process.env.ACAR_RESPONSIVE_TEST_EMAIL ?? 'faz6c-responsive@acarindex-beta.invalid'
 const LONG_EMAIL =
@@ -74,10 +75,35 @@ async function checkRoute(
   }
 }
 
-async function submitReset(page: Page, password: string): Promise<void> {
+async function submitReset(page: Page, password: string): Promise<number> {
+  const responsePromise = page.waitForResponse(
+    (r) => r.url().includes('/api/auth/reset-password') && r.request().method() === 'POST',
+    { timeout: 20000 },
+  )
   await page.locator('#reset-password-new').fill(password)
   await page.locator('#reset-password-confirm').fill(password)
   await page.getByRole('button', { name: /Parolayı kaydet/i }).click()
+  const response = await responsePromise
+  return response.status()
+}
+
+async function checkResetErrorState(
+  page: Page,
+  token: string,
+  slug: string,
+  messagePattern: RegExp,
+): Promise<void> {
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto(`/reset-password?token=${encodeURIComponent(token)}`, {
+      waitUntil: 'domcontentloaded',
+    })
+    const status = await submitReset(page, 'ResponsivePass1!X')
+    expect(status, `${slug} HTTP @${width}`).toBeGreaterThanOrEqual(400)
+    await expect(page.getByText(messagePattern)).toBeVisible({ timeout: 15000 })
+    expect(await noHorizontalOverflow(page), `${slug} overflow @${width}`).toBe(true)
+    await shot(page, slug, width)
+  }
 }
 
 test.describe.configure({ mode: 'serial' })
@@ -130,33 +156,9 @@ test.describe('beta responsive auth lifecycle', () => {
         await expect(p.locator('#reset-password-new')).toBeVisible()
       },
     )
-    await checkRoute(
-      page,
-      `/reset-password?token=${encodeURIComponent(TOKEN_RESET_EXPIRED)}`,
-      'reset-expired',
-      async (p) => {
-        await submitReset(p, 'ResponsivePass1!X')
-        await expect(p.getByText(/süresi dol|geçersiz/i)).toBeVisible({ timeout: 15000 })
-      },
-    )
-    await checkRoute(
-      page,
-      `/reset-password?token=${encodeURIComponent(TOKEN_RESET_USED)}`,
-      'reset-used',
-      async (p) => {
-        await submitReset(p, 'ResponsivePass1!X')
-        await expect(p.getByText(/geçersiz|kullanıldı/i)).toBeVisible({ timeout: 15000 })
-      },
-    )
-    await checkRoute(
-      page,
-      `/reset-password?token=${encodeURIComponent(TOKEN_INVALID)}`,
-      'reset-invalid',
-      async (p) => {
-        await submitReset(p, 'ResponsivePass1!X')
-        await expect(p.getByText(/geçersiz|başarısız/i)).toBeVisible({ timeout: 15000 })
-      },
-    )
+    await checkResetErrorState(page, TOKEN_RESET_EXPIRED, 'reset-expired', /süresi dol|geçersiz/i)
+    await checkResetErrorState(page, TOKEN_RESET_USED, 'reset-used', /geçersiz|kullanıldı/i)
+    await checkResetErrorState(page, TOKEN_RESET_INVALID, 'reset-invalid', /geçersiz|başarısız/i)
   })
 
   test('reset success flow', async ({ page }) => {
@@ -171,7 +173,8 @@ test.describe('beta responsive auth lifecycle', () => {
       await page.goto(`/reset-password?token=${encodeURIComponent(resetSuccessByWidth[width])}`, {
         waitUntil: 'domcontentloaded',
       })
-      await submitReset(page, 'ResponsivePass1!X')
+      const status = await submitReset(page, 'ResponsivePass1!X')
+      expect(status, `reset-success HTTP @${width}`).toBe(200)
       await expect(page.getByText(/Parolanız güncellendi/i)).toBeVisible({ timeout: 15000 })
       await expect(page.getByRole('link', { name: /Giriş yap/i })).toBeVisible()
       expect(await noHorizontalOverflow(page), `reset-success overflow @${width}`).toBe(true)
