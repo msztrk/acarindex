@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -73,6 +74,10 @@ export default function PgLoginForm() {
         <Button type="submit" disabled={loading || !csrfToken} className="w-full">
           {loading ? 'Giriş yapılıyor…' : 'Giriş Yap'}
         </Button>
+        <p className="text-sm text-center space-x-3">
+          <Link href="/forgot-password" className="text-primary underline">Şifremi unuttum</Link>
+          <Link href="/register" className="text-primary underline">Kayıt ol</Link>
+        </p>
       </form>
     </div>
   )

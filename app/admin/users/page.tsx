@@ -34,6 +34,7 @@ export default async function AdminUsersPage({
         users={rows}
         manageableRoles={manageableRoles}
         panelSummaries={panelSummaries}
+        canAdminVerifyEmail={session.user.roles.includes('SUPER_ADMIN')}
       />
     </div>
   )

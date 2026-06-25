@@ -167,20 +167,43 @@ export async function loadPaginatedUsers(searchParams: Record<string, string | s
       orderBy: { createdAt: 'desc' },
       skip,
       take: pageSize,
-      include: { roles: { include: { role: true } } },
+      include: {
+        roles: { include: { role: true } },
+        sessions: { where: { expiresAt: { gt: new Date() } }, select: { id: true } },
+        legalAcceptances: {
+          include: { document: true },
+          orderBy: { acceptedAt: 'desc' },
+        },
+        accountDeletionRequests: {
+          where: { status: { in: ['pending', 'scheduled'] } },
+          orderBy: { requestedAt: 'desc' },
+          take: 1,
+        },
+      },
     }),
     prisma.user.count({ where }),
   ])
   return {
-    rows: rows.map((u) => ({
-      id: u.id,
-      email: u.email,
-      name: u.name,
-      status: u.status,
-      emailVerified: u.emailVerified?.toISOString() ?? null,
-      lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
-      roles: u.roles.map((r) => r.roleId),
-    })),
+    rows: rows.map((u) => {
+      const legalVersions: { terms?: string; privacy?: string } = {}
+      for (const a of u.legalAcceptances) {
+        const t = a.document.type
+        if (t === 'terms' && !legalVersions.terms) legalVersions.terms = a.document.version
+        if (t === 'privacy' && !legalVersions.privacy) legalVersions.privacy = a.document.version
+      }
+      return {
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        status: u.status,
+        emailVerified: u.emailVerified?.toISOString() ?? null,
+        lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
+        roles: u.roles.map((r) => r.roleId),
+        activeSessionCount: u.sessions.length,
+        legalVersions,
+        deletionRequestStatus: u.accountDeletionRequests[0]?.status ?? null,
+      }
+    }),
     meta: paginationMeta(total, page, pageSize),
   }
 }

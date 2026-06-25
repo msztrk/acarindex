@@ -15,21 +15,16 @@ import { deleteWithCsrf, postWithCsrf } from '@/lib/auth/csrf-client'
 
 
 export type AdminUserRow = {
-
   id: string
-
   email: string
-
   name: string | null
-
   status: string
-
   emailVerified: string | null
-
   lastLoginAt: string | null
-
   roles: string[]
-
+  activeSessionCount: number
+  legalVersions: { terms?: string; privacy?: string }
+  deletionRequestStatus: string | null
 }
 
 
@@ -38,6 +33,7 @@ export function UserManagementTable({
   users,
   manageableRoles,
   panelSummaries = {},
+  canAdminVerifyEmail = false,
 }: {
   users: AdminUserRow[]
   manageableRoles: AppRole[]
@@ -50,6 +46,7 @@ export function UserManagementTable({
       followedAuthors: number
     }
   >
+  canAdminVerifyEmail?: boolean
 }) {
 
   const [message, setMessage] = useState('')
@@ -146,6 +143,15 @@ export function UserManagementTable({
 
 
 
+  async function verifyEmailAdmin(userId: string) {
+    if (!confirm('E-postayı doğrulanmış olarak işaretlemek istediğinize emin misiniz?')) return
+    await runAction(`verify-${userId}`, async () => {
+      const res = await postWithCsrf(`/api/admin/users/${userId}/verify-email`, {})
+      const data = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(data.error)
+    })
+  }
+
   const assignable = manageableRoles.filter((r) => r !== 'USER')
 
 
@@ -176,6 +182,9 @@ export function UserManagementTable({
 
               <th className="py-2 pr-3">Son giriş</th>
 
+              <th className="py-2 pr-3">Oturum</th>
+              <th className="py-2 pr-3">Şartlar</th>
+              <th className="py-2 pr-3">Silme talebi</th>
               <th className="py-2">İşlemler</th>
 
             </tr>
@@ -294,15 +303,18 @@ export function UserManagementTable({
                 </td>
 
                 <td className="py-3 pr-3">
-
                   {u.lastLoginAt
-
                     ? new Date(u.lastLoginAt).toLocaleString('tr-TR')
-
                     : '—'}
-
                 </td>
-
+                <td className="py-3 pr-3">{u.activeSessionCount}</td>
+                <td className="py-3 pr-3 text-xs">
+                  {u.legalVersions.terms ? `Ş: ${u.legalVersions.terms}` : '—'}
+                  {u.legalVersions.privacy ? ` · G: ${u.legalVersions.privacy}` : ''}
+                </td>
+                <td className="py-3 pr-3 text-xs">
+                  {u.deletionRequestStatus ?? '—'}
+                </td>
                 <td className="py-3 space-y-2">
 
                   {u.status === 'active' ? (
@@ -345,6 +357,18 @@ export function UserManagementTable({
 
                     </Button>
 
+                  )}
+
+                  {canAdminVerifyEmail && !u.emailVerified && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={busy !== ''}
+                      onClick={() => verifyEmailAdmin(u.id)}
+                    >
+                      E-postayı doğrula
+                    </Button>
                   )}
 
                   <Link
