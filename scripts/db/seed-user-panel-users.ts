@@ -5,6 +5,7 @@
 import { randomBytes } from 'node:crypto'
 import { prisma } from '@/lib/db/prisma'
 import { registerUser } from '@/lib/auth/login'
+import { hashPassword } from '@/lib/auth/password'
 import { DEV_FIXTURE_MARKER } from '@/scripts/db/seed-dev'
 
 export const USER_PANEL_TEST_EMAIL_A = `user-panel-a@${DEV_FIXTURE_MARKER}.local`
@@ -29,6 +30,15 @@ export async function ensureUserPanelTestUsers(password: string): Promise<UserPa
   const existingA = await prisma.user.findUnique({ where: { email: USER_PANEL_TEST_EMAIL_A } })
   if (existingA) {
     userAId = existingA.id
+    const hash = await hashPassword(password)
+    await prisma.userCredential.update({
+      where: { userId: userAId },
+      data: { passwordHash: hash },
+    })
+    await prisma.user.update({
+      where: { id: userAId },
+      data: { status: 'active' },
+    })
   } else {
     const res = await registerUser({
       email: USER_PANEL_TEST_EMAIL_A,
@@ -43,6 +53,15 @@ export async function ensureUserPanelTestUsers(password: string): Promise<UserPa
   const existingB = await prisma.user.findUnique({ where: { email: USER_PANEL_TEST_EMAIL_B } })
   if (existingB) {
     userBId = existingB.id
+    const hash = await hashPassword(password)
+    await prisma.userCredential.update({
+      where: { userId: userBId },
+      data: { passwordHash: hash },
+    })
+    await prisma.user.update({
+      where: { id: userBId },
+      data: { status: 'active' },
+    })
   } else {
     const res = await registerUser({
       email: USER_PANEL_TEST_EMAIL_B,

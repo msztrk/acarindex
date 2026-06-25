@@ -19,9 +19,20 @@ Mevcut `lib/supabase/*` ve `LoginForm.tsx` (Supabase) **silinmedi**. `USE_PG_AUT
 
 - bcrypt (12 rounds)
 - Min 12 karakter, büyük/küçük/rakam
-- Reset/verify token süreleri: 1 saat / 24 saat (tablolar hazır; UI Faz 6B)
+- Reset/verify token süreleri: 1 saat / 24 saat — Faz 6C akışları tamamlandı ([lifecycle.md](./lifecycle.md))
 
-## Feature flag
+## Faz 6C lifecycle flag’leri
+
+| Env | Varsayılan |
+|-----|------------|
+| `ENABLE_PUBLIC_REGISTRATION` | kapalı |
+| `ENABLE_EMAIL_VERIFICATION` | kapalı |
+| `ENABLE_PASSWORD_RESET` | kapalı |
+| `EMAIL_PROVIDER` | `console` |
+
+Detay: [lifecycle.md](./lifecycle.md)
+
+## Feature flag (6A)
 
 | Env | Varsayılan | Açıklama |
 |-----|------------|----------|
