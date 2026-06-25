@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Faz 6C-Beta B — Resend provider deploy (flags aşamalı açılır; public registration kapalı)
+# Faz 6C-Beta B — backup + app build (flag'ler kapalı kalır)
 set -Eeuo pipefail
 
 ROOT="${ACAR_ROOT:-/opt/acarindex}"
@@ -10,7 +10,6 @@ source "$SCRIPT_DIR/lib-pilot-guard.sh"
 BASE_LOCAL="${ACAR_BETA_BASE:-http://127.0.0.1:3002}"
 PILOT_ENV="${ACAR_PILOT_ENV:-/etc/acarindex/pilot.env}"
 LOG="/var/log/acarindex-faz6c-beta-b-deploy.log"
-TEST_EMAIL="${ACAR_BETA_MAIL_TEST_EMAIL:-}"
 
 acar_beta_require_pilot
 
@@ -23,7 +22,7 @@ require_env() {
   local key="$1"
   grep -q "^${key}=" "$PILOT_ENV" || { echo "FAIL: missing $key in pilot.env" >&2; exit 1; }
   local val
-  val=$(grep "^${key}=" "$PILOT_ENV" | cut -d= -f2- | tr -d '\r')
+  val=$(grep "^${key}=" "$PILOT_ENV" | cut -d= -f2- | tr -d '\r' | sed 's/^"//;s/"$//')
   [[ -n "$val" ]] || { echo "FAIL: empty $key" >&2; exit 1; }
 }
 
@@ -31,27 +30,35 @@ echo "=== PRE CHECKS ==="
 curl -sf "$BASE_LOCAL/api/health" && echo health_ok
 ext=$(curl -s -o /dev/null -w '%{http_code}' https://beta.acarindex.com/ 2>/dev/null || echo 000)
 [[ "$ext" == "401" ]] || { echo "FAIL: basic auth $ext"; exit 1; }
+robots=$(curl -sI https://beta.acarindex.com/ 2>/dev/null | tr -d '\r' | grep -i x-robots-tag || true)
+echo "robots:${robots}"
+echo "$robots" | grep -qi noindex || { echo "FAIL: noindex"; exit 1; }
 df -h / | tail -1
 
 $ACAR_COMPOSE --profile tools run --rm migrate 2>&1 | tail -3
 
-echo "=== PRE BACKUP ==="
-bash "$ROOT/deploy/scripts/faz6a1-beta-backup.sh" pre_resend_provider
-
-require_env EMAIL_PROVIDER
+grep -q '^EMAIL_PROVIDER=resend' "$PILOT_ENV" || { echo "FAIL: EMAIL_PROVIDER must be resend"; exit 1; }
+grep -q '^ACAR_RESEND_DOMAIN_VERIFIED=1' "$PILOT_ENV" || { echo "FAIL: ACAR_RESEND_DOMAIN_VERIFIED"; exit 1; }
 require_env RESEND_API_KEY
 require_env EMAIL_FROM
 require_env APP_PUBLIC_URL
+require_env ACAR_BETA_MAIL_TEST_EMAIL
+app_url=$(grep '^APP_PUBLIC_URL=' "$PILOT_ENV" | cut -d= -f2- | tr -d '\r' | sed 's/^"//;s/"$//')
+[[ "$app_url" == "https://beta.acarindex.com" ]] || { echo "FAIL: APP_PUBLIC_URL must be https://beta.acarindex.com"; exit 1; }
+email_from=$(grep '^EMAIL_FROM=' "$PILOT_ENV" | cut -d= -f2- | tr -d '\r' | sed 's/^"//;s/"$//')
+echo "$email_from" | grep -q 'notify\.acarindex\.com' || { echo "FAIL: EMAIL_FROM domain"; exit 1; }
 
-grep -q '^EMAIL_PROVIDER=resend' "$PILOT_ENV" || { echo "FAIL: EMAIL_PROVIDER must be resend"; exit 1; }
-grep -q '^ENABLE_PUBLIC_REGISTRATION=0' "$PILOT_ENV" || echo "WARN: set ENABLE_PUBLIC_REGISTRATION=0"
-grep -q '^ENABLE_EMAIL_VERIFICATION=0' "$PILOT_ENV" || true
-grep -q '^ENABLE_PASSWORD_RESET=0' "$PILOT_ENV" || true
+for flag in ENABLE_PUBLIC_REGISTRATION ENABLE_EMAIL_VERIFICATION ENABLE_PASSWORD_RESET ENABLE_CAPTCHA; do
+  val=$(grep "^${flag}=" "$PILOT_ENV" | cut -d= -f2- | tr -d '\r' || echo "")
+  echo "${flag}=${val}"
+  [[ "$val" == "0" ]] || { echo "FAIL: ${flag} must be 0 at start"; exit 1; }
+done
 
-if [[ "${ACAR_RESEND_DOMAIN_VERIFIED:-}" != "1" ]]; then
-  echo "FAIL: ACAR_RESEND_DOMAIN_VERIFIED=1 gerekli (notify.acarindex.com DNS doğrulaması)"
-  exit 1
-fi
+echo "=== PRE BACKUP ==="
+bash "$ROOT/deploy/scripts/faz6a1-beta-backup.sh" pre_resend_provider
+PRE_BACKUP=$(ls -t /var/backups/acarindex-pilot/pilot_pg_pre_resend_*.dump | head -1)
+echo "PRE_BACKUP=$PRE_BACKUP"
+bash "$SCRIPT_DIR/faz6b-beta-restore-test.sh" "$PRE_BACKUP"
 
 echo "=== BUILD APP ==="
 $ACAR_COMPOSE build app
@@ -59,17 +66,4 @@ $ACAR_COMPOSE --profile app up -d --no-deps app
 sleep 30
 curl -sf "$BASE_LOCAL/api/health" && echo
 
-echo "=== FLAGS: verification only ==="
-for kv in ENABLE_EMAIL_VERIFICATION=1 ENABLE_PASSWORD_RESET=0 ENABLE_PUBLIC_REGISTRATION=0; do
-  key="${kv%%=*}"; val="${kv#*=}"
-  if grep -q "^${key}=" "$PILOT_ENV"; then sed -i "s/^${key}=.*/${key}=${val}/" "$PILOT_ENV"; else echo "${key}=${val}" >> "$PILOT_ENV"; fi
-done
-$ACAR_COMPOSE --profile app up -d --no-deps app
-sleep 15
-
-if [[ -z "$TEST_EMAIL" ]]; then
-  echo "STOP: ACAR_BETA_MAIL_TEST_EMAIL tanımlı değil — mail kabul testleri için gerekli"
-  exit 2
-fi
-
-echo "FAZ6C_BETA_B_DEPLOY_OK verification_flag_on"
+echo "FAZ6C_BETA_B_DEPLOY_OK flags_still_off"

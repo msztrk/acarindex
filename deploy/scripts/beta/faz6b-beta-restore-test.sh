@@ -20,6 +20,8 @@ cat "$BACKUP" | $ACAR_COMPOSE exec -T postgres pg_restore -U acarindex_pilot -d 
 $ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_restore_test -c \
   "SELECT count(*) AS articles FROM articles;
    SELECT count(*) AS users FROM users;
+   SELECT to_regclass('public.verification_tokens') AS verification_tokens_tbl;
+   SELECT to_regclass('public.password_reset_tokens') AS password_reset_tokens_tbl;
    SELECT to_regclass('public.saved_articles') AS saved_articles_tbl;
    SELECT to_regclass('public.reading_lists') AS reading_lists_tbl;"
 echo "RESTORE_TEST_OK"
