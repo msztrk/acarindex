@@ -16,7 +16,7 @@ cd "$ROOT"
 NEW_PASS=$(grep '^pass=' "$PASSMAP" | cut -d= -f2- | tr -d '\r')
 [[ -n "$NEW_PASS" ]] || { echo "FAIL: passmap"; exit 1; }
 
-docker compose --env-file "$PILOT_ENV" -f /opt/acarindex/docker-compose.pilot.yml --profile tools run --rm \
+docker compose --env-file "$PILOT_ENV" -f /opt/acarindex/docker-compose.pilot.yml --profile tools run --rm --no-deps \
   -e ACAR_BETA_MAIL_TEST_EMAIL \
   -e NEW_PASS="$NEW_PASS" \
   etl scripts/test/beta-mail-reset-acceptance.ts
