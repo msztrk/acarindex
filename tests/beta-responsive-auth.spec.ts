@@ -5,11 +5,15 @@ import { join } from 'path'
 const WIDTHS = [375, 768, 1366] as const
 const SHOT_DIR = process.env.ACAR_RESPONSIVE_SHOTS ?? '/var/log/acarindex-responsive-shots'
 
-const TOKEN_VERIFY_VALID = process.env.TOKEN_VERIFY_VALID ?? ''
+const TOKEN_VERIFY_SUCCESS_375 = process.env.TOKEN_VERIFY_SUCCESS_375 ?? ''
+const TOKEN_VERIFY_SUCCESS_768 = process.env.TOKEN_VERIFY_SUCCESS_768 ?? ''
+const TOKEN_VERIFY_SUCCESS_1366 = process.env.TOKEN_VERIFY_SUCCESS_1366 ?? ''
 const TOKEN_VERIFY_EXPIRED = process.env.TOKEN_VERIFY_EXPIRED ?? ''
 const TOKEN_VERIFY_USED = process.env.TOKEN_VERIFY_USED ?? ''
 const TOKEN_RESET_VALID = process.env.TOKEN_RESET_VALID ?? ''
-const TOKEN_RESET_SUCCESS = process.env.TOKEN_RESET_SUCCESS ?? ''
+const TOKEN_RESET_SUCCESS_375 = process.env.TOKEN_RESET_SUCCESS_375 ?? ''
+const TOKEN_RESET_SUCCESS_768 = process.env.TOKEN_RESET_SUCCESS_768 ?? ''
+const TOKEN_RESET_SUCCESS_1366 = process.env.TOKEN_RESET_SUCCESS_1366 ?? ''
 const TOKEN_RESET_EXPIRED = process.env.TOKEN_RESET_EXPIRED ?? ''
 const TOKEN_RESET_USED = process.env.TOKEN_RESET_USED ?? ''
 const TOKEN_INVALID = process.env.TOKEN_INVALID ?? 'invalid-token-probe'
@@ -28,6 +32,32 @@ async function shot(page: Page, name: string, width: number): Promise<void> {
   await page.screenshot({ path: join(SHOT_DIR, `${name}-${width}.png`), fullPage: true })
 }
 
+async function gotoVerifyToken(page: Page, token: string): Promise<number> {
+  const responsePromise = page.waitForResponse(
+    (r) => r.url().includes('/api/auth/verify-email') && r.request().method() === 'POST',
+    { timeout: 20000 },
+  )
+  await page.goto(`/verify-email?token=${encodeURIComponent(token)}`, { waitUntil: 'domcontentloaded' })
+  const response = await responsePromise
+  return response.status()
+}
+
+async function checkVerifyErrorState(
+  page: Page,
+  token: string,
+  slug: string,
+  messagePattern: RegExp,
+): Promise<void> {
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 })
+    const status = await gotoVerifyToken(page, token)
+    expect(status, `${slug} HTTP @${width}`).toBeGreaterThanOrEqual(400)
+    await expect(page.getByText(messagePattern)).toBeVisible({ timeout: 15000 })
+    expect(await noHorizontalOverflow(page), `${slug} overflow @${width}`).toBe(true)
+    await shot(page, slug, width)
+  }
+}
+
 async function checkRoute(
   page: Page,
   path: string,
@@ -36,7 +66,7 @@ async function checkRoute(
 ): Promise<void> {
   for (const width of WIDTHS) {
     await page.setViewportSize({ width, height: 900 })
-    const res = await page.goto(path, { waitUntil: 'networkidle' })
+    const res = await page.goto(path, { waitUntil: 'domcontentloaded' })
     expect(res?.status(), `${slug} HTTP @${width}`).toBeLessThan(500)
     expect(await noHorizontalOverflow(page), `${slug} overflow @${width}`).toBe(true)
     if (assertFn) await assertFn(page)
@@ -67,40 +97,26 @@ test.describe('beta responsive auth lifecycle', () => {
   })
 
   test('verify token states', async ({ page }) => {
-    if (!TOKEN_VERIFY_VALID) test.skip()
-    await checkRoute(
-      page,
-      `/verify-email?token=${encodeURIComponent(TOKEN_VERIFY_VALID)}`,
-      'verify-success',
-      async (p) => {
-        await expect(p.getByText(/E-posta adresiniz doğrulandı/i)).toBeVisible({ timeout: 15000 })
-        await expect(p.getByRole('link', { name: /Hesabıma git/i })).toBeVisible()
-      },
-    )
-    await checkRoute(
-      page,
-      `/verify-email?token=${encodeURIComponent(TOKEN_VERIFY_EXPIRED)}`,
-      'verify-expired',
-      async (p) => {
-        await expect(p.getByText(/süresi dolmuş|geçersiz/i)).toBeVisible({ timeout: 15000 })
-      },
-    )
-    await checkRoute(
-      page,
-      `/verify-email?token=${encodeURIComponent(TOKEN_VERIFY_USED)}`,
-      'verify-used',
-      async (p) => {
-        await expect(p.getByText(/zaten kullanıldı|geçersiz/i)).toBeVisible({ timeout: 15000 })
-      },
-    )
-    await checkRoute(
-      page,
-      `/verify-email?token=${encodeURIComponent(TOKEN_INVALID)}`,
-      'verify-invalid',
-      async (p) => {
-        await expect(p.getByText(/geçersiz|başarısız/i)).toBeVisible({ timeout: 15000 })
-      },
-    )
+    if (!TOKEN_VERIFY_SUCCESS_375) test.skip()
+
+    const verifySuccessByWidth: Record<number, string> = {
+      375: TOKEN_VERIFY_SUCCESS_375,
+      768: TOKEN_VERIFY_SUCCESS_768,
+      1366: TOKEN_VERIFY_SUCCESS_1366,
+    }
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 })
+      const status = await gotoVerifyToken(page, verifySuccessByWidth[width])
+      expect(status, `verify-success HTTP @${width}`).toBe(200)
+      await expect(page.getByText(/E-posta adresiniz doğrulandı/i)).toBeVisible({ timeout: 15000 })
+      await expect(page.getByRole('link', { name: /Hesabıma git/i })).toBeVisible()
+      expect(await noHorizontalOverflow(page), `verify-success overflow @${width}`).toBe(true)
+      await shot(page, 'verify-success', width)
+    }
+
+    await checkVerifyErrorState(page, TOKEN_VERIFY_EXPIRED, 'verify-expired', /süresi dol|geçersiz/i)
+    await checkVerifyErrorState(page, TOKEN_VERIFY_USED, 'verify-used', /kullanıldı|geçersiz/i)
+    await checkVerifyErrorState(page, TOKEN_INVALID, 'verify-invalid', /geçersiz|başarısız/i)
   })
 
   test('reset token states', async ({ page }) => {
@@ -120,7 +136,7 @@ test.describe('beta responsive auth lifecycle', () => {
       'reset-expired',
       async (p) => {
         await submitReset(p, 'ResponsivePass1!X')
-        await expect(p.getByText(/süresi dolmuş|geçersiz/i)).toBeVisible({ timeout: 15000 })
+        await expect(p.getByText(/süresi dol|geçersiz/i)).toBeVisible({ timeout: 15000 })
       },
     )
     await checkRoute(
@@ -144,13 +160,23 @@ test.describe('beta responsive auth lifecycle', () => {
   })
 
   test('reset success flow', async ({ page }) => {
-    if (!TOKEN_RESET_SUCCESS) test.skip()
-    await page.setViewportSize({ width: 375, height: 900 })
-    await page.goto(`/reset-password?token=${encodeURIComponent(TOKEN_RESET_SUCCESS)}`)
-    await submitReset(page, 'ResponsivePass1!X')
-    await expect(page.getByText(/Parolanız güncellendi/i)).toBeVisible({ timeout: 15000 })
-    await expect(page.getByRole('link', { name: /Giriş yap/i })).toBeVisible()
-    await shot(page, 'reset-success', 375)
+    if (!TOKEN_RESET_SUCCESS_375) test.skip()
+    const resetSuccessByWidth: Record<number, string> = {
+      375: TOKEN_RESET_SUCCESS_375,
+      768: TOKEN_RESET_SUCCESS_768,
+      1366: TOKEN_RESET_SUCCESS_1366,
+    }
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto(`/reset-password?token=${encodeURIComponent(resetSuccessByWidth[width])}`, {
+        waitUntil: 'domcontentloaded',
+      })
+      await submitReset(page, 'ResponsivePass1!X')
+      await expect(page.getByText(/Parolanız güncellendi/i)).toBeVisible({ timeout: 15000 })
+      await expect(page.getByRole('link', { name: /Giriş yap/i })).toBeVisible()
+      expect(await noHorizontalOverflow(page), `reset-success overflow @${width}`).toBe(true)
+      await shot(page, 'reset-success', width)
+    }
   })
 
   test('verify resend rate limit message', async ({ page }) => {

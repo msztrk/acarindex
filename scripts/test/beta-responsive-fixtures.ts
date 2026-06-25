@@ -54,7 +54,9 @@ async function main(): Promise<void> {
     return raw
   }
 
-  const verifyValid = await makeVerify({})
+  const verifySuccess375 = await makeVerify({})
+  const verifySuccess768 = await makeVerify({})
+  const verifySuccess1366 = await makeVerify({})
   const verifyExpired = await makeVerify({ expired: true })
   const verifyUsedRaw = generateToken()
   await prisma.verificationToken.create({
@@ -68,7 +70,9 @@ async function main(): Promise<void> {
   })
 
   const resetValid = await makeReset({})
-  const resetSuccess = await makeReset({})
+  const resetSuccess375 = await makeReset({})
+  const resetSuccess768 = await makeReset({})
+  const resetSuccess1366 = await makeReset({})
   const resetExpired = await makeReset({ expired: true })
   const resetUsedRaw = generateToken()
   await prisma.passwordResetToken.create({
@@ -82,11 +86,15 @@ async function main(): Promise<void> {
 
   const lines = [
     `ACAR_RESPONSIVE_TEST_EMAIL=${TEST_EMAIL}`,
-    `TOKEN_VERIFY_VALID=${verifyValid}`,
+    `TOKEN_VERIFY_SUCCESS_375=${verifySuccess375}`,
+    `TOKEN_VERIFY_SUCCESS_768=${verifySuccess768}`,
+    `TOKEN_VERIFY_SUCCESS_1366=${verifySuccess1366}`,
     `TOKEN_VERIFY_EXPIRED=${verifyExpired}`,
     `TOKEN_VERIFY_USED=${verifyUsedRaw}`,
     `TOKEN_RESET_VALID=${resetValid}`,
-    `TOKEN_RESET_SUCCESS=${resetSuccess}`,
+    `TOKEN_RESET_SUCCESS_375=${resetSuccess375}`,
+    `TOKEN_RESET_SUCCESS_768=${resetSuccess768}`,
+    `TOKEN_RESET_SUCCESS_1366=${resetSuccess1366}`,
     `TOKEN_RESET_EXPIRED=${resetExpired}`,
     `TOKEN_RESET_USED=${resetUsedRaw}`,
     `TOKEN_INVALID=invalid-token-probe-beta-c`,

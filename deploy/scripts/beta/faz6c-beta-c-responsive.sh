@@ -28,6 +28,7 @@ docker compose --env-file /etc/acarindex/pilot.env -f docker-compose.pilot.yml -
 echo "=== PLAYWRIGHT ==="
 docker run --rm \
   -v "$ROOT:/app" \
+  -v "$SHOT_DIR:$SHOT_DIR" \
   -w /app \
   --env-file "$ENV_FILE" \
   -e BASE_URL=http://127.0.0.1:3002 \
