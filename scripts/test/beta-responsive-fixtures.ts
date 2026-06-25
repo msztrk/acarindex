@@ -7,7 +7,7 @@ import { generateToken, hashToken, VERIFY_TOKEN_TTL_MS, RESET_TOKEN_TTL_MS } fro
 import { randomBytes } from 'crypto'
 
 const TEST_EMAIL = 'faz6c-responsive@acarindex-beta.invalid'
-const OUT = process.env.ACAR_RESPONSIVE_ENV_FILE ?? '/root/.faz6c-responsive-tokens.env'
+const OUT = process.env.ACAR_RESPONSIVE_ENV_FILE ?? '/tokens/tokens.env'
 
 async function main(): Promise<void> {
   const PASS = process.env.NEW_PASS ?? randomBytes(16).toString('hex')

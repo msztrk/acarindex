@@ -8,15 +8,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib-pilot-guard.sh"
 
 SHOT_DIR="/var/log/acarindex-responsive-shots"
-ENV_FILE="/root/.faz6c-responsive-tokens.env"
+TOKEN_DIR="/var/log/acarindex-responsive-private"
+ENV_FILE="$TOKEN_DIR/tokens.env"
 PLAYWRIGHT_IMAGE="${ACAR_PLAYWRIGHT_IMAGE:-mcr.microsoft.com/playwright:v1.49.1-noble}"
 
 acar_beta_require_pilot
 cd "$ROOT"
-install -d -m 700 "$SHOT_DIR"
+install -d -m 700 "$SHOT_DIR" "$TOKEN_DIR"
+rm -f "$ENV_FILE"
 
 echo "=== FIXTURES ==="
 docker compose --env-file /etc/acarindex/pilot.env -f docker-compose.pilot.yml --profile tools run --rm --no-deps \
+  -e ACAR_RESPONSIVE_ENV_FILE=/tokens/tokens.env \
+  -v "$TOKEN_DIR:/tokens" \
   etl scripts/test/beta-responsive-fixtures.ts
 
 [[ -f "$ENV_FILE" ]] || { echo "FAIL: fixture env"; exit 1; }
@@ -36,6 +40,7 @@ echo "=== CLEANUP ==="
 docker compose --env-file /etc/acarindex/pilot.env -f docker-compose.pilot.yml --profile tools run --rm --no-deps \
   etl scripts/test/beta-responsive-cleanup.ts
 rm -f "$ENV_FILE"
+rmdir "$TOKEN_DIR" 2>/dev/null || true
 
 users=$(docker compose --env-file /etc/acarindex/pilot.env -f docker-compose.pilot.yml exec -T postgres \
   psql -U acarindex_pilot -d acarindex_pilot -tAc "SELECT count(*) FROM users;" | tr -d '[:space:]')
