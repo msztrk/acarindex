@@ -22,7 +22,7 @@ TEST_PASS=$(openssl rand -base64 16 | tr -d '/+=' | head -c 16)
 echo "pass=$TEST_PASS" > "$PASSMAP"
 chmod 600 "$PASSMAP"
 
-docker compose --env-file "$PILOT_ENV" -f /opt/acarindex/docker-compose.pilot.yml --profile tools run --rm \
+docker compose --env-file "$PILOT_ENV" -f /opt/acarindex/docker-compose.pilot.yml --profile tools run --rm --no-deps \
   -e NEW_PASS="$TEST_PASS" etl scripts/auth/create-beta-mail-test-user.ts "$TEST_EMAIL" 2>&1 | tail -5
 
 UID=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -tAc \
