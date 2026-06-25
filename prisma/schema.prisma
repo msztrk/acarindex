@@ -281,6 +281,8 @@ model User {
   followedAuthors       FollowedAuthor[]
   notificationPrefs     NotificationPreference?
   recentViews           RecentView[]
+  legalAcceptances      UserLegalAcceptance[]
+  accountDeletionRequests AccountDeletionRequest[]
 
   @@index([status])
   @@map("users")
@@ -304,6 +306,7 @@ model Session {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   ipAddress String?  @map("ip_address")
   userAgent String?  @map("user_agent")
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -318,6 +321,7 @@ model VerificationToken {
   tokenHash String   @unique @map("token_hash")
   type      String   @default("email_verify")
   expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -506,4 +510,67 @@ model RecentView {
   @@unique([userId, entityType, entityId])
   @@index([userId, viewedAt(sort: Desc)])
   @@map("recent_views")
+}
+
+// ─── Hesap yaşam döngüsü (Faz 6C) ───
+
+model LegalDocument {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type        String
+  version     String
+  publishedAt DateTime @map("published_at") @db.Timestamptz(6)
+  contentHash String   @map("content_hash")
+  required    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  acceptances UserLegalAcceptance[]
+
+  @@unique([type, version])
+  @@index([type, publishedAt(sort: Desc)])
+  @@map("legal_documents")
+}
+
+model UserLegalAcceptance {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  documentId      String   @map("document_id") @db.Uuid
+  documentType    String   @map("document_type")
+  documentVersion String   @map("document_version")
+  documentHash    String   @map("document_hash")
+  acceptedAt      DateTime @default(now()) @map("accepted_at") @db.Timestamptz(6)
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document LegalDocument @relation(fields: [documentId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, documentId])
+  @@index([userId, documentType])
+  @@map("user_legal_acceptances")
+}
+
+model AccountDeletionRequest {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  status       String    @default("pending")
+  requestedAt  DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  scheduledFor DateTime  @map("scheduled_for") @db.Timestamptz(6)
+  cancelledAt  DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([scheduledFor])
+  @@map("account_deletion_requests")
+}
+
+model AbuseEvent {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventType String   @map("event_type")
+  key       String
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([eventType, key, createdAt(sort: Desc)])
+  @@index([eventType, ipAddress, createdAt(sort: Desc)])
+  @@map("abuse_events")
 }
