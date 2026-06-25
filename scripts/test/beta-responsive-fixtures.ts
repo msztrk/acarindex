@@ -15,11 +15,8 @@ async function main(): Promise<void> {
   const PASS = process.env.NEW_PASS ?? randomBytes(16).toString('hex')
   await prisma.abuseEvent.deleteMany({
     where: {
-      OR: [
-        { key: TEST_EMAIL },
-        { key: hashToken(VERIFY_INVALID_PROBE) },
-        { key: hashToken(RESET_INVALID_PROBE) },
-      ],
+      eventType: { in: ['token_verify', 'verify_resend', 'forgot_password'] },
+      createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
     },
   })
   await prisma.user.deleteMany({ where: { email: TEST_EMAIL } })

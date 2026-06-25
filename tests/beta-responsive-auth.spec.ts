@@ -53,7 +53,9 @@ async function checkVerifyErrorState(
     await page.setViewportSize({ width, height: 900 })
     const status = await gotoVerifyToken(page, token)
     expect(status, `${slug} HTTP @${width}`).toBeGreaterThanOrEqual(400)
-    await expect(page.getByText(messagePattern)).toBeVisible({ timeout: 15000 })
+    const alert = page.getByRole('alert').first()
+    await expect(alert).toBeVisible({ timeout: 15000 })
+    await expect(alert).toHaveText(messagePattern, { timeout: 5000 })
     expect(await noHorizontalOverflow(page), `${slug} overflow @${width}`).toBe(true)
     await shot(page, slug, width)
   }
@@ -100,7 +102,9 @@ async function checkResetErrorState(
     })
     const status = await submitReset(page, 'ResponsivePass1!X')
     expect(status, `${slug} HTTP @${width}`).toBeGreaterThanOrEqual(400)
-    await expect(page.getByText(messagePattern)).toBeVisible({ timeout: 15000 })
+    const alert = page.getByRole('alert').first()
+    await expect(alert).toBeVisible({ timeout: 15000 })
+    await expect(alert).toHaveText(messagePattern, { timeout: 5000 })
     expect(await noHorizontalOverflow(page), `${slug} overflow @${width}`).toBe(true)
     await shot(page, slug, width)
   }
