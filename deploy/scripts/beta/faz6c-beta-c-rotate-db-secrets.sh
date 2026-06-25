@@ -147,24 +147,22 @@ $ACAR_COMPOSE --profile app up -d --no-deps app
 sleep 25
 
 echo "=== VERIFY new credentials ==="
-$ACAR_COMPOSE exec -T -e PGPASSWORD="$NEW_PG_PASS" postgres \
-  psql -U "$PG_USER" -d "$PG_DB" -tAc "SELECT count(*) FROM articles;" | tr -d '[:space:]'
+$COMPOSE exec -T postgres psql "$(read_env_val "$PILOT_ENV" DATABASE_URL)" -tAc "SELECT count(*) FROM articles;" | tr -d '[:space:]'
 echo "articles_ok"
 
-$ACAR_COMPOSE exec -T mariadb mariadb -uroot -p"$NEW_MYSQL_ROOT" -N -e \
-  "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${MYSQL_DB}';"
+$COMPOSE exec -T mariadb mariadb -uroot -p"$(read_env_val "$MYSQL_ENV" MARIADB_ROOT_PASSWORD)" -N -e \
+  "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${MYSQL_DB}';" >/dev/null && echo "mysql_tables_ok"
 
 curl -sf http://127.0.0.1:3002/api/health && echo " health_ok"
 
 echo "=== VERIFY old credentials rejected ==="
-if $ACAR_COMPOSE exec -T -e PGPASSWORD="$OLD_PG_PASS" postgres \
-  psql -U "$PG_USER" -d "$PG_DB" -tAc "SELECT 1;" 2>/dev/null; then
-  echo "FAIL: old postgres password still works"
+if $COMPOSE exec -T postgres psql "$(read_env_val "$ROLLBACK_DIR/pilot.env" DATABASE_URL)" -tAc "SELECT 1" >/dev/null 2>&1; then
+  echo "FAIL: old postgres URL still works"
   exit 1
 fi
 echo "old_postgres_rejected"
 
-if $ACAR_COMPOSE exec -T mariadb mariadb -uroot -p"$OLD_MYSQL_ROOT" -e "SELECT 1;" 2>/dev/null; then
+if $COMPOSE exec -T mariadb mariadb -uroot -p"$(read_env_val "$ROLLBACK_DIR/pilot-mysql.env" MARIADB_ROOT_PASSWORD)" -e "SELECT 1" >/dev/null 2>&1; then
   echo "FAIL: old mysql root password still works"
   exit 1
 fi
