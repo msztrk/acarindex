@@ -165,7 +165,7 @@ test.describe('beta responsive auth lifecycle', () => {
       const status = await submitReset(page, 'ResponsivePass1!X')
       expect(status, `reset-success HTTP @${width}`).toBe(200)
       await expect(page.getByText(/Parolanız güncellendi/i)).toBeVisible({ timeout: 15000 })
-      await expect(page.getByRole('link', { name: /Giriş yap/i })).toBeVisible()
+      await expect(page.getByRole('status').locator('..').getByRole('link', { name: /Giriş yap/i })).toBeVisible()
       expect(await noHorizontalOverflow(page), `reset-success overflow @${width}`).toBe(true)
       await shot(page, 'reset-success', width)
     }
