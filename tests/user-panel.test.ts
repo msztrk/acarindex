@@ -49,8 +49,11 @@ describe('admin panel summary privacy', () => {
 })
 
 const runIntegration = process.env.USER_PANEL_INTEGRATION === '1'
+const describeUserPanelIntegration = runIntegration
+  ? describe.sequential
+  : describe.sequential.skip
 
-describe.sequential.skipIf(!runIntegration)('user panel security integration', () => {
+describeUserPanelIntegration('user panel security integration', () => {
   it('IDOR service suite passes', async () => {
     const { runUserPanelSecuritySuite } = await import('@/scripts/test/user-panel-security')
     const report = await runUserPanelSecuritySuite()
