@@ -4,14 +4,13 @@ import { prisma } from '@/lib/db/prisma'
 import { hashPassword } from '@/lib/auth/password'
 import { generateToken, hashToken, VERIFY_TOKEN_TTL_MS, RESET_TOKEN_TTL_MS } from '@/lib/auth/config'
 
+import { randomBytes } from 'crypto'
+
 const TEST_EMAIL = 'faz6c-responsive@acarindex-beta.invalid'
 const OUT = process.env.ACAR_RESPONSIVE_ENV_FILE ?? '/root/.faz6c-responsive-tokens.env'
-const PASS = process.env.NEW_PASS ?? (await (async () => {
-  const { randomBytes } = await import('crypto')
-  return randomBytes(16).toString('hex')
-})())
 
 async function main(): Promise<void> {
+  const PASS = process.env.NEW_PASS ?? randomBytes(16).toString('hex')
   await prisma.user.deleteMany({ where: { email: TEST_EMAIL } })
 
   const user = await prisma.user.create({
