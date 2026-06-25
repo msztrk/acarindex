@@ -28,4 +28,3 @@ ls -lh "$BACKUP"
 sha256sum "$BACKUP"
 echo "BACKUP=$BACKUP"
 echo "COUNTS=$COUNTS_FILE"
-
