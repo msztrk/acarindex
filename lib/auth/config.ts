@@ -11,6 +11,26 @@ export const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000 // 24 saat
 export const LOGIN_MAX_ATTEMPTS = 5
 export const LOGIN_WINDOW_MS = 15 * 60 * 1000 // 15 dk
 
+export const VERIFY_RESEND_MAX = 3
+export const VERIFY_RESEND_WINDOW_MS = 60 * 60 * 1000 // 1 saat
+
+export const FORGOT_PASSWORD_MAX = 5
+export const FORGOT_PASSWORD_WINDOW_MS = 60 * 60 * 1000
+
+export const REGISTER_MAX_PER_IP = 10
+export const REGISTER_WINDOW_MS = 60 * 60 * 1000
+
+export const TOKEN_ATTEMPT_MAX = 10
+export const TOKEN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000
+
+export const DELETION_GRACE_DAYS = 14
+
+export const LEGAL_DOC_TYPES = {
+  TERMS: 'terms',
+  PRIVACY: 'privacy',
+  MARKETING: 'marketing',
+} as const
+
 export const BCRYPT_ROUNDS = 12
 
 export function generateToken(bytes = 32): string {

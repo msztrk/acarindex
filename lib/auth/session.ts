@@ -75,6 +75,11 @@ export async function getSessionFromToken(token: string | undefined): Promise<Se
   }
   if (session.user.status !== 'active') return null
 
+  await prisma.session.update({
+    where: { id: session.id },
+    data: { lastUsedAt: new Date() },
+  }).catch(() => undefined)
+
   const user = await loadAuthUserById(session.userId)
   if (!user) return null
 

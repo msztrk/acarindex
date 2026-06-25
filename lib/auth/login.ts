@@ -40,6 +40,11 @@ export async function loginWithPassword(
     return { ok: false, error: 'Geçersiz e-posta veya parola.' }
   }
 
+  if (credential.user.status === 'deactivated') {
+    await recordLoginAttempt(normalized, false, meta?.ipAddress)
+    return { ok: false, error: 'Hesap geçici olarak pasifleştirildi.' }
+  }
+
   if (credential.user.status !== 'active') {
     await recordLoginAttempt(normalized, false, meta?.ipAddress)
     return { ok: false, error: 'Hesap pasif veya askıda.' }
