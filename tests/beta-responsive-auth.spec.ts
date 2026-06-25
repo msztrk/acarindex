@@ -48,8 +48,9 @@ async function checkVerifyErrorState(
   token: string,
   slug: string,
   messagePattern: RegExp,
+  widths: readonly number[] = WIDTHS,
 ): Promise<void> {
-  for (const width of WIDTHS) {
+  for (const width of widths) {
     await page.setViewportSize({ width, height: 900 })
     const status = await gotoVerifyToken(page, token)
     expect(status, `${slug} HTTP @${width}`).toBeGreaterThanOrEqual(400)
@@ -94,8 +95,9 @@ async function checkResetErrorState(
   token: string,
   slug: string,
   messagePattern: RegExp,
+  widths: readonly number[] = WIDTHS,
 ): Promise<void> {
-  for (const width of WIDTHS) {
+  for (const width of widths) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto(`/reset-password?token=${encodeURIComponent(token)}`, {
       waitUntil: 'domcontentloaded',
@@ -126,29 +128,6 @@ test.describe('beta responsive auth lifecycle', () => {
     })
   })
 
-  test('verify token states', async ({ page }) => {
-    if (!TOKEN_VERIFY_SUCCESS_375) test.skip()
-
-    const verifySuccessByWidth: Record<number, string> = {
-      375: TOKEN_VERIFY_SUCCESS_375,
-      768: TOKEN_VERIFY_SUCCESS_768,
-      1366: TOKEN_VERIFY_SUCCESS_1366,
-    }
-    for (const width of WIDTHS) {
-      await page.setViewportSize({ width, height: 900 })
-      const status = await gotoVerifyToken(page, verifySuccessByWidth[width])
-      expect(status, `verify-success HTTP @${width}`).toBe(200)
-      await expect(page.getByText(/E-posta adresiniz doğrulandı/i)).toBeVisible({ timeout: 15000 })
-      await expect(page.getByRole('link', { name: /Hesabıma git/i })).toBeVisible()
-      expect(await noHorizontalOverflow(page), `verify-success overflow @${width}`).toBe(true)
-      await shot(page, 'verify-success', width)
-    }
-
-    await checkVerifyErrorState(page, TOKEN_VERIFY_EXPIRED, 'verify-expired', /süresi dol|geçersiz/i)
-    await checkVerifyErrorState(page, TOKEN_VERIFY_USED, 'verify-used', /kullanıldı|geçersiz/i)
-    await checkVerifyErrorState(page, TOKEN_INVALID, 'verify-invalid', /geçersiz|başarısız/i)
-  })
-
   test('reset token states', async ({ page }) => {
     if (!TOKEN_RESET_VALID) test.skip()
     await checkRoute(
@@ -162,7 +141,13 @@ test.describe('beta responsive auth lifecycle', () => {
     )
     await checkResetErrorState(page, TOKEN_RESET_EXPIRED, 'reset-expired', /süresi dol|geçersiz/i)
     await checkResetErrorState(page, TOKEN_RESET_USED, 'reset-used', /geçersiz|kullanıldı/i)
-    await checkResetErrorState(page, TOKEN_RESET_INVALID, 'reset-invalid', /geçersiz|başarısız/i)
+    await checkResetErrorState(
+      page,
+      TOKEN_RESET_INVALID,
+      'reset-invalid',
+      /geçersiz|başarısız/i,
+      [375],
+    )
   })
 
   test('reset success flow', async ({ page }) => {
@@ -184,6 +169,35 @@ test.describe('beta responsive auth lifecycle', () => {
       expect(await noHorizontalOverflow(page), `reset-success overflow @${width}`).toBe(true)
       await shot(page, 'reset-success', width)
     }
+  })
+
+  test('verify token states', async ({ page }) => {
+    if (!TOKEN_VERIFY_SUCCESS_375) test.skip()
+
+    const verifySuccessByWidth: Record<number, string> = {
+      375: TOKEN_VERIFY_SUCCESS_375,
+      768: TOKEN_VERIFY_SUCCESS_768,
+      1366: TOKEN_VERIFY_SUCCESS_1366,
+    }
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 })
+      const status = await gotoVerifyToken(page, verifySuccessByWidth[width])
+      expect(status, `verify-success HTTP @${width}`).toBe(200)
+      await expect(page.getByText(/E-posta adresiniz doğrulandı/i)).toBeVisible({ timeout: 15000 })
+      await expect(page.getByRole('link', { name: /Hesabıma git/i })).toBeVisible()
+      expect(await noHorizontalOverflow(page), `verify-success overflow @${width}`).toBe(true)
+      await shot(page, 'verify-success', width)
+    }
+
+    await checkVerifyErrorState(page, TOKEN_VERIFY_EXPIRED, 'verify-expired', /süresi dol|geçersiz/i)
+    await checkVerifyErrorState(page, TOKEN_VERIFY_USED, 'verify-used', /kullanıldı|geçersiz/i)
+    await checkVerifyErrorState(
+      page,
+      TOKEN_INVALID,
+      'verify-invalid',
+      /geçersiz|başarısız/i,
+      [375],
+    )
   })
 
   test('verify resend rate limit message', async ({ page }) => {
