@@ -89,9 +89,11 @@ const runLifecycleIntegration = process.env.AUTH_LIFECYCLE_INTEGRATION === '1'
 const describeLifecycle = runLifecycleIntegration ? describe.sequential : describe.sequential.skip
 
 describeLifecycle('auth lifecycle integration', () => {
-  beforeAll(() => {
+  beforeAll(async () => {
     process.env.APP_PUBLIC_URL = process.env.APP_PUBLIC_URL || 'http://127.0.0.1:3001'
-  })
+    const { prepareIntegrationFixtures } = await import('@/scripts/db/seed-user-panel-users')
+    await prepareIntegrationFixtures()
+  }, 120000)
 
   it('forgot password enumeration-safe message', async () => {
     process.env.ENABLE_PASSWORD_RESET = '1'

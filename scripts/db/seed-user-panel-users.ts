@@ -20,7 +20,25 @@ export interface UserPanelTestUsers {
 export function resolveTestPassword(): string {
   const fromEnv = process.env.USER_PANEL_TEST_PASS?.trim()
   if (fromEnv) return fromEnv
+
+  const integration =
+    process.env.USER_PANEL_INTEGRATION === '1' ||
+    process.env.AUTH_LIFECYCLE_INTEGRATION === '1'
+  if (integration) {
+    throw new Error(
+      'USER_PANEL_TEST_PASS gerekli — entegrasyon testleri deterministic parola olmadan çalışmaz.',
+    )
+  }
+
   return randomBytes(24).toString('base64url')
+}
+
+/** Entegrasyon öncesi: parola senkronu + session/login_attempt temizliği. */
+export async function prepareIntegrationFixtures(): Promise<UserPanelTestUsers> {
+  const password = resolveTestPassword()
+  const users = await ensureUserPanelTestUsers(password)
+  await cleanupUserPanelTestSessions([users.userAId, users.userBId])
+  return users
 }
 
 export async function ensureUserPanelTestUsers(password: string): Promise<UserPanelTestUsers> {

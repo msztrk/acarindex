@@ -6,6 +6,14 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     exclude: ['**/node_modules/**', '**/dist/**', 'tests/external/**'],
+    fileParallelism:
+      process.env.USER_PANEL_INTEGRATION !== '1' &&
+      process.env.AUTH_LIFECYCLE_INTEGRATION !== '1',
+    maxWorkers:
+      process.env.USER_PANEL_INTEGRATION === '1' ||
+      process.env.AUTH_LIFECYCLE_INTEGRATION === '1'
+        ? 1
+        : undefined,
   },
   resolve: {
     alias: {

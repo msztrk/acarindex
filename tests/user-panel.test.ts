@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeAll } from 'vitest'
 import { DEFAULT_NOTIFICATION_PREFS } from '@/lib/user-panel/notification-prefs'
 import { RECENT_VIEWS_MAX, isRecentEntityType } from '@/lib/user-panel/config'
 
@@ -54,6 +54,11 @@ const describeUserPanelIntegration = runIntegration
   : describe.sequential.skip
 
 describeUserPanelIntegration('user panel security integration', () => {
+  beforeAll(async () => {
+    const { prepareIntegrationFixtures } = await import('@/scripts/db/seed-user-panel-users')
+    await prepareIntegrationFixtures()
+  }, 120000)
+
   it('IDOR service suite passes', async () => {
     const { runUserPanelSecuritySuite } = await import('@/scripts/test/user-panel-security')
     const report = await runUserPanelSecuritySuite()
