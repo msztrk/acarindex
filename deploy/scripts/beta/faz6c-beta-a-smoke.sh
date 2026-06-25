@@ -42,18 +42,19 @@ echo "$flags" | grep -q '"passwordReset":false' || fail "passwordReset not false
 echo "=== DARK ROUTES ==="
 CJ_DARK="/tmp/faz6c-dark-$$.txt"
 rm -f "$CJ_DARK"
-csrf_dark=$(curl -sS -b "$CJ_DARK" -c "$CJ_DARK" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
+csrf_dark=$(curl -sS $AUTH_NGX -b "$CJ_DARK" -c "$CJ_DARK" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
+[[ -n "$csrf_dark" ]] || fail "csrf dark"
 
 reg_html=$(curl -sS $AUTH_NGX "$BASE/register")
 echo "$reg_html" | grep -qi 'yakında' || echo "$reg_html" | grep -qi 'kapalı' || fail "register not closed message"
 
-code=$(curl -sS $AUTH_NGX -X POST "$BASE/api/auth/register" \
+code=$(curl -sS $AUTH_NGX -b "$CJ_DARK" -c "$CJ_DARK" -X POST "$BASE/api/auth/register" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf_dark" \
   -d '{"email":"dark@test.invalid","password":"SecurePass123!","acceptedDocumentIds":[]}' \
   -o /dev/null -w '%{http_code}')
 [[ "$code" == "400" || "$code" == "403" ]] || fail "register API $code"
 
-fp=$(curl -sS $AUTH_NGX -X POST "$BASE/api/auth/forgot-password" \
+fp=$(curl -sS $AUTH_NGX -b "$CJ_DARK" -c "$CJ_DARK" -X POST "$BASE/api/auth/forgot-password" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf_dark" \
   -d '{"email":"nobody@test.invalid"}')
 echo "$fp"
@@ -61,7 +62,7 @@ echo "$fp" | grep -qi 'gönderildi' || fail "forgot generic"
 
 vt_before=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -tAc \
   "SELECT count(*) FROM verification_tokens WHERE created_at > now() - interval '5 minutes';" | trim)
-curl -sS $AUTH_NGX -X POST "$BASE/api/auth/resend-verification" \
+curl -sS $AUTH_NGX -b "$CJ_DARK" -c "$CJ_DARK" -X POST "$BASE/api/auth/resend-verification" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf_dark" \
   -d '{"email":"msztrk@gmail.com"}' >/dev/null
 vt_after=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -tAc \
@@ -70,7 +71,7 @@ vt_after=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_p
 
 prt_before=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -tAc \
   "SELECT count(*) FROM password_reset_tokens WHERE created_at > now() - interval '5 minutes';" | trim)
-curl -sS $AUTH_NGX -X POST "$BASE/api/auth/forgot-password" \
+curl -sS $AUTH_NGX -b "$CJ_DARK" -c "$CJ_DARK" -X POST "$BASE/api/auth/forgot-password" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf_dark" \
   -d '{"email":"msztrk@gmail.com"}' >/dev/null
 prt_after=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -tAc \
@@ -96,8 +97,8 @@ if [[ -f "$CRED" ]]; then
   PASS=$(grep '^pass=' "$CRED" | cut -d= -f2- | tr -d '\r')
   CJ="/tmp/faz6c-cookies-$$.txt"
   rm -f "$CJ"
-  csrf=$(curl -sS -b "$CJ" -c "$CJ" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
-  login_code=$(curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/auth/login" \
+  csrf=$(curl -sS $AUTH_NGX -b "$CJ" -c "$CJ" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
+  login_code=$(curl -sS $AUTH_NGX -b "$CJ" -c "$CJ" -X POST "$BASE/api/auth/login" \
     -H "Content-Type: application/json" -H "x-csrf-token: $csrf" \
     -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" -o /dev/null -w '%{http_code}')
   echo "credential_login:$login_code"
@@ -110,15 +111,15 @@ if [[ -f "$CRED" ]]; then
     sess=$(curl -sS $AUTH_NGX -b "$CJ" "$BASE/api/auth/sessions")
     echo "sessions:${sess:0:120}..."
     # Second session for revoke test
-    csrf2=$(curl -sS -b "$CJ" -c "$CJ" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
-    curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/auth/login" \
+    csrf2=$(curl -sS $AUTH_NGX -b "$CJ" -c "$CJ" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
+    curl -sS $AUTH_NGX -b "$CJ" -c "$CJ" -X POST "$BASE/api/auth/login" \
       -H "Content-Type: application/json" -H "x-csrf-token: $csrf2" \
       -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" -o /dev/null
     sess2=$(curl -sS $AUTH_NGX -b "$CJ" "$BASE/api/auth/sessions")
     OTHER_ID=$(echo "$sess2" | sed -n 's/.*"id":"\([^"]*\)".*"isCurrent":false.*/\1/p' | head -1)
     if [[ -n "$OTHER_ID" ]]; then
-      csrf3=$(curl -sS -b "$CJ" -c "$CJ" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
-      code=$(curl -sS -b "$CJ" -X DELETE "$BASE/api/auth/sessions/$OTHER_ID" \
+      csrf3=$(curl -sS $AUTH_NGX -b "$CJ" -c "$CJ" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
+      code=$(curl -sS $AUTH_NGX -b "$CJ" -X DELETE "$BASE/api/auth/sessions/$OTHER_ID" \
         -H "Content-Type: application/json" -H "x-csrf-token: $csrf3" -d '{}' -o /dev/null -w '%{http_code}')
       echo "revoke_other_session:$code"
       [[ "$code" == "200" ]] || fail "revoke session"
@@ -145,8 +146,8 @@ TEST_UID=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_p
 
 CJ2="/tmp/faz6c-test-$$.txt"
 rm -f "$CJ2"
-csrf=$(curl -sS -b "$CJ2" -c "$CJ2" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
-curl -sS -b "$CJ2" -c "$CJ2" -X POST "$BASE/api/auth/login" \
+csrf=$(curl -sS $AUTH_NGX -b "$CJ2" -c "$CJ2" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
+curl -sS $AUTH_NGX -b "$CJ2" -c "$CJ2" -X POST "$BASE/api/auth/login" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf" \
   -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASS\"}" -o /dev/null
 grep -q acarindex_session "$CJ2" || fail "test login"
@@ -155,7 +156,7 @@ sess=$(curl -sS $AUTH_NGX -b "$CJ2" "$BASE/api/auth/sessions")
 echo "test_sessions:${sess:0:80}..."
 
 csrf=$(curl -sS -b "$CJ2" -c "$CJ2" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
-code=$(curl -sS -b "$CJ2" -X POST "$BASE/api/auth/account" \
+code=$(curl -sS $AUTH_NGX -b "$CJ2" -X POST "$BASE/api/auth/account" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf" \
   -d "{\"action\":\"request_deletion\",\"password\":\"$TEST_PASS\"}" -o /dev/null -w '%{http_code}')
 echo "deletion_request:$code"
@@ -165,14 +166,14 @@ $ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -c \
   "SELECT status, scheduled_for::date FROM account_deletion_requests WHERE user_id='$TEST_UID' ORDER BY requested_at DESC LIMIT 1;"
 
 rm -f "$CJ2"
-csrf=$(curl -sS -b "$CJ2" -c "$CJ2" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
-curl -sS -b "$CJ2" -c "$CJ2" -X POST "$BASE/api/auth/login" \
+csrf=$(curl -sS $AUTH_NGX -b "$CJ2" -c "$CJ2" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
+curl -sS $AUTH_NGX -b "$CJ2" -c "$CJ2" -X POST "$BASE/api/auth/login" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf" \
   -d "{\"email\":\"$TEST_EMAIL\",\"password\":\"$TEST_PASS\"}" -o /dev/null
 grep -q acarindex_session "$CJ2" || fail "re-login after deletion request"
 
 csrf=$(curl -sS -b "$CJ2" -c "$CJ2" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
-code=$(curl -sS -b "$CJ2" -X POST "$BASE/api/auth/account" \
+code=$(curl -sS $AUTH_NGX -b "$CJ2" -X POST "$BASE/api/auth/account" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf" \
   -d '{"action":"cancel_deletion"}' -o /dev/null -w '%{http_code}')
 echo "cancel_deletion:$code"
