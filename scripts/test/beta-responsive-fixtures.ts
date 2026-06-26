@@ -21,6 +21,7 @@ async function main(): Promise<void> {
       email: TEST_EMAIL,
       name: 'Faz6C Responsive Test',
       status: 'active',
+      emailVerified: new Date(),
       credential: { create: { passwordHash: await hashPassword(PASS) } },
       roles: { create: { roleId: 'USER' } },
     },

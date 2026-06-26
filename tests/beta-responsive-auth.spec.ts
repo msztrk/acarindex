@@ -61,9 +61,11 @@ async function assertAccountPanelCentered(page: Page, slug: string, width: numbe
 async function loginResponsiveUser(page: Page): Promise<void> {
   if (!TEST_PASSWORD) throw new Error('ACAR_RESPONSIVE_TEST_PASSWORD missing')
   await page.goto('/login', { waitUntil: 'domcontentloaded' })
+  const submit = page.getByRole('button', { name: /Giriş/i })
+  await expect(submit).toBeEnabled({ timeout: 15000 })
   await page.locator('#email').fill(TEST_EMAIL)
   await page.locator('#password').fill(TEST_PASSWORD)
-  await page.getByRole('button', { name: /Giriş/i }).click()
+  await submit.click()
   await page.waitForURL(/\/hesabim/, { timeout: 20000 })
 }
 
