@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import * as articleData from '@/lib/data/articles'
+import { listArticlesForIssue } from '@/lib/data/journals'
 import { parseArticlePath, extractArticleId } from '@/lib/urls/article'
 import { buildAuthorUrl } from '@/lib/urls/author'
 import { buildLegacyPdfUrl, buildPdfViewerUrl, hasPdf } from '@/lib/pdf/legacy-url'
@@ -333,6 +334,10 @@ export default async function ArticlePage({ params }: PageProps) {
   const initialLists =
     isLoggedIn && session ? await listReadingLists(session.user.id) : []
 
+  const issueArticles = issue?.id
+    ? (await listArticlesForIssue(issue.id)).filter((a) => a.id !== articleId)
+    : []
+
   const hasAuthors = authorLinks.length > 0 || authorsList.length > 0
   const hasPublicationMeta =
     journalTitle ||
@@ -393,7 +398,7 @@ export default async function ArticlePage({ params }: PageProps) {
         </Breadcrumb>
 
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-8 lg:gap-10 min-w-0">
-          <article className="min-w-0">
+          <article className="min-w-0 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7 lg:p-8">
             <header className="mb-6 md:mb-8 space-y-4">
               <div className="space-y-2 min-w-0">
                 <h1 className="text-2xl sm:text-[1.75rem] font-serif font-bold text-foreground leading-snug">
@@ -539,7 +544,7 @@ export default async function ArticlePage({ params }: PageProps) {
             {abstractTr && (
               <section className="mb-8 min-w-0">
                 <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Özet</h2>
-                <div className="text-base leading-relaxed text-foreground/90 max-w-3xl whitespace-pre-line">
+                <div className="text-base leading-relaxed text-foreground/90 max-w-3xl whitespace-pre-line text-justify hyphens-auto">
                   {abstractTr}
                 </div>
               </section>
@@ -548,7 +553,7 @@ export default async function ArticlePage({ params }: PageProps) {
             {abstractEn && (
               <section className="mb-8 min-w-0">
                 <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Abstract</h2>
-                <div className="text-base leading-relaxed text-foreground/85 max-w-3xl whitespace-pre-line">
+                <div className="text-base leading-relaxed text-foreground/85 max-w-3xl whitespace-pre-line text-justify hyphens-auto">
                   {abstractEn}
                 </div>
               </section>
@@ -665,6 +670,46 @@ export default async function ArticlePage({ params }: PageProps) {
                       {issue.issue_label ?? issue.issue_number}
                     </Link>
                   </p>
+                )}
+              </div>
+            )}
+
+            {issueArticles.length > 0 && issueHref && (
+              <div className="aside-panel min-w-0">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary shrink-0" aria-hidden />
+                  Bu sayıdaki makaleler
+                </h3>
+                <ul className="space-y-0 divide-y divide-border/60 -mx-4">
+                  {issueArticles.slice(0, 10).map((a) => {
+                    const aTitle = a.title_tr ?? a.title_en ?? 'Başlıksız'
+                    const aHref = `/${a.legacy_journal_slug}/${a.slug}-${a.id}`
+                    return (
+                      <li key={a.id}>
+                        <Link
+                          href={aHref}
+                          className={cn(
+                            'block px-4 py-2.5 text-[0.8125rem] leading-snug text-foreground/80 hover:text-primary hover:bg-brand-primary/[0.035] transition-colors no-underline line-clamp-3',
+                            linkFocusClass,
+                          )}
+                          title={aTitle}
+                        >
+                          {aTitle}
+                        </Link>
+                      </li>
+                    )
+                  })}
+                </ul>
+                {issueArticles.length > 10 && (
+                  <Link
+                    href={issueHref}
+                    className={cn(
+                      'mt-3 pt-3 border-t border-border/80 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-accent no-underline',
+                      linkFocusClass,
+                    )}
+                  >
+                    Tüm makaleleri gör ({issueArticles.length})
+                  </Link>
                 )}
               </div>
             )}
