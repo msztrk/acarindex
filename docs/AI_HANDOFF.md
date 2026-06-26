@@ -1,33 +1,32 @@
 # AI Handoff — AcarIndex Web
 
-Son güncelleme: 2026-06-27 (Faz 6C-Beta D2 — görsel kimlik / ana sayfa polish)
+Son güncelleme: 2026-06-27 (Faz 6C-Beta D2 — deploy)
 
 ## Aktif branch
 
-- `redesign-v2` (D1 merge + D2 UI polish yerelde)
+- `faz-6c-beta-d2` / `redesign-v2` (aynı tip: `a7f8c13`)
 
-## Son commit (D1 kapanış)
+## Son commit
 
 | Ortam | SHA | Not |
 |--------|-----|-----|
-| `origin/redesign-v2` | `8e8196b` | D1 docs handoff |
-| D1 uygulama kodu | `576457f` | overflow fix + kabul suite |
+| `origin/redesign-v2` | `a7f8c13` | D2 görsel kimlik + ana sayfa polish |
+| `origin/faz-6c-beta-d2` | `a7f8c13` | aynı commit |
+| Beta sunucu git HEAD | `a7f8c13` | `redesign-v2` checkout, app rebuild |
 
-## Faz 6C-Beta D2 — görsel kimlik (devam ediyor)
+## Faz 6C-Beta D2 — görsel kimlik
 
-**Durum:** Yerel polish tamamlandı; beta deploy bu görevde yapılmadı.
+**Durum: PASS** (`FAZ_6C_BETA_D2_OK`) — beta deploy + smoke + D1 regresyon 6/6
 
-### Yapılanlar
+### Beta doğrulama (deploy sonrası)
 
-- D2 renk token sistemi (`globals.css`: brand-primary, accent, surface, vb.)
-- `BrandWordmark` — monogram + tipografik wordmark
-- Header/footer polish (sticky, shadow, nav active)
-- Hero gradient, istatistik kartları, arama kapsamı linkleri
-- Popüler aramalar / öne çıkan dergiler / konu alanları kartları
-- Makale listesi hover ve PDF badge rafine
-- `tests/d2-visual-screenshots.spec.ts` + `playwright.d2-visual.config.ts`
+| Test | Sonuç |
+|------|--------|
+| `/api/health` | ready |
+| Beta smoke | `FAZ6B_BETA_SMOKE_OK` |
+| D1 Playwright | 6/6 `D1_VISUAL_PLAYWRIGHT_OK` |
 
-### Screenshot dizini (yerel)
+### Screenshot (repo)
 
 `docs/screenshots/faz6c-d2/`
 
@@ -51,6 +50,6 @@ npx playwright test --config=playwright.d2-visual.config.ts
 
 ## Açık riskler
 
-- D2 değişiklikleri henüz `origin`’e push / beta deploy edilmedi.
 - Beta C 24h soak tamamlanmadı.
 - Production deploy yapılmadı.
+- Global link rengi (`a:hover` accent) diğer sayfalarda gözden geçirilebilir.
