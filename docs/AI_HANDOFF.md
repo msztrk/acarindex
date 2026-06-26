@@ -1,6 +1,6 @@
 # AI Handoff — AcarIndex Web
 
-Son güncelleme: 2026-06-26 (Faz 6C-Beta D3 — merge + beta deploy)
+Son güncelleme: 2026-06-26 (Visual token alignment — tüm sayfalara ana sayfa tasarım standartları uygulandı)
 
 ## Aktif branch
 
@@ -12,10 +12,36 @@ Son güncelleme: 2026-06-26 (Faz 6C-Beta D3 — merge + beta deploy)
 
 | Ortam | SHA | Not |
 |--------|-----|-----|
-| `origin/redesign-v2` | `d255c95` | D3 merged |
-| Beta sunucu git HEAD | `d255c95` | temiz `redesign-v2`, app rebuild |
+| `origin/redesign-v2` | `ca9ca12` | Visual token alignment |
+| Beta sunucu git HEAD | `ca9ca12` | temiz `redesign-v2`, app rebuild |
 | D3 kod | `588ac9c` | Ortak görsel sistem |
 | D2.1 kod | `70f66db` | Ana sayfa D2.1 final |
+
+## Visual Token Alignment — ana sayfa standartlarının tüm sayfalara uygulanması
+
+**Durum: DEPLOYED** (`ca9ca12`) — 2026-06-26
+
+### Değişiklikler
+| Sayfa / Bileşen | Değişiklik |
+|---|---|
+| `globals.css` | `catalog-pdf-badge` navy ton ile güncellendi; `.catalog-list-container`, `.aside-panel` yeni utility |
+| `CatalogPdfLink` | ikon rengi `text-muted-foreground` |
+| `/journals` JournalCard | `border-border/80`, `shadow-sm`, `hover:bg-brand-primary/[0.035]` |
+| makale detay aside paneller | `rounded-xl bg-surface shadow-sm` |
+| dergi detay aside paneller | `rounded-xl bg-surface shadow-sm` |
+| dergi arşiv liste | `catalog-list-container`, `hover:bg-brand-primary/[0.035]` |
+| `IssueArticleRow` / `ArticleRow` PDF | `catalog-pdf-badge` |
+| yazar sayfası liste | `catalog-list-container`, hover düzeltildi |
+| yazar aside paneller | `rounded-xl bg-surface shadow-sm` |
+| yazar boş durum | `catalog-empty-panel` |
+| yazar makale PDF link | `catalog-pdf-badge` |
+
+### Beta doğrulama
+| Test | Sonuç |
+|------|--------|
+| `/api/health` | ready, database ok |
+| App container | healthy |
+| `npm run build` | OK (TypeScript clean) |
 
 ## Faz 6C-Beta D3 — site geneli görsel denetim
 
