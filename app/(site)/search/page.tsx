@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Search, User, FileText } from 'lucide-react'
+import { Search, User } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn, buttonVariants } from '@/lib/utils'
+import { SitePageHeader } from '@/components/layout/SitePageHeader'
+import { CatalogPdfLink } from '@/components/catalog/CatalogPdfLink'
 import {
   parsePrefixQuery, type SearchType, type SearchArea,
   searchArticles, searchJournals, searchAuthors,
@@ -103,12 +105,9 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
   return (
     <div className="content-width py-6 md:py-8 min-w-0">
-      <header className="mb-6 md:mb-8">
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground mb-5 md:mb-6">
-          Arama
-        </h1>
+      <SitePageHeader title="Arama" className="mb-5 md:mb-6" />
 
-        <form method="GET" className="space-y-3">
+        <form method="GET" className="space-y-3 mb-6 md:mb-8">
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 min-w-0">
             <div
               className={cn(
@@ -211,7 +210,6 @@ export default async function SearchPage({ searchParams }: PageProps) {
             </div>
           )}
         </form>
-      </header>
 
       {!q ? (
         <EmptySearch />
@@ -240,7 +238,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
           </div>
 
           {type === 'article' && (
-            <ul className="divide-y divide-border/80 min-w-0">
+            <ul className="catalog-list">
               {articleResults.data.map((a) => (
                 <ArticleResultItem key={a.id} article={a} />
               ))}
@@ -248,9 +246,9 @@ export default async function SearchPage({ searchParams }: PageProps) {
           )}
 
           {type === 'journal' && (
-            <ul className="divide-y divide-border/80 min-w-0">
+            <ul className="catalog-list">
               {journalResults.data.map((j) => (
-                <li key={j.id} className="py-4 first:pt-0 last:pb-0">
+                <li key={j.id} className="catalog-list-item">
                   <Link
                     href={`/journals/${j.slug}-${j.id}`}
                     className="font-medium text-foreground hover:text-primary transition-colors no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -312,7 +310,7 @@ function ArticleResultItem({
     .slice(0, 5) ?? []
 
   return (
-    <li className="group py-4 first:pt-0 last:pb-0 min-w-0">
+    <li className="catalog-list-item group min-w-0">
       <Link
         href={href}
         className="block no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -347,14 +345,7 @@ function ArticleResultItem({
               {article.journal_title}
             </Link>
           )}
-          <Link
-            href={`/pdfs/${article.id}`}
-            aria-label={`${title} — tam metin PDF`}
-            className="inline-flex items-center gap-1.5 shrink-0 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/15 hover:border-primary/50 transition-colors no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            PDF
-          </Link>
+          <CatalogPdfLink href={`/pdfs/${article.id}`} label={`${title} — tam metin PDF`} />
         </div>
 
         {keywords.length > 0 && (
@@ -455,8 +446,8 @@ function Pagination({
 
 function EmptySearch() {
   return (
-    <div className="py-10 md:py-14 text-center max-w-lg mx-auto">
-      <Search className="h-10 w-10 mx-auto text-muted-foreground/50 mb-4" aria-hidden />
+    <div className="catalog-empty-panel max-w-lg mx-auto">
+      <Search className="h-10 w-10 mx-auto text-brand-accent/50 mb-4" aria-hidden />
       <h2 className="text-lg font-medium text-foreground mb-2">Aramak istediğinizi yazın</h2>
       <p className="text-muted-foreground text-sm leading-relaxed">
         Makale başlığı, yazar adı, ISSN veya anahtar kelime ile arama yapabilirsiniz.
@@ -470,12 +461,12 @@ function EmptySearch() {
 
 function NoResults({ q }: { q: string }) {
   return (
-    <div className="py-10 md:py-14 max-w-lg mx-auto text-center">
-      <Search className="h-10 w-10 mx-auto text-muted-foreground/50 mb-4" aria-hidden />
-      <h2 className="text-lg font-medium text-foreground mb-2">
+    <div className="catalog-empty-panel max-w-lg mx-auto text-left">
+      <Search className="h-10 w-10 mx-auto text-brand-accent/50 mb-4" aria-hidden />
+      <h2 className="text-lg font-medium text-foreground mb-2 text-center">
         Sonuç bulunamadı
       </h2>
-      <p className="text-sm text-muted-foreground mb-4">
+      <p className="text-sm text-muted-foreground mb-4 text-center">
         <span className="font-medium text-foreground">&ldquo;{q}&rdquo;</span> için eşleşen kayıt yok.
       </p>
       <ul className="text-sm text-muted-foreground space-y-2 text-left list-disc pl-5 mx-auto max-w-sm">
@@ -483,7 +474,7 @@ function NoResults({ q }: { q: string }) {
         <li>Daha kısa veya farklı bir anahtar kelime deneyin.</li>
         <li>Arama alanı filtresini genişletin (ör. &ldquo;Başlık, yazar, anahtar kelime&rdquo;).</li>
       </ul>
-      <p className="text-sm text-muted-foreground mt-5">
+      <p className="text-sm text-muted-foreground mt-5 text-center">
         Yukarıdaki arama kutusundan yeni bir sorgu girebilirsiniz.
       </p>
     </div>

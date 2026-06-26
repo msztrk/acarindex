@@ -20,10 +20,15 @@ export default async function HesabimLayout({ children }: { children: React.Reac
   return (
     <div className="account-panel-width py-8 min-w-0 w-full">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
-        <h1 className="text-2xl font-semibold">Hesabım</h1>
+        <h1 className="font-serif text-2xl font-semibold text-foreground">Hesabım</h1>
         <div className="flex items-center gap-4 text-sm">
           {showAdmin && (
-            <Link href="/admin" className="text-primary hover:underline">Yönetim paneli</Link>
+            <Link
+              href="/admin"
+              className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+            >
+              Yönetim paneli
+            </Link>
           )}
           <LogoutButton />
         </div>

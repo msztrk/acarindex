@@ -83,7 +83,7 @@ export default async function PdfViewerPage({ params }: PageProps) {
   const hasPdf = legacyPdfUrl !== null && pdf?.file_status !== 'missing'
 
   return (
-    <div className="content-width py-6">
+    <div className="content-width py-6 md:py-8 min-w-0">
       {/* Breadcrumb */}
       <Breadcrumb className="mb-6">
         <BreadcrumbList>
@@ -110,16 +110,16 @@ export default async function PdfViewerPage({ params }: PageProps) {
       </Breadcrumb>
 
       {/* Başlık + aksiyon */}
-      <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-6">
-        <div className="flex-1">
-          <h1 className="font-serif text-xl font-bold leading-snug mb-1">{title}</h1>
+      <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-6 min-w-0">
+        <div className="flex-1 min-w-0">
+          <h1 className="font-serif text-xl sm:text-2xl font-semibold leading-snug mb-1 text-balance">{title}</h1>
           {article.authors_raw && (
             <p className="text-sm text-muted-foreground">
               {article.authors_raw.split(',').slice(0, 4).map(a => a.trim()).join('; ')}
             </p>
           )}
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <Link href={articleUrl} className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5')}>
             <ArrowLeft className="h-4 w-4" /> Makaleye Dön
           </Link>
@@ -142,8 +142,8 @@ export default async function PdfViewerPage({ params }: PageProps) {
           {/* iframe embed — proxy üzerinden */}
           <iframe
             src={proxyUrl}
-            className="w-full"
-            style={{ height: 'calc(100vh - 200px)', minHeight: 500 }}
+            className="w-full min-w-0"
+            style={{ height: 'calc(100dvh - 220px)', minHeight: 320 }}
             title={`PDF: ${title}`}
           />
           {/* Fallback linki */}
@@ -160,7 +160,7 @@ export default async function PdfViewerPage({ params }: PageProps) {
           </div>
         </div>
       ) : (
-        <div className="py-16 text-center rounded-xl border border-border bg-secondary/30">
+        <div className="catalog-empty-panel">
           <p className="text-muted-foreground mb-4">Bu makale için tam metin PDF mevcut değil.</p>
           <Link href={articleUrl} className={cn(buttonVariants({ variant: 'outline' }))}>
             Makale sayfasına dön

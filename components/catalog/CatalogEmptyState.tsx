@@ -1,10 +1,12 @@
 import type { LucideIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface CatalogEmptyStateProps {
   icon?: LucideIcon
   title: string
   description?: string
   className?: string
+  variant?: 'panel' | 'inline'
 }
 
 export function CatalogEmptyState({
@@ -12,16 +14,29 @@ export function CatalogEmptyState({
   title,
   description,
   className = '',
+  variant = 'panel',
 }: CatalogEmptyStateProps) {
   return (
     <div
-      className={`py-16 text-center text-muted-foreground ${className}`}
+      className={cn(
+        variant === 'panel' ? 'catalog-empty-panel' : 'py-10 text-center',
+        className,
+      )}
       role="status"
       aria-live="polite"
     >
-      {Icon && <Icon className="h-10 w-10 mx-auto mb-3 opacity-30" aria-hidden="true" />}
-      <p className="font-medium text-foreground/80">{title}</p>
-      {description && <p className="text-sm mt-2 max-w-md mx-auto">{description}</p>}
+      {Icon && (
+        <Icon
+          className="mx-auto mb-3 h-9 w-9 text-brand-accent/60"
+          aria-hidden="true"
+        />
+      )}
+      <p className="font-medium text-foreground">{title}</p>
+      {description && (
+        <p className="mt-2 mx-auto max-w-md text-sm text-muted-foreground leading-relaxed">
+          {description}
+        </p>
+      )}
     </div>
   )
 }

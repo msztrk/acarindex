@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { AuthPageShell } from '@/components/layout/AuthPageShell'
 
 export default function PgLoginForm() {
   const router = useRouter()
@@ -52,14 +53,22 @@ export default function PgLoginForm() {
   }
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
-      <form onSubmit={onSubmit} className="w-full max-w-md space-y-4 border rounded-lg p-6 bg-card">
-        <h1 className="text-xl font-semibold">Giriş Yap</h1>
-        <p className="text-sm text-muted-foreground">AcarIndex hesabınızla giriş yapın.</p>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+    <AuthPageShell title="Giriş Yap" description="AcarIndex hesabınızla giriş yapın.">
+      <form onSubmit={onSubmit} className="space-y-4 min-w-0">
+        {error && (
+          <p className="text-sm text-destructive break-words" role="alert">{error}</p>
+        )}
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="email">E-posta</label>
-          <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+            className="w-full min-w-0"
+          />
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="password">Parola</label>
@@ -69,16 +78,28 @@ export default function PgLoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            autoComplete="current-password"
+            className="w-full min-w-0"
           />
         </div>
-        <Button type="submit" disabled={loading || !csrfToken} className="w-full">
+        <Button type="submit" disabled={loading || !csrfToken} className="w-full min-w-0">
           {loading ? 'Giriş yapılıyor…' : 'Giriş Yap'}
         </Button>
-        <p className="text-sm text-center space-x-3">
-          <Link href="/forgot-password" className="text-primary underline">Şifremi unuttum</Link>
-          <Link href="/register" className="text-primary underline">Kayıt ol</Link>
+        <p className="text-sm text-center flex flex-wrap justify-center gap-x-3 gap-y-1">
+          <Link
+            href="/forgot-password"
+            className="text-primary underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+          >
+            Şifremi unuttum
+          </Link>
+          <Link
+            href="/register"
+            className="text-primary underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+          >
+            Kayıt ol
+          </Link>
         </p>
       </form>
-    </div>
+    </AuthPageShell>
   )
 }
