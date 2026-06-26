@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import type { PublicAuthState } from '@/lib/auth/public-session'
+import { BrandWordmark } from '@/components/layout/BrandWordmark'
 
 const footerLinkClass =
-  'hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+  'text-muted-foreground hover:text-brand-primary transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline'
 
 const GUEST_ACCOUNT_LINKS = [
   { href: '/login', label: 'Giriş Yap' },
@@ -29,25 +30,22 @@ export function SiteFooter({
     initialAuth?.authenticated ? AUTH_ACCOUNT_LINKS : GUEST_ACCOUNT_LINKS
 
   return (
-    <footer className="border-t border-border bg-secondary/50 mt-12">
-      <div className="content-width py-10">
-        <div className="grid grid-cols-1 gap-7 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-1">
-            <Link
-              href="/"
-              className="font-serif text-lg font-bold text-primary hover:text-primary rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              AcarIndex
-            </Link>
-            <p className="mt-2 text-[0.9375rem] text-muted-foreground leading-relaxed">
-              Türkçe ve uluslararası akademik yayınlara açık erişim sağlayan
-              akademik indeks platformu.
+    <footer className="mt-12 border-t border-border/80 bg-gradient-to-b from-muted/40 to-muted/60">
+      <div className="content-width py-9 md:py-10">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
+          <div className="lg:col-span-1 sm:col-span-2 lg:sm:col-span-1">
+            <BrandWordmark variant="footer" asLink />
+            <p className="mt-4 max-w-sm text-[0.9375rem] text-muted-foreground leading-relaxed">
+              Türkçe ve uluslararası akademik yayınlara güvenilir, açık erişimli keşif ve indeks
+              platformu.
             </p>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3">Keşfet</h3>
-            <ul className="space-y-2 text-[0.9375rem] text-muted-foreground">
+            <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-foreground/70 mb-3">
+              Keşfet
+            </h3>
+            <ul className="space-y-2.5 text-[0.9375rem]">
               <li><Link href="/journals" className={footerLinkClass}>Dergiler</Link></li>
               <li><Link href="/search?type=article" className={footerLinkClass}>Makaleler</Link></li>
               <li><Link href="/search?type=author" className={footerLinkClass}>Yazarlar</Link></li>
@@ -56,8 +54,10 @@ export function SiteFooter({
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3">Platform</h3>
-            <ul className="space-y-2 text-[0.9375rem] text-muted-foreground">
+            <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-foreground/70 mb-3">
+              Platform
+            </h3>
+            <ul className="space-y-2.5 text-[0.9375rem]">
               <li><Link href="/applications" className={footerLinkClass}>Başvurular</Link></li>
               <li><Link href="/kurumsal" className={footerLinkClass}>Kurumsal Abonelik</Link></li>
               <li><Link href="/about" className={footerLinkClass}>Hakkımızda</Link></li>
@@ -67,8 +67,10 @@ export function SiteFooter({
 
           {showAuth && initialAuth !== undefined && (
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3">Hesap</h3>
-              <ul className="space-y-2 text-[0.9375rem] text-muted-foreground">
+              <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-foreground/70 mb-3">
+                Hesap
+              </h3>
+              <ul className="space-y-2.5 text-[0.9375rem]">
                 {accountLinks.map((item) => (
                   <li key={item.href}>
                     <Link href={item.href} className={footerLinkClass}>{item.label}</Link>
@@ -79,9 +81,9 @@ export function SiteFooter({
           )}
         </div>
 
-        <div className="mt-8 border-t border-border pt-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-[0.8125rem] text-muted-foreground">
+        <div className="mt-8 border-t border-border/70 pt-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-[0.8125rem] text-muted-foreground">
           <p>© {currentYear} AcarIndex. Tüm hakları saklıdır.</p>
-          <div className="flex gap-4">
+          <div className="flex gap-5">
             <Link href="/page/gizlilik-politikasi" className={footerLinkClass}>
               Gizlilik
             </Link>

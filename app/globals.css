@@ -27,8 +27,12 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-primary-deep: var(--brand-primary-deep);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-warm: var(--brand-accent-warm);
+  --color-surface: var(--surface);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -49,66 +53,58 @@
 }
 
 :root {
-  /* ── AcarIndex Design Tokens ─────────────────────────────────────────────
-     Kurumsal akademik platform — lacivert primary + teal accent
-     Koyu mod token'ları tanımlı; .dark class ile aktif (Faz-3+)
-  ──────────────────────────────────────────────────────────────────────── */
+  /* ── AcarIndex D2 Brand Tokens ─────────────────────────────────────────── */
+  --brand-primary: #123B5D;
+  --brand-primary-deep: #0F2740;
+  --brand-secondary: #1E5A85;
+  --brand-accent: #2A9D8F;
+  --brand-accent-warm: #C89B3C;
+  --surface: #FFFFFF;
 
-  /* Zemin */
-  --background: oklch(1 0 0);               /* #FFFFFF */
-  --foreground: oklch(0.13 0.02 264);       /* #0F172A */
+  /* Semantic (shadcn) — D2 palette eşlemesi */
+  --background: #F7F9FC;
+  --foreground: #0F172A;
 
-  /* Kart */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.13 0.02 264);
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
 
-  /* Popover */
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.13 0.02 264);
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
 
-  /* Primary — lacivert #1B3A5C */
-  --primary: oklch(0.32 0.08 244);
-  --primary-foreground: oklch(0.98 0 0);
+  --primary: #123B5D;
+  --primary-foreground: #FFFFFF;
 
-  /* Secondary — açık gri surface */
-  --secondary: oklch(0.965 0.005 248);      /* #F4F6F9 */
-  --secondary-foreground: oklch(0.32 0.08 244);
+  --secondary: #EEF2F7;
+  --secondary-foreground: #123B5D;
 
-  /* Muted */
-  --muted: oklch(0.965 0.005 248);
-  --muted-foreground: oklch(0.52 0.03 248); /* #64748B */
+  --muted: #EEF2F7;
+  --muted-foreground: #64748B;
 
-  /* Accent — teal #0E7490 */
-  --accent: oklch(0.55 0.12 216);
-  --accent-foreground: oklch(0.98 0 0);
+  --accent: #2A9D8F;
+  --accent-foreground: #FFFFFF;
 
-  /* Destructive */
   --destructive: oklch(0.577 0.245 27.325);
 
-  /* Border / Input */
-  --border: oklch(0.9 0.01 248);            /* #E2E8F0 */
-  --input: oklch(0.9 0.01 248);
-  --ring: oklch(0.55 0.12 216);             /* accent rengi */
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #2A9D8F;
 
-  /* Radius */
   --radius: 0.5rem;
 
-  /* Chart */
-  --chart-1: oklch(0.32 0.08 244);
-  --chart-2: oklch(0.55 0.12 216);
-  --chart-3: oklch(0.65 0.15 180);
-  --chart-4: oklch(0.72 0.12 160);
-  --chart-5: oklch(0.48 0.08 290);
+  --chart-1: #123B5D;
+  --chart-2: #2A9D8F;
+  --chart-3: #1E5A85;
+  --chart-4: #C89B3C;
+  --chart-5: #64748B;
 
-  /* Sidebar */
-  --sidebar: oklch(0.97 0.005 248);
-  --sidebar-foreground: oklch(0.13 0.02 264);
-  --sidebar-primary: oklch(0.32 0.08 244);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.93 0.01 248);
-  --sidebar-accent-foreground: oklch(0.32 0.08 244);
-  --sidebar-border: oklch(0.9 0.01 248);
-  --sidebar-ring: oklch(0.55 0.12 216);
+  --sidebar: #F7F9FC;
+  --sidebar-foreground: #0F172A;
+  --sidebar-primary: #123B5D;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EEF2F7;
+  --sidebar-accent-foreground: #123B5D;
+  --sidebar-border: #E2E8F0;
+  --sidebar-ring: #2A9D8F;
 }
 
 .dark {
@@ -160,9 +156,9 @@
     @apply font-serif tracking-tight;
   }
 
-  /* Link */
+  /* Link — marka birincil */
   a {
-    @apply text-primary hover:text-accent transition-colors duration-150;
+    @apply text-brand-secondary hover:text-brand-accent transition-colors duration-150;
   }
 
   /* Odak erişilebilirlik */
@@ -188,8 +184,12 @@
     @apply mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8;
   }
 
-  /* Kurumsal yeşil-mavi renk sınıfı */
-  .text-accent-brand {
-    color: var(--accent);
+  /* Ana sayfa kart yüzeyi */
+  .home-surface-card {
+    @apply rounded-xl border border-border/80 bg-surface shadow-sm;
+  }
+
+  .hero-surface {
+    @apply bg-background;
   }
 }

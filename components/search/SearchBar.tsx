@@ -121,9 +121,11 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
       <form onSubmit={handleSubmit}>
         <div
           className={cn(
-            'flex items-stretch overflow-hidden border border-border bg-background',
-            'focus-within:ring-2 focus-within:ring-ring focus-within:border-ring',
-            isHero ? 'rounded-xl shadow-md' : 'rounded-xl',
+            'flex items-stretch overflow-hidden border border-border/90 bg-surface',
+            'focus-within:ring-2 focus-within:ring-brand-accent/40 focus-within:border-brand-accent/50',
+            isHero
+              ? 'rounded-xl shadow-[0_8px_24px_-4px_rgba(15,39,64,0.12),0_2px_8px_-2px_rgba(15,39,64,0.06)]'
+              : 'rounded-xl shadow-sm',
           )}
         >
           <div className="flex flex-1 items-center min-w-0">
@@ -162,8 +164,8 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
           <button
             type="submit"
             className={cn(
-              'shrink-0 inline-flex items-center justify-center gap-1.5 font-medium bg-primary text-primary-foreground',
-              'transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'shrink-0 inline-flex items-center justify-center gap-1.5 font-semibold bg-brand-primary text-primary-foreground',
+              'transition-colors hover:bg-brand-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               isHero
                 ? 'px-4 sm:px-5 min-h-[44px] min-w-[44px] rounded-none rounded-r-xl text-sm'
                 : 'px-3 py-2 min-h-[36px] rounded-none rounded-r-xl text-xs',

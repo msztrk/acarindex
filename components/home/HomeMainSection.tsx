@@ -17,14 +17,21 @@ export async function HomeMainSection({ qa }: { qa?: HomeQaMode }) {
   ])
 
   return (
-    <section className="content-width py-8 md:py-10">
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-8 lg:gap-10">
-        <div>
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mb-5">
-            <h2 className="text-lg font-semibold text-foreground">Son eklenen makaleler</h2>
+    <section className="content-width py-8 md:py-10 lg:py-12">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-8 lg:gap-10">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 mb-5">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">
+                Son eklenen makaleler
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Kataloga yeni eklenen akademik yayınlar
+              </p>
+            </div>
             <Link
               href="/search?type=article"
-              className="text-sm font-semibold text-primary hover:text-primary/80 hover:underline underline-offset-2 shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="text-sm font-semibold text-brand-secondary hover:text-brand-primary transition-colors shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
             >
               Tüm makaleleri görüntüle →
             </Link>
@@ -32,7 +39,7 @@ export async function HomeMainSection({ qa }: { qa?: HomeQaMode }) {
           <RecentArticlesList articles={recentArticles} />
         </div>
 
-        <aside className="lg:pt-0">
+        <aside className="min-w-0 space-y-0 lg:pt-0">
           <FeaturedJournalsList journals={featuredJournals} />
           <TopicAreasList categories={topicAreas} />
         </aside>

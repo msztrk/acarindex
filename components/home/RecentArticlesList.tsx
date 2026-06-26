@@ -25,7 +25,7 @@ function formatAuthors(raw: string | null): string {
 export function RecentArticlesList({ articles }: { articles: RecentArticleItem[] }) {
   if (articles.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border bg-muted/30 px-4 py-8 text-center">
+      <div className="home-surface-card border-dashed px-4 py-8 text-center">
         <p className="text-sm font-medium text-foreground mb-1">Henüz makale listelenmiyor</p>
         <p className="text-sm text-muted-foreground">
           Yeni makaleler eklendiğinde burada görünecek.
@@ -35,7 +35,7 @@ export function RecentArticlesList({ articles }: { articles: RecentArticleItem[]
   }
 
   return (
-    <ul className="divide-y divide-border/80">
+    <ul className="divide-y divide-border/70 rounded-xl border border-border/80 bg-surface shadow-sm overflow-hidden">
       {articles.map((a) => {
         const title = a.title_tr ?? a.title_en ?? 'Başlıksız'
         const href = `/${a.legacy_journal_slug}/${a.slug}-${a.id}`
@@ -43,24 +43,26 @@ export function RecentArticlesList({ articles }: { articles: RecentArticleItem[]
         const journalTitle = a.journal?.title_tr
 
         return (
-          <li key={a.id} className="group py-4 first:pt-0 last:pb-0">
+          <li key={a.id} className="group px-4 sm:px-5 py-4 hover:bg-brand-primary/[0.04] transition-colors">
             <Link
               href={href}
               className="block no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <span
-                className="text-base font-medium text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2"
+                className="text-[1.0625rem] font-medium text-foreground group-hover:text-brand-primary transition-colors leading-snug line-clamp-2"
               >
                 {title}
               </span>
             </Link>
-            <div className="mt-2.5 space-y-1.5">
+            <div className="mt-2.5 space-y-2">
               {(authors || a.published_year) && (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-[0.8125rem] text-foreground/70">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-[0.8125rem] text-muted-foreground">
                   {authors && <span className="min-w-0">{authors}</span>}
-                  {authors && a.published_year && <span className="text-muted-foreground" aria-hidden>·</span>}
+                  {authors && a.published_year && (
+                    <span className="text-border" aria-hidden>·</span>
+                  )}
                   {a.published_year && (
-                    <span className="tabular-nums shrink-0 text-muted-foreground">{a.published_year}</span>
+                    <span className="tabular-nums shrink-0">{a.published_year}</span>
                   )}
                 </div>
               )}
@@ -69,7 +71,7 @@ export function RecentArticlesList({ articles }: { articles: RecentArticleItem[]
                   <Link
                     href={`/journals/${a.journal.slug}-${a.journal.id}`}
                     title={journalTitle}
-                    className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-foreground/75 hover:text-foreground line-clamp-2 sm:line-clamp-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
+                    className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-foreground/70 hover:text-brand-secondary line-clamp-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
                   >
                     {journalTitle}
                   </Link>
@@ -77,9 +79,9 @@ export function RecentArticlesList({ articles }: { articles: RecentArticleItem[]
                 <Link
                   href={`/pdfs/${a.id}`}
                   aria-label={`${title} — tam metin PDF`}
-                  className="inline-flex items-center gap-1.5 shrink-0 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/15 hover:border-primary/50 transition-colors no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="inline-flex items-center gap-1.5 shrink-0 rounded-md border border-brand-accent/30 bg-brand-accent/10 px-2.5 py-1 text-xs font-semibold text-brand-primary hover:bg-brand-accent/18 hover:border-brand-accent/45 transition-colors no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-brand-accent" aria-hidden />
                   PDF
                 </Link>
               </div>

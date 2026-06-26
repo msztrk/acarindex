@@ -11,6 +11,7 @@ export default defineConfig({
       'tests/external/**',
       'tests/beta-responsive-auth.spec.ts',
       'tests/beta-d1-visual-acceptance.spec.ts',
+      'tests/d2-visual-screenshots.spec.ts',
     ],
     fileParallelism:
       process.env.USER_PANEL_INTEGRATION !== '1' &&
