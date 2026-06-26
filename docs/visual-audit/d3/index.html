@@ -8,16 +8,249 @@
     :root { --brand: #1a3a5c; --muted: #64748b; }
     body { font-family: system-ui, sans-serif; margin: 0; padding: 1.5rem; color: #0f172a; background: #f8fafc; }
     h1 { font-family: Georgia, serif; color: var(--brand); }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    th, td { padding: 0.75rem 1rem; border-bottom: 1px solid #e2e8f0; vertical-align: top; font-size: 0.875rem; }
+    th { background: #f1f5f9; text-align: left; font-weight: 600; }
+    code { font-size: 0.8rem; }
     .meta { color: var(--muted); margin-bottom: 1.5rem; }
-    .note { background: #fff; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0; }
   </style>
 </head>
 <body>
   <h1>Faz 6C-Beta D3 — Görsel Denetim Galerisi</h1>
-  <p class="meta">Bu dosya <code>node scripts/visual-audit/generate-d3-gallery.mjs</code> ile güncellenir.</p>
-  <div class="note">
-    <p>D3 Playwright suite çalıştırıldıktan sonra <code>audit-metadata.json</code> ve ekran görüntüleri buraya yansır.</p>
-    <p>Screenshot dizini (beta): <code>/var/log/acarindex-d3-visual-review/</code></p>
-  </div>
+  <p class="meta">Oluşturulma: 2026-06-26T15:39:40.766Z · 22 kayıt</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Route</th>
+        <th>Sayfa türü</th>
+        <th>Viewport</th>
+        <th>Önceki statü</th>
+        <th>Değişiklik</th>
+        <th>Son statü</th>
+        <th>After</th>
+        <th>Kalan risk</th>
+      </tr>
+    </thead>
+    <tbody><tr>
+      <td><code>/</code></td>
+      <td>home</td>
+      <td>1366x768</td>
+      <td>A</td>
+      <td>none</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/desktop/root__desktop-1366.png" alt="/" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/</code></td>
+      <td>home</td>
+      <td>375x812</td>
+      <td>A</td>
+      <td>none</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/mobile/root__mobile-375.png" alt="/" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/search?q=tıp&amp;type=article</code></td>
+      <td>search</td>
+      <td>1366x768</td>
+      <td>B</td>
+      <td>SitePageHeader, catalog-list, PDF badge</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/desktop/search_q_t_p_type_article__desktop-1366.png" alt="/search?q=tıp&type=article" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/search?q=tıp&amp;type=article</code></td>
+      <td>search</td>
+      <td>375x812</td>
+      <td>B</td>
+      <td>SitePageHeader, catalog-list, PDF badge</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/mobile/search_q_t_p_type_article__mobile-375.png" alt="/search?q=tıp&type=article" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/search?q=zzzznonexistentquery12345</code></td>
+      <td>search-zero</td>
+      <td>1366x768</td>
+      <td>B</td>
+      <td>catalog-empty-panel</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/desktop/search_q_zzzznonexistentquery12345__desktop-1366.png" alt="/search?q=zzzznonexistentquery12345" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/search?q=zzzznonexistentquery12345</code></td>
+      <td>search-zero</td>
+      <td>375x812</td>
+      <td>B</td>
+      <td>catalog-empty-panel</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/mobile/search_q_zzzznonexistentquery12345__mobile-375.png" alt="/search?q=zzzznonexistentquery12345" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/journals</code></td>
+      <td>journals</td>
+      <td>1366x768</td>
+      <td>B</td>
+      <td>empty state tokens</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/desktop/journals__desktop-1366.png" alt="/journals" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/journals</code></td>
+      <td>journals</td>
+      <td>375x812</td>
+      <td>B</td>
+      <td>empty state tokens</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/mobile/journals__mobile-375.png" alt="/journals" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/login</code></td>
+      <td>auth</td>
+      <td>1366x768</td>
+      <td>C</td>
+      <td>AuthPageShell + tokens</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/desktop/login__desktop-1366.png" alt="/login" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/login</code></td>
+      <td>auth</td>
+      <td>375x812</td>
+      <td>C</td>
+      <td>AuthPageShell + tokens</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/mobile/login__mobile-375.png" alt="/login" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/register</code></td>
+      <td>auth</td>
+      <td>1366x768</td>
+      <td>C</td>
+      <td>AuthPageShell</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/desktop/register__desktop-1366.png" alt="/register" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/register</code></td>
+      <td>auth</td>
+      <td>375x812</td>
+      <td>C</td>
+      <td>AuthPageShell</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/mobile/register__mobile-375.png" alt="/register" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/forgot-password</code></td>
+      <td>auth</td>
+      <td>1366x768</td>
+      <td>B</td>
+      <td>AuthPageShell</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/desktop/forgot-password__desktop-1366.png" alt="/forgot-password" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/forgot-password</code></td>
+      <td>auth</td>
+      <td>375x812</td>
+      <td>B</td>
+      <td>AuthPageShell</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/mobile/forgot-password__mobile-375.png" alt="/forgot-password" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/ictimaiyat/15-temmuz-darbe-girisiminin-yunan-medyasindaki-ilk-yansimalari-106276</code></td>
+      <td>article</td>
+      <td>1366x768</td>
+      <td>B</td>
+      <td>micro spacing review</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/desktop/ictimaiyat_15-temmuz-darbe-girisiminin-yunan-medyasindaki-ilk-yansimalari-106276__desktop-1366.png" alt="/ictimaiyat/15-temmuz-darbe-girisiminin-yunan-medyasindaki-ilk-yansimalari-106276" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/ictimaiyat/15-temmuz-darbe-girisiminin-yunan-medyasindaki-ilk-yansimalari-106276</code></td>
+      <td>article</td>
+      <td>375x812</td>
+      <td>B</td>
+      <td>micro spacing review</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/mobile/ictimaiyat_15-temmuz-darbe-girisiminin-yunan-medyasindaki-ilk-yansimalari-106276__mobile-375.png" alt="/ictimaiyat/15-temmuz-darbe-girisiminin-yunan-medyasindaki-ilk-yansimalari-106276" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/pdfs/102251</code></td>
+      <td>pdf</td>
+      <td>1366x768</td>
+      <td>B</td>
+      <td>viewer height mobile, empty panel</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/desktop/pdfs_102251__desktop-1366.png" alt="/pdfs/102251" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/pdfs/102251</code></td>
+      <td>pdf</td>
+      <td>375x812</td>
+      <td>B</td>
+      <td>viewer height mobile, empty panel</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/mobile/pdfs_102251__mobile-375.png" alt="/pdfs/102251" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/authors/a-m-scerbak-4065</code></td>
+      <td>author</td>
+      <td>1366x768</td>
+      <td>B</td>
+      <td>review only</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/desktop/authors_a-m-scerbak-4065__desktop-1366.png" alt="/authors/a-m-scerbak-4065" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/authors/a-m-scerbak-4065</code></td>
+      <td>author</td>
+      <td>375x812</td>
+      <td>B</td>
+      <td>review only</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/mobile/authors_a-m-scerbak-4065__mobile-375.png" alt="/authors/a-m-scerbak-4065" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/journals/abant-izzet-baysal-universitesi-egitim-fakultesi-dergisi-3</code></td>
+      <td>journal</td>
+      <td>1366x768</td>
+      <td>B</td>
+      <td>review only</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/desktop/journals_abant-izzet-baysal-universitesi-egitim-fakultesi-dergisi-3__desktop-1366.png" alt="/journals/abant-izzet-baysal-universitesi-egitim-fakultesi-dergisi-3" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr>
+<tr>
+      <td><code>/journals/abant-izzet-baysal-universitesi-egitim-fakultesi-dergisi-3</code></td>
+      <td>journal</td>
+      <td>375x812</td>
+      <td>B</td>
+      <td>review only</td>
+      <td>A</td>
+      <td><img src="/var/log/acarindex-d3-visual-review/mobile/journals_abant-izzet-baysal-universitesi-egitim-fakultesi-dergisi-3__mobile-375.png" alt="/journals/abant-izzet-baysal-universitesi-egitim-fakultesi-dergisi-3" loading="lazy" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px" /></td>
+      <td></td>
+    </tr></tbody>
+  </table>
 </body>
 </html>

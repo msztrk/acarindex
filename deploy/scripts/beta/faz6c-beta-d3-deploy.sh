@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib-pilot-guard.sh"
 
 BASE_LOCAL="${ACAR_BETA_BASE:-http://127.0.0.1:3002}"
-BRANCH="${ACAR_D3_BRANCH:-faz-6c-beta-d3}"
+BRANCH="${ACAR_D3_BRANCH:-redesign-v2}"
 LOG="/var/log/acarindex-faz6c-beta-d3-deploy.log"
 
 acar_beta_require_pilot

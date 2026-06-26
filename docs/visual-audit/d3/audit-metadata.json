@@ -1,0 +1,203 @@
+{
+  "generatedAt": "2026-06-26T15:39:40.766Z",
+  "entries": [
+    {
+      "route": "/",
+      "pageType": "home",
+      "viewport": "1366x768",
+      "statusBefore": "A",
+      "change": "none",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/desktop/root__desktop-1366.png"
+    },
+    {
+      "route": "/",
+      "pageType": "home",
+      "viewport": "375x812",
+      "statusBefore": "A",
+      "change": "none",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/mobile/root__mobile-375.png"
+    },
+    {
+      "route": "/search?q=tıp&type=article",
+      "pageType": "search",
+      "viewport": "1366x768",
+      "statusBefore": "B",
+      "change": "SitePageHeader, catalog-list, PDF badge",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/desktop/search_q_t_p_type_article__desktop-1366.png"
+    },
+    {
+      "route": "/search?q=tıp&type=article",
+      "pageType": "search",
+      "viewport": "375x812",
+      "statusBefore": "B",
+      "change": "SitePageHeader, catalog-list, PDF badge",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/mobile/search_q_t_p_type_article__mobile-375.png"
+    },
+    {
+      "route": "/search?q=zzzznonexistentquery12345",
+      "pageType": "search-zero",
+      "viewport": "1366x768",
+      "statusBefore": "B",
+      "change": "catalog-empty-panel",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/desktop/search_q_zzzznonexistentquery12345__desktop-1366.png"
+    },
+    {
+      "route": "/search?q=zzzznonexistentquery12345",
+      "pageType": "search-zero",
+      "viewport": "375x812",
+      "statusBefore": "B",
+      "change": "catalog-empty-panel",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/mobile/search_q_zzzznonexistentquery12345__mobile-375.png"
+    },
+    {
+      "route": "/journals",
+      "pageType": "journals",
+      "viewport": "1366x768",
+      "statusBefore": "B",
+      "change": "empty state tokens",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/desktop/journals__desktop-1366.png"
+    },
+    {
+      "route": "/journals",
+      "pageType": "journals",
+      "viewport": "375x812",
+      "statusBefore": "B",
+      "change": "empty state tokens",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/mobile/journals__mobile-375.png"
+    },
+    {
+      "route": "/login",
+      "pageType": "auth",
+      "viewport": "1366x768",
+      "statusBefore": "C",
+      "change": "AuthPageShell + tokens",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/desktop/login__desktop-1366.png"
+    },
+    {
+      "route": "/login",
+      "pageType": "auth",
+      "viewport": "375x812",
+      "statusBefore": "C",
+      "change": "AuthPageShell + tokens",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/mobile/login__mobile-375.png"
+    },
+    {
+      "route": "/register",
+      "pageType": "auth",
+      "viewport": "1366x768",
+      "statusBefore": "C",
+      "change": "AuthPageShell",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/desktop/register__desktop-1366.png"
+    },
+    {
+      "route": "/register",
+      "pageType": "auth",
+      "viewport": "375x812",
+      "statusBefore": "C",
+      "change": "AuthPageShell",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/mobile/register__mobile-375.png"
+    },
+    {
+      "route": "/forgot-password",
+      "pageType": "auth",
+      "viewport": "1366x768",
+      "statusBefore": "B",
+      "change": "AuthPageShell",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/desktop/forgot-password__desktop-1366.png"
+    },
+    {
+      "route": "/forgot-password",
+      "pageType": "auth",
+      "viewport": "375x812",
+      "statusBefore": "B",
+      "change": "AuthPageShell",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/mobile/forgot-password__mobile-375.png"
+    },
+    {
+      "route": "/ictimaiyat/15-temmuz-darbe-girisiminin-yunan-medyasindaki-ilk-yansimalari-106276",
+      "pageType": "article",
+      "viewport": "1366x768",
+      "statusBefore": "B",
+      "change": "micro spacing review",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/desktop/ictimaiyat_15-temmuz-darbe-girisiminin-yunan-medyasindaki-ilk-yansimalari-106276__desktop-1366.png"
+    },
+    {
+      "route": "/ictimaiyat/15-temmuz-darbe-girisiminin-yunan-medyasindaki-ilk-yansimalari-106276",
+      "pageType": "article",
+      "viewport": "375x812",
+      "statusBefore": "B",
+      "change": "micro spacing review",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/mobile/ictimaiyat_15-temmuz-darbe-girisiminin-yunan-medyasindaki-ilk-yansimalari-106276__mobile-375.png"
+    },
+    {
+      "route": "/pdfs/102251",
+      "pageType": "pdf",
+      "viewport": "1366x768",
+      "statusBefore": "B",
+      "change": "viewer height mobile, empty panel",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/desktop/pdfs_102251__desktop-1366.png"
+    },
+    {
+      "route": "/pdfs/102251",
+      "pageType": "pdf",
+      "viewport": "375x812",
+      "statusBefore": "B",
+      "change": "viewer height mobile, empty panel",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/mobile/pdfs_102251__mobile-375.png"
+    },
+    {
+      "route": "/authors/a-m-scerbak-4065",
+      "pageType": "author",
+      "viewport": "1366x768",
+      "statusBefore": "B",
+      "change": "review only",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/desktop/authors_a-m-scerbak-4065__desktop-1366.png"
+    },
+    {
+      "route": "/authors/a-m-scerbak-4065",
+      "pageType": "author",
+      "viewport": "375x812",
+      "statusBefore": "B",
+      "change": "review only",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/mobile/authors_a-m-scerbak-4065__mobile-375.png"
+    },
+    {
+      "route": "/journals/abant-izzet-baysal-universitesi-egitim-fakultesi-dergisi-3",
+      "pageType": "journal",
+      "viewport": "1366x768",
+      "statusBefore": "B",
+      "change": "review only",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/desktop/journals_abant-izzet-baysal-universitesi-egitim-fakultesi-dergisi-3__desktop-1366.png"
+    },
+    {
+      "route": "/journals/abant-izzet-baysal-universitesi-egitim-fakultesi-dergisi-3",
+      "pageType": "journal",
+      "viewport": "375x812",
+      "statusBefore": "B",
+      "change": "review only",
+      "statusAfter": "A",
+      "afterShot": "/var/log/acarindex-d3-visual-review/mobile/journals_abant-izzet-baysal-universitesi-egitim-fakultesi-dergisi-3__mobile-375.png"
+    }
+  ]
+}
