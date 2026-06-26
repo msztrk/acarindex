@@ -64,11 +64,11 @@ async function loginHesabimUser(page: Page): Promise<void> {
     throw new Error('ACAR_HESABIM_TEST_EMAIL/PASSWORD missing')
   }
   await page.goto('/login', { waitUntil: 'domcontentloaded' })
-  const ok = await page.evaluate(
+  const loginResult = await page.evaluate(
     async ({ email, password }) => {
       const csrfRes = await fetch('/api/auth/csrf', { credentials: 'include' })
       const { csrfToken } = (await csrfRes.json()) as { csrfToken?: string }
-      if (!csrfToken) return false
+      if (!csrfToken) return { ok: false, status: 0 }
       const loginRes = await fetch('/api/auth/login', {
         method: 'POST',
         credentials: 'include',
@@ -78,12 +78,15 @@ async function loginHesabimUser(page: Page): Promise<void> {
         },
         body: JSON.stringify({ email, password }),
       })
-      return loginRes.ok
+      const body = await loginRes.text()
+      return { ok: loginRes.ok, status: loginRes.status, body: body.slice(0, 120) }
     },
     { email: HESABIM_EMAIL, password: HESABIM_PASSWORD },
   )
-  if (!ok) {
-    throw new Error('login failed via API in browser context')
+  if (!loginResult.ok) {
+    throw new Error(
+      `login failed via API in browser context: HTTP ${loginResult.status} ${loginResult.body}`,
+    )
   }
   const gotoRes = await page.goto('/hesabim', { waitUntil: 'domcontentloaded' })
   expect(gotoRes?.status(), 'hesabim HTTP').toBeLessThan(400)

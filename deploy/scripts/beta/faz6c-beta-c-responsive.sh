@@ -15,7 +15,7 @@ PLAYWRIGHT_IMAGE="${ACAR_PLAYWRIGHT_IMAGE:-mcr.microsoft.com/playwright:v1.49.1-
 acar_beta_require_pilot
 cd "$ROOT"
 install -d -m 700 "$SHOT_DIR" "$TOKEN_DIR"
-rm -f "$ENV_FILE"
+rm -f "$ENV_FILE" "$TOKEN_DIR/hesabim.env"
 
 echo "=== FIXTURES ==="
 docker compose --env-file /etc/acarindex/pilot.env -f docker-compose.pilot.yml --profile tools run --rm --no-deps \
@@ -33,6 +33,11 @@ if [[ -f "$CRED" ]]; then
   HESABIM_EMAIL=$(grep '^email=' "$CRED" | cut -d= -f2- | tr -d '\r')
   HESABIM_PASS=$(grep '^pass=' "$CRED" | cut -d= -f2- | tr -d '\r')
 fi
+[[ -n "$HESABIM_EMAIL" && -n "$HESABIM_PASS" ]] || { echo "FAIL: hesabim admin creds missing"; exit 1; }
+
+HESABIM_ENV="$TOKEN_DIR/hesabim.env"
+printf 'ACAR_HESABIM_TEST_EMAIL=%s\nACAR_HESABIM_TEST_PASSWORD=%s\n' "$HESABIM_EMAIL" "$HESABIM_PASS" > "$HESABIM_ENV"
+chmod 600 "$HESABIM_ENV"
 
 echo "=== PLAYWRIGHT ==="
 docker run --rm \
@@ -40,10 +45,9 @@ docker run --rm \
   -v "$SHOT_DIR:$SHOT_DIR" \
   -w /app \
   --env-file "$ENV_FILE" \
+  --env-file "$HESABIM_ENV" \
   -e BASE_URL=http://127.0.0.1:3002 \
   -e ACAR_RESPONSIVE_SHOTS="$SHOT_DIR" \
-  -e ACAR_HESABIM_TEST_EMAIL="$HESABIM_EMAIL" \
-  -e ACAR_HESABIM_TEST_PASSWORD="$HESABIM_PASS" \
   --network host \
   "$PLAYWRIGHT_IMAGE" \
   bash -c 'npm install @playwright/test@1.49.1 --no-save && npx playwright test --config=playwright.beta-responsive.config.ts'
@@ -51,7 +55,7 @@ docker run --rm \
 echo "=== CLEANUP ==="
 docker compose --env-file /etc/acarindex/pilot.env -f docker-compose.pilot.yml --profile tools run --rm --no-deps \
   etl scripts/test/beta-responsive-cleanup.ts
-rm -f "$ENV_FILE"
+rm -f "$ENV_FILE" "$TOKEN_DIR/hesabim.env"
 rmdir "$TOKEN_DIR" 2>/dev/null || true
 
 users=$(docker compose --env-file /etc/acarindex/pilot.env -f docker-compose.pilot.yml exec -T postgres \
