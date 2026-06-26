@@ -409,8 +409,8 @@ function JournalNav({ segment, active }: { segment: string; active: SubPage }) {
             'text-sm px-3 py-2 min-h-[36px] inline-flex items-center rounded-md transition-colors no-underline',
             linkFocusClass,
             active === key
-              ? 'bg-primary text-primary-foreground font-medium'
-              : 'text-muted-foreground hover:text-foreground hover:bg-secondary',
+              ? 'bg-brand-primary/10 text-brand-primary font-medium'
+              : 'text-muted-foreground hover:text-foreground hover:bg-brand-primary/[0.035]',
           )}
         >
           {label}

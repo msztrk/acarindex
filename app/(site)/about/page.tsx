@@ -67,7 +67,7 @@ export default function AboutPage() {
         <section className="mb-16">
           <div className="max-w-3xl mx-auto">
             <h2 className="font-serif text-2xl font-bold mb-4">Misyonumuz</h2>
-            <div className="prose prose-sm max-w-none text-foreground/80 leading-relaxed space-y-4">
+            <div className="prose prose-sm max-w-none text-foreground/80 leading-relaxed space-y-4 text-justify hyphens-auto">
               <p>
                 Akademik bilgiye erişimin önündeki engelleri kaldırmak ve Türk akademik
                 üretimini uluslararası standartlarda dizinlemek için çalışıyoruz.
@@ -91,7 +91,7 @@ export default function AboutPage() {
           <h2 className="font-serif text-2xl font-bold mb-8 text-center">Neler Sunuyoruz?</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {features.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="rounded-xl border border-border bg-card p-6 flex gap-4">
+              <div key={title} className="rounded-xl border border-border/80 bg-surface shadow-sm p-6 flex gap-4">
                 <div className="shrink-0 h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Icon className="h-5 w-5 text-primary" />
                 </div>
@@ -105,7 +105,7 @@ export default function AboutPage() {
         </section>
 
         {/* Dergi yayıncıları için */}
-        <section className="mb-16 rounded-2xl border border-border bg-secondary/40 p-8 max-w-3xl mx-auto text-center">
+        <section className="mb-16 rounded-xl border border-border/80 bg-surface-soft/80 p-8 max-w-3xl mx-auto text-center">
           <h2 className="font-serif text-xl font-bold mb-3">Dergi Yayıncıları İçin</h2>
           <p className="text-muted-foreground text-sm mb-6">
             Dergilerinizin AcarIndex&apos;te listelenmesini veya mevcut bilgilerin güncellenmesini

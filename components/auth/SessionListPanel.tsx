@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { deleteWithCsrf } from '@/lib/auth/csrf-client'
 
 interface SessionRow {
@@ -77,8 +76,8 @@ export function SessionListPanel() {
   }
 
   return (
-    <Card className="p-4 space-y-3">
-      <h3 className="text-sm font-medium">Aktif oturumlar</h3>
+    <div className="rounded-xl border border-border/80 bg-surface shadow-sm p-4 space-y-3">
+      <h3 className="text-sm font-semibold">Aktif oturumlar</h3>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <ul className="space-y-2 text-sm">
         {sessions.map((s) => (
@@ -110,6 +109,6 @@ export function SessionListPanel() {
       <Button type="button" variant="outline" size="sm" disabled={busy !== ''} onClick={revokeOthers}>
         Diğer tüm oturumları kapat
       </Button>
-    </Card>
+    </div>
   )
 }

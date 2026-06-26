@@ -10,17 +10,17 @@ export default async function KaydedilenPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium">Kaydedilen Makaleler</h2>
+      <h2 className="text-lg font-serif font-semibold">Kaydedilen Makaleler</h2>
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">Henüz kayıtlı makale yok.</p>
       ) : (
         <ul className="space-y-3">
           {rows.map((r) => (
-            <li key={r.articleId} className="rounded border p-3 text-sm">
+            <li key={r.articleId} className="rounded-xl border border-border/80 p-3 text-sm">
               {r.article ? (
                 <Link
                   href={`/${r.article.legacyJournalSlug}/${r.article.slug}-${r.article.id}`}
-                  className="font-medium text-primary hover:underline line-clamp-2"
+                  className="font-medium text-primary hover:text-accent no-underline line-clamp-2"
                 >
                   {r.article.titleTr ?? r.article.titleEn ?? `Makale ${r.articleId}`}
                 </Link>

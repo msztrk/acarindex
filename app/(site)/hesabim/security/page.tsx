@@ -7,7 +7,7 @@ export const metadata = { title: 'Güvenlik | Hesabım' }
 export default function HesabimSecurityPage() {
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-medium">Parola ve güvenlik</h2>
+      <h2 className="text-lg font-serif font-semibold">Parola ve güvenlik</h2>
       <p className="text-sm text-muted-foreground">
         Oturum yönetimi, hesap durumu ve parola değişiklikleri audit log&apos;a yazılır.
       </p>

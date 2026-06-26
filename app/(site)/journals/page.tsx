@@ -66,7 +66,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
   return (
     <div className="content-width py-8">
       <div className="mb-8">
-        <h1 className="font-serif text-3xl font-bold mb-2">Dergiler</h1>
+        <h1 className="font-serif text-2xl font-semibold mb-2">Dergiler</h1>
         <p className="text-muted-foreground">
           {total.toLocaleString('tr-TR')} dergi • Sayfa {page}/{totalPages}
         </p>
@@ -74,11 +74,11 @@ export default async function JournalsPage({ searchParams }: PageProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-8">
         {/* Filtre sidebar */}
-        <aside>
+        <aside className="rounded-xl border border-border/80 bg-surface shadow-sm p-4 h-fit">
           {/* Arama */}
-          <form method="GET" className="mb-6">
+          <form method="GET" className="mb-5">
             {category && <input type="hidden" name="category" value={category} />}
-            <div className="flex items-center border border-border rounded-lg overflow-hidden bg-background focus-within:ring-2 focus-within:ring-ring">
+            <div className="flex items-center border border-border/80 rounded-xl overflow-hidden bg-background focus-within:ring-2 focus-within:ring-ring">
               <Search className="ml-3 h-4 w-4 text-muted-foreground shrink-0" />
               <input
                 name="q"
@@ -96,11 +96,11 @@ export default async function JournalsPage({ searchParams }: PageProps) {
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
                 Kategoriler
               </h2>
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 <li>
                   <Link
                     href="/journals"
-                    className={`block text-sm px-2 py-1.5 rounded transition-colors ${!category ? 'text-primary font-medium bg-secondary' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}
+                    className={`block text-sm px-2 py-1.5 rounded-lg transition-colors ${!category ? 'text-brand-primary font-medium bg-brand-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-brand-primary/[0.035]'}`}
                   >
                     Tümü
                   </Link>
@@ -109,7 +109,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
                   <li key={cat.id}>
                     <Link
                       href={`/journals?category=${cat.id}`}
-                      className={`block text-sm px-2 py-1.5 rounded transition-colors ${String(categoryId) === String(cat.id) ? 'text-primary font-medium bg-secondary' : 'text-muted-foreground hover:text-foreground hover:bg-secondary'}`}
+                      className={`block text-sm px-2 py-1.5 rounded-lg transition-colors ${String(categoryId) === String(cat.id) ? 'text-brand-primary font-medium bg-brand-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-brand-primary/[0.035]'}`}
                     >
                       {cat.name_tr ?? cat.name_en}
                     </Link>

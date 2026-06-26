@@ -43,14 +43,14 @@ export default function ContactPage() {
               <a
                 key={label}
                 href={href}
-                className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:border-accent/40 hover:bg-secondary/30 transition-all no-underline group"
+                className="flex items-center gap-4 p-4 rounded-xl border border-border/80 bg-surface shadow-sm hover:bg-brand-primary/[0.035] hover:border-border transition-all no-underline group"
               >
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                   <Icon className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-                  <p className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">{value}</p>
+                  <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">{value}</p>
                 </div>
                 <ExternalLink className="h-4 w-4 text-muted-foreground ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
               </a>
@@ -67,7 +67,7 @@ export default function ContactPage() {
           </p>
           <div className="space-y-2">
             {topics.map(({ title, desc }) => (
-              <div key={title} className="flex gap-3 p-3 rounded-lg bg-secondary/40">
+              <div key={title} className="flex gap-3 p-3 rounded-lg border border-border/50 bg-surface-soft/60">
                 <span className="text-sm font-medium text-foreground w-52 shrink-0">{title}</span>
                 <span className="text-sm text-muted-foreground">{desc}</span>
               </div>
@@ -76,7 +76,7 @@ export default function ContactPage() {
         </section>
 
         {/* Yanıt süresi */}
-        <div className="mt-10 p-4 rounded-xl border border-border bg-card text-sm text-muted-foreground">
+        <div className="mt-10 p-4 rounded-xl border border-border/80 bg-surface shadow-sm text-sm text-muted-foreground">
           <strong className="text-foreground">Yanıt süresi:</strong> Talepler genellikle 3-5 iş
           günü içinde yanıtlanmaktadır. Acil durumlar için lütfen e-posta konusuna{' '}
           <code className="bg-secondary px-1 rounded text-xs">[ACIL]</code> ekleyin.

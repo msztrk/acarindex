@@ -1,7 +1,6 @@
 import { getUserPanelSummary } from '@/lib/user-panel/summary'
 import { listRecentViews } from '@/lib/user-panel/recent-views'
 import { requireUserAuth } from '@/lib/auth/guards'
-import { Card } from '@/components/ui/card'
 import Link from 'next/link'
 
 export const metadata = { title: 'Genel Bakış | Hesabım' }
@@ -20,16 +19,16 @@ export default async function HesabimOverviewPage() {
           { label: 'Dergi takibi', value: summary.followedJournals, href: '/hesabim/takip-dergiler' },
           { label: 'Yazar takibi', value: summary.followedAuthors, href: '/hesabim/takip-yazarlar' },
         ].map((item) => (
-          <Link key={item.href} href={item.href}>
-            <Card className="p-4 hover:bg-muted/50 transition-colors">
-              <p className="text-2xl font-semibold">{item.value}</p>
+          <Link key={item.href} href={item.href} className="no-underline">
+            <div className="rounded-xl border border-border/80 bg-surface shadow-sm p-4 hover:bg-brand-primary/[0.035] hover:border-border transition-colors">
+              <p className="text-2xl font-semibold text-foreground">{item.value}</p>
               <p className="text-xs text-muted-foreground">{item.label}</p>
-            </Card>
+            </div>
           </Link>
         ))}
       </div>
       <section className="space-y-2">
-        <h2 className="text-lg font-medium">Son görüntülenenler</h2>
+        <h2 className="text-lg font-serif font-semibold">Son görüntülenenler</h2>
         {recent.length === 0 ? (
           <p className="text-sm text-muted-foreground">Henüz kayıt yok.</p>
         ) : (
@@ -37,7 +36,7 @@ export default async function HesabimOverviewPage() {
             {recent.slice(0, 8).map((r) => (
               <li key={`${r.entityType}-${r.entityId}`} className="flex justify-between gap-2">
                 {r.href ? (
-                  <Link href={r.href} className="text-primary hover:underline line-clamp-2">
+                  <Link href={r.href} className="text-primary hover:text-accent no-underline line-clamp-2">
                     {r.label}
                   </Link>
                 ) : (

@@ -10,7 +10,7 @@ export default async function BildirimlerPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium">Bildirim Tercihleri</h2>
+      <h2 className="text-lg font-serif font-semibold">Bildirim Tercihleri</h2>
       <NotificationPreferencesForm initial={prefs} />
     </div>
   )

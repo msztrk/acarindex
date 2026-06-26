@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { postWithCsrf } from '@/lib/auth/csrf-client'
 
 export function AccountLifecyclePanel() {
@@ -62,8 +61,8 @@ export function AccountLifecyclePanel() {
   }
 
   return (
-    <Card className="p-4 space-y-4">
-      <h3 className="text-sm font-medium">Hesap durumu</h3>
+    <div className="rounded-xl border border-border/80 bg-surface shadow-sm p-4 space-y-4">
+      <h3 className="text-sm font-semibold">Hesap durumu</h3>
       {deletion && (
         <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">
           Silme talebi planlandı: {new Date(deletion.scheduledFor).toLocaleString('tr-TR')}
@@ -75,7 +74,7 @@ export function AccountLifecyclePanel() {
           id="account-password"
           type="password"
           autoComplete="current-password"
-          className="w-full rounded border border-border px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-border/80 px-3 py-2 text-sm bg-background"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -98,6 +97,6 @@ export function AccountLifecyclePanel() {
       <p className="text-xs text-muted-foreground">
         Silme talebi fiziksel silme değildir; bekleme süresi sonunda operasyon ekibi işler. Katalog verileri etkilenmez.
       </p>
-    </Card>
+    </div>
   )
 }

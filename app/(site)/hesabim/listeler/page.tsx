@@ -10,7 +10,7 @@ export default async function ListelerPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium">Okuma Listelerim</h2>
+      <h2 className="text-lg font-serif font-semibold">Okuma Listelerim</h2>
       <ReadingListsManager initialLists={lists} />
     </div>
   )

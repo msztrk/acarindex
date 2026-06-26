@@ -58,7 +58,7 @@ export function ReadingListsManager({
           onChange={(e) => setName(e.target.value)}
           placeholder="Yeni liste adı"
           maxLength={120}
-          className="flex-1 rounded border border-border px-3 py-2 text-sm"
+          className="flex-1 rounded-lg border border-border/80 px-3 py-2 text-sm bg-background"
           aria-label="Liste adı"
         />
         <Button type="button" disabled={busy || !name.trim()} onClick={createList}>
@@ -73,9 +73,9 @@ export function ReadingListsManager({
           {lists.map((l) => (
             <li
               key={l.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded border p-3 text-sm"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/80 p-3 text-sm"
             >
-              <Link href={`/hesabim/listeler/${l.id}`} className="font-medium hover:underline">
+              <Link href={`/hesabim/listeler/${l.id}`} className="font-medium text-primary hover:text-accent no-underline">
                 {l.name}
               </Link>
               <span className="text-muted-foreground">{l.itemCount} makale</span>

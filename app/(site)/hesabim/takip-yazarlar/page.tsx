@@ -10,17 +10,17 @@ export default async function TakipYazarlarPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium">Takip Ettiğim Yazarlar</h2>
+      <h2 className="text-lg font-serif font-semibold">Takip Ettiğim Yazarlar</h2>
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">Takip edilen yazar yok.</p>
       ) : (
         <ul className="space-y-2 text-sm">
           {rows.map((r) => (
-            <li key={r.authorId} className="border rounded p-3">
+            <li key={r.authorId} className="rounded-xl border border-border/80 p-3">
               {r.author?.slug ? (
                 <Link
                   href={`/authors/${r.author.slug}-${r.author.id}`}
-                  className="font-medium text-primary hover:underline"
+                  className="font-medium text-primary hover:text-accent no-underline"
                 >
                   {r.author.name}
                 </Link>

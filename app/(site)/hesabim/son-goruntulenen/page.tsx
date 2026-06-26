@@ -33,7 +33,7 @@ export default function SonGoruntulenenPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-medium">Son Görüntülediklerim</h2>
+        <h2 className="text-lg font-serif font-semibold">Son Görüntülediklerim</h2>
         {rows.length > 0 && (
           <Button type="button" size="sm" variant="outline" onClick={clearAll}>
             Geçmişi temizle
@@ -47,9 +47,9 @@ export default function SonGoruntulenenPage() {
       ) : (
         <ul className="space-y-2 text-sm">
           {rows.map((r) => (
-            <li key={`${r.entityType}-${r.entityId}`} className="flex justify-between gap-2 border rounded p-2">
+            <li key={`${r.entityType}-${r.entityId}`} className="flex justify-between gap-2 rounded-xl border border-border/80 p-2">
               {r.href ? (
-                <Link href={r.href} className="text-primary hover:underline line-clamp-2">
+                <Link href={r.href} className="text-primary hover:text-accent no-underline line-clamp-2">
                   {r.label}
                 </Link>
               ) : (

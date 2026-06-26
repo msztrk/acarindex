@@ -65,8 +65,8 @@ export default async function IstatistiklerPage() {
       sublabel: displayAuthorCount > 0 ? 'pilot veri' : '',
       value: displayAuthorCount,
       icon: Users,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-50',
+      color: 'text-brand-accent',
+      bg: 'bg-brand-accent/10',
       show: displayAuthorCount > 0,
     },
     {
@@ -74,8 +74,8 @@ export default async function IstatistiklerPage() {
       sublabel: '',
       value: stats?.institution_count ?? 0,
       icon: Building2,
-      color: 'text-orange-600',
-      bg: 'bg-orange-50',
+      color: 'text-brand-accent-warm',
+      bg: 'bg-brand-accent-warm/10',
       show: (stats?.institution_count ?? 0) > 0,
     },
   ].filter(c => c.show)
@@ -93,7 +93,7 @@ export default async function IstatistiklerPage() {
       {/* Sayaçlar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
         {counters.map(({ label, sublabel, value, icon: Icon, color, bg }) => (
-          <div key={label} className="rounded-xl border border-border bg-card p-5">
+          <div key={label} className="rounded-xl border border-border/80 bg-surface shadow-sm p-5">
             <div className={`inline-flex items-center justify-center h-10 w-10 rounded-lg ${bg} mb-3`}>
               <Icon className={`h-5 w-5 ${color}`} />
             </div>
@@ -109,7 +109,7 @@ export default async function IstatistiklerPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Yıllık makale bar chart (CSS-only) */}
         {yearlyData.length > 0 && (
-          <section>
+          <section className="rounded-xl border border-border/80 bg-surface shadow-sm p-5">
             <h2 className="text-lg font-serif font-semibold mb-5">Yıllara Göre Makaleler</h2>
             <div className="space-y-2">
               {yearlyData.map(({ year, count }) => (
@@ -132,7 +132,7 @@ export default async function IstatistiklerPage() {
 
         {/* En fazla makale olan dergiler */}
         {topJournals.length > 0 && (
-          <section>
+          <section className="rounded-xl border border-border/80 bg-surface shadow-sm p-5">
             <h2 className="text-lg font-serif font-semibold mb-1">En Çok Görüntülenen Dergiler</h2>
             <p className="text-xs text-muted-foreground mb-4">Dergi sayfası görüntülenme sayısı (hit_count)</p>
             <ol className="space-y-2">

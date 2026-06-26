@@ -6,8 +6,6 @@ import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 
-import { Card } from '@/components/ui/card'
-
 import { postWithCsrf } from '@/lib/auth/csrf-client'
 
 
@@ -82,7 +80,7 @@ export function ChangePasswordForm() {
 
   return (
 
-    <Card className="p-4 space-y-4">
+    <div className="rounded-xl border border-border/80 bg-surface shadow-sm p-4 space-y-4">
 
       <form onSubmit={submit} className="space-y-3">
 
@@ -104,7 +102,7 @@ export function ChangePasswordForm() {
 
             required
 
-            className="mt-1 w-full rounded border border-border px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-border/80 px-3 py-2 text-sm bg-background"
 
             value={currentPassword}
 
@@ -134,7 +132,7 @@ export function ChangePasswordForm() {
 
             minLength={12}
 
-            className="mt-1 w-full rounded border border-border px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-border/80 px-3 py-2 text-sm bg-background"
 
             value={newPassword}
 
@@ -214,7 +212,7 @@ export function ChangePasswordForm() {
 
       )}
 
-    </Card>
+    </div>
 
   )
 
