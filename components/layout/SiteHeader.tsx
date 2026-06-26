@@ -93,7 +93,7 @@ export function SiteHeader({
             <button
               ref={menuButtonRef}
               type="button"
-              className="inline-flex lg:hidden items-center justify-center h-10 w-10 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex lg:hidden shrink-0 items-center justify-center h-10 w-10 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               onClick={() => handleMenuOpenChange(true)}
               aria-expanded={mobileMenuOpen}
               aria-controls={MOBILE_NAV_DRAWER_ID}

@@ -46,13 +46,13 @@ export function HeaderAuthNav({
 
   if (!initialAuth.authenticated || !initialAuth.user) {
     return (
-      <div className={cn('flex items-center gap-2 shrink-0', compact && 'flex-col w-full')}>
+      <div className={cn('flex items-center gap-2 shrink-0', compact && 'flex-row gap-1')}>
         <Link
           href="/login"
           className={cn(
             buttonVariants({ variant: 'outline', size: 'sm' }),
             'border-foreground/30 text-foreground font-semibold hover:bg-secondary hover:border-foreground/45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-            compact && 'w-full justify-center',
+            compact && 'px-2.5',
           )}
         >
           Giriş
@@ -61,7 +61,7 @@ export function HeaderAuthNav({
           href="/register"
           className={cn(
             buttonVariants({ size: 'sm' }),
-            compact && 'w-full justify-center',
+            compact && 'px-2.5',
           )}
         >
           Kayıt Ol
