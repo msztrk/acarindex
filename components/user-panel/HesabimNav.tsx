@@ -20,7 +20,12 @@ export function HesabimNav() {
 
   return (
     <nav
-      className="flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-2 border-b border-border pb-3 mb-6"
+      className={cn(
+        'flex flex-col gap-1',
+        'sm:flex-row sm:flex-wrap sm:gap-2 sm:border-b sm:border-border sm:pb-3',
+        'lg:flex-col lg:flex-nowrap lg:gap-1 lg:border-b-0 lg:border-r lg:border-border lg:pr-4 lg:pb-0',
+        'lg:sticky lg:top-24 lg:self-start',
+      )}
       aria-label="Hesap menüsü"
     >
       {TABS.map((tab) => {

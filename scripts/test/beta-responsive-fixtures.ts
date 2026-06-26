@@ -89,6 +89,7 @@ async function main(): Promise<void> {
 
   const lines = [
     `ACAR_RESPONSIVE_TEST_EMAIL=${TEST_EMAIL}`,
+    `ACAR_RESPONSIVE_TEST_PASSWORD=${PASS}`,
     `TOKEN_VERIFY_SUCCESS_375=${verifySuccess375}`,
     `TOKEN_VERIFY_SUCCESS_768=${verifySuccess768}`,
     `TOKEN_VERIFY_SUCCESS_1366=${verifySuccess1366}`,

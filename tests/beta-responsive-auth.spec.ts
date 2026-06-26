@@ -3,6 +3,14 @@ import { mkdirSync } from 'fs'
 import { join } from 'path'
 
 const WIDTHS = [375, 768, 1366] as const
+const HESABIM_VIEWPORTS = [
+  { width: 375, height: 812 },
+  { width: 768, height: 1024 },
+  { width: 1024, height: 768 },
+  { width: 1366, height: 768 },
+  { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
+] as const
 const SHOT_DIR = process.env.ACAR_RESPONSIVE_SHOTS ?? '/var/log/acarindex-responsive-shots'
 
 const TOKEN_VERIFY_SUCCESS_375 = process.env.TOKEN_VERIFY_SUCCESS_375 ?? ''
@@ -20,6 +28,7 @@ const TOKEN_INVALID = process.env.TOKEN_INVALID ?? 'invalid-token-probe'
 const TOKEN_RESET_INVALID = process.env.TOKEN_RESET_INVALID ?? 'invalid-reset-token-probe'
 const TEST_EMAIL =
   process.env.ACAR_RESPONSIVE_TEST_EMAIL ?? 'faz6c-responsive@acarindex-beta.invalid'
+const TEST_PASSWORD = process.env.ACAR_RESPONSIVE_TEST_PASSWORD ?? ''
 const LONG_EMAIL =
   'msztrk+very-long-responsive-alias-for-overflow-test@acarindex-beta.invalid'
 
@@ -27,6 +36,35 @@ mkdirSync(SHOT_DIR, { recursive: true })
 
 async function noHorizontalOverflow(page: Page): Promise<boolean> {
   return page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2)
+}
+
+async function assertAccountPanelCentered(page: Page, slug: string, width: number): Promise<void> {
+  const metrics = await page.evaluate(() => {
+    const el = document.querySelector('.account-panel-width')
+    if (!el) return { ok: false, reason: 'missing-panel' }
+    const rect = el.getBoundingClientRect()
+    const vw = window.innerWidth
+    const panelCenter = rect.left + rect.width / 2
+    const viewportCenter = vw / 2
+    return {
+      ok: Math.abs(panelCenter - viewportCenter) <= 6,
+      left: rect.left,
+      width: rect.width,
+      vw,
+    }
+  })
+  expect(metrics.ok, `${slug} center @${width} left=${metrics.left} w=${metrics.width} vw=${metrics.vw}`).toBe(
+    true,
+  )
+}
+
+async function loginResponsiveUser(page: Page): Promise<void> {
+  if (!TEST_PASSWORD) throw new Error('ACAR_RESPONSIVE_TEST_PASSWORD missing')
+  await page.goto('/login', { waitUntil: 'domcontentloaded' })
+  await page.locator('#email').fill(TEST_EMAIL)
+  await page.locator('#password').fill(TEST_PASSWORD)
+  await page.getByRole('button', { name: /Giriş/i }).click()
+  await page.waitForURL(/\/hesabim/, { timeout: 20000 })
 }
 
 async function shot(page: Page, name: string, width: number): Promise<void> {
@@ -240,5 +278,35 @@ test.describe('beta responsive auth lifecycle', () => {
     await page.locator('#forgot-email').fill(TEST_EMAIL)
     await page.locator('#forgot-email').press('Enter')
     await expect(page.getByText(/gönderildi|kontrol edin/i)).toBeVisible({ timeout: 10000 })
+  })
+
+  test('hesabim layout centered and responsive', async ({ page }) => {
+    if (!TEST_PASSWORD) test.skip()
+    await loginResponsiveUser(page)
+    for (const { width, height } of HESABIM_VIEWPORTS) {
+      await page.setViewportSize({ width, height })
+      await page.goto('/hesabim', { waitUntil: 'domcontentloaded' })
+      await expect(page.getByRole('heading', { name: 'Hesabım', level: 1 })).toBeVisible()
+      await expect(page.getByRole('navigation', { name: 'Hesap menüsü' })).toBeVisible()
+      expect(await noHorizontalOverflow(page), `hesabim overflow @${width}`).toBe(true)
+      await assertAccountPanelCentered(page, 'hesabim', width)
+      if (width >= 1024) {
+        const layout = await page.evaluate(() => {
+          const nav = document.querySelector('nav[aria-label="Hesap menüsü"]')
+          const panel = document.querySelector('.account-panel-width')
+          const grid = panel?.querySelector('.grid')
+          if (!nav || !grid) return { ok: false }
+          const navRect = nav.getBoundingClientRect()
+          const gridRect = grid.getBoundingClientRect()
+          return {
+            ok: navRect.left >= gridRect.left - 2 && navRect.right < gridRect.right,
+            navLeft: navRect.left,
+            gridLeft: gridRect.left,
+          }
+        })
+        expect(layout.ok, `hesabim sidebar grid @${width}`).toBe(true)
+      }
+      await shot(page, 'hesabim', width)
+    }
   })
 })
