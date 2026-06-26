@@ -1,0 +1,165 @@
+=====================================================================
+AcarIndex — Görsel Düzenleme Raporu
+Commit: 268c693  |  Branch: redesign-v2  |  Tarih: 27.06.2026
+=====================================================================
+
+GENEL BİLGİ
+-----------
+Anasayfa (D2.1) tasarım sistemi baz alınarak tüm site sayfaları
+yeniden incelendi ve tutarsızlıklar giderildi. 18 dosya değiştirildi.
+
+
+=====================================================================
+1. GENEL (PUBLIC) SAYFALAR
+=====================================================================
+
+-- app/(site)/about/page.tsx --
+  • Özellik kartları: "border-border bg-card" → "border-border/80 bg-surface shadow-sm"
+  • Yayıncılar bölümü: "rounded-2xl bg-secondary/40 border-border" → "rounded-xl bg-surface-soft/80 border-border/80"
+  • Misyon paragrafları: "text-justify hyphens-auto" eklendi
+
+-- app/(site)/contact/page.tsx --
+  • E-posta kartı: "bg-card hover:border-accent/40 hover:bg-secondary/30" → "bg-surface shadow-sm hover:bg-brand-primary/[0.035]"
+  • Hover metin rengi: "group-hover:text-accent" → "group-hover:text-primary"
+  • Konu satırları: "bg-secondary/40" → "bg-surface-soft/60 border border-border/50"
+  • Yanıt süresi notu: "bg-card border-border" → "bg-surface shadow-sm border-border/80"
+
+-- app/(site)/istatistikler/page.tsx --
+  • Stat kartları: "bg-card border-border" → "bg-surface shadow-sm border-border/80"
+  • Yazar ikonu: "text-emerald-600 bg-emerald-50" → "text-brand-accent bg-brand-accent/10"
+  • Kurum ikonu: "text-orange-600 bg-orange-50" → "text-brand-accent-warm bg-brand-accent-warm/10"
+  • Yıllık makale bölümü: "rounded-xl border border-border/80 bg-surface shadow-sm p-5" wrapper eklendi
+  • En çok görüntülenen dergiler bölümü: aynı kart wrapper eklendi
+
+-- app/(site)/kurumsal/page.tsx --
+  • Başlık: "font-serif" sınıfı eklendi
+  • Ana kutu: "bg-secondary/50 border-border" → "bg-surface shadow-sm border-border/80"
+  • CTA butonu: hardcoded inline-flex → "buttonVariants()" (cn() ile standart)
+  • Import: "buttonVariants" ve "cn" eklendi
+
+
+=====================================================================
+2. DERGİLER LİSTESİ SAYFASI
+=====================================================================
+
+-- app/(site)/journals/page.tsx --
+  • Sayfa başlığı: "text-3xl font-bold" → "text-2xl font-semibold" (diğer sayfalarla tutarlı)
+  • Filtre sidebar: bare <aside> → "aside-panel" kart stili (rounded-xl border border-border/80 bg-surface shadow-sm p-4)
+  • Arama input sarmalayıcı: "border-border rounded-lg" → "border-border/80 rounded-xl"
+  • Kategori bağlantıları (aktif): "bg-secondary text-primary" → "bg-brand-primary/10 text-brand-primary"
+  • Kategori bağlantıları (pasif hover): "hover:bg-secondary" → "hover:bg-brand-primary/[0.035]"
+  • Kategori rounded: "rounded" → "rounded-lg"
+  • Kategori listesi boşluk: "space-y-1" → "space-y-0.5"
+
+
+=====================================================================
+3. DERGİ DETAY SAYFASI — SEKME NAVİGASYONU
+=====================================================================
+
+-- app/(site)/journals/[...journalPath]/page.tsx --
+  • JournalNav aktif sekme: "bg-primary text-primary-foreground" → "bg-brand-primary/10 text-brand-primary"
+    (HesabimNav ile aynı desen — tüm navigasyonlarda tutarlılık sağlandı)
+  • Pasif sekme hover: "hover:bg-secondary" → "hover:bg-brand-primary/[0.035]"
+
+
+=====================================================================
+4. HESABIM SAYFALARI
+=====================================================================
+
+-- app/(site)/hesabim/page.tsx (Genel Bakış) --
+  • Import: "Card" kaldırıldı
+  • Özet stat kartları: shadcn <Card> → "rounded-xl border border-border/80 bg-surface shadow-sm p-4 hover:bg-brand-primary/[0.035]"
+  • Link sarmalayıcı: "no-underline" eklendi
+  • Bölüm başlığı: "text-lg font-medium" → "text-lg font-serif font-semibold"
+  • Son görüntülenen bağlantılar: "hover:underline" → "hover:text-accent no-underline"
+
+-- app/(site)/hesabim/kaydedilen/page.tsx --
+  • Başlık: "font-serif font-semibold" güncellendi
+  • Liste öğeleri: "rounded border" → "rounded-xl border border-border/80"
+  • Makale bağlantıları: "hover:underline" → "hover:text-accent no-underline"
+
+-- app/(site)/hesabim/takip-dergiler/page.tsx --
+  • Başlık: "font-serif font-semibold" güncellendi
+  • Liste öğeleri: "border rounded" → "rounded-xl border border-border/80"
+  • Dergi bağlantıları: "hover:underline" → "hover:text-accent no-underline"
+
+-- app/(site)/hesabim/takip-yazarlar/page.tsx --
+  • Başlık: "font-serif font-semibold" güncellendi
+  • Liste öğeleri: "border rounded" → "rounded-xl border border-border/80"
+  • Yazar bağlantıları: "hover:underline" → "hover:text-accent no-underline"
+
+-- app/(site)/hesabim/son-goruntulenen/page.tsx --
+  • Başlık: "font-serif font-semibold" güncellendi
+  • Liste öğeleri: "border rounded" → "rounded-xl border border-border/80"
+  • Bağlantılar: "hover:underline" → "hover:text-accent no-underline"
+
+-- app/(site)/hesabim/listeler/page.tsx --
+  • Başlık: "font-serif font-semibold" güncellendi
+
+-- app/(site)/hesabim/security/page.tsx --
+  • Başlık: "font-serif font-semibold" güncellendi
+
+-- app/(site)/hesabim/bildirimler/page.tsx --
+  • Başlık: "font-serif font-semibold" güncellendi
+
+
+=====================================================================
+5. FORM BİLEŞENLERİ (GÜVENLİK / HESAP)
+=====================================================================
+
+-- components/auth/ChangePasswordForm.tsx --
+  • Import: "Card" kaldırıldı
+  • Kart sarmalayıcı: <Card className="p-4"> → <div className="rounded-xl border border-border/80 bg-surface shadow-sm p-4">
+  • Input alanları (x2): "rounded border border-border" → "rounded-lg border border-border/80 bg-background"
+
+-- components/auth/SessionListPanel.tsx --
+  • Import: "Card" kaldırıldı
+  • Kart sarmalayıcı: <Card className="p-4"> → <div className="rounded-xl border border-border/80 bg-surface shadow-sm p-4">
+  • Başlık: "font-medium" → "font-semibold"
+
+-- components/auth/AccountLifecyclePanel.tsx --
+  • Import: "Card" kaldırıldı
+  • Kart sarmalayıcı: <Card className="p-4"> → <div className="rounded-xl border border-border/80 bg-surface shadow-sm p-4">
+  • Başlık: "font-medium" → "font-semibold"
+  • Input: "rounded border border-border" → "rounded-lg border border-border/80 bg-background"
+
+-- components/user-panel/ReadingListsManager.tsx --
+  • Yeni liste input: "rounded border border-border" → "rounded-lg border border-border/80 bg-background"
+  • Liste öğeleri: "rounded border" → "rounded-xl border border-border/80"
+  • Liste bağlantıları: "hover:underline" → "text-primary hover:text-accent no-underline"
+
+
+=====================================================================
+DEPLOY BİLGİSİ
+=====================================================================
+  Commit SHA  : 268c693
+  Branch      : redesign-v2
+  Remote push : origin/redesign-v2  ✓
+  Beta build  : Docker image acarindex-web:pilot  ✓
+  Health check: {"status":"ready","checks":{"database":"ok"}}  ✓
+  Beta URL    : https://beta.acarindex.com  (port 3002)
+
+
+=====================================================================
+DEĞİŞTİRİLEN DOSYALAR (18 adet)
+=====================================================================
+  app/(site)/about/page.tsx
+  app/(site)/contact/page.tsx
+  app/(site)/hesabim/bildirimler/page.tsx
+  app/(site)/hesabim/kaydedilen/page.tsx
+  app/(site)/hesabim/listeler/page.tsx
+  app/(site)/hesabim/page.tsx
+  app/(site)/hesabim/security/page.tsx
+  app/(site)/hesabim/son-goruntulenen/page.tsx
+  app/(site)/hesabim/takip-dergiler/page.tsx
+  app/(site)/hesabim/takip-yazarlar/page.tsx
+  app/(site)/istatistikler/page.tsx
+  app/(site)/journals/[...journalPath]/page.tsx
+  app/(site)/journals/page.tsx
+  app/(site)/kurumsal/page.tsx
+  components/auth/AccountLifecyclePanel.tsx
+  components/auth/ChangePasswordForm.tsx
+  components/auth/SessionListPanel.tsx
+  components/user-panel/ReadingListsManager.tsx
+
+=====================================================================
