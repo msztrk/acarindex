@@ -544,7 +544,7 @@ export default async function ArticlePage({ params }: PageProps) {
             {abstractTr && (
               <section className="mb-8 min-w-0">
                 <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Özet</h2>
-                <div className="text-base leading-relaxed text-foreground/90 max-w-[85ch] whitespace-pre-line text-justify hyphens-auto">
+                <div className="text-base leading-relaxed text-foreground/90 whitespace-pre-line text-justify hyphens-auto">
                   {abstractTr}
                 </div>
               </section>
@@ -553,7 +553,7 @@ export default async function ArticlePage({ params }: PageProps) {
             {abstractEn && (
               <section className="mb-8 min-w-0">
                 <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Abstract</h2>
-                <div className="text-base leading-relaxed text-foreground/85 max-w-[85ch] whitespace-pre-line text-justify hyphens-auto">
+                <div className="text-base leading-relaxed text-foreground/85 whitespace-pre-line text-justify hyphens-auto">
                   {abstractEn}
                 </div>
               </section>
@@ -591,7 +591,7 @@ export default async function ArticlePage({ params }: PageProps) {
             {article.references_raw?.trim() && (
               <section className="min-w-0">
                 <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Kaynakça</h2>
-                <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line max-w-3xl">
+                <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                   {article.references_raw}
                 </div>
               </section>
