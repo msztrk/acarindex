@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { SearchBar } from '@/components/search/SearchBar'
 import { SearchScopeLinks } from '@/components/home/SearchScopeLinks'
 import { PopularSearchesCard } from '@/components/home/PopularSearchesCard'
@@ -26,19 +25,11 @@ export function HomeHero({
   const approxNote = pdfCountExact ? 'dergi/makale yaklaşık' : 'yaklaşık sayılar'
 
   return (
-    <section className="relative border-b border-border/80 hero-surface overflow-hidden">
-      <div
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-primary/8 via-transparent to-brand-accent/6"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute -top-24 right-0 h-64 w-64 rounded-full bg-brand-secondary/10 blur-3xl"
-        aria-hidden
-      />
-      <div className="content-width relative py-8 md:py-10 lg:py-11">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-8 lg:gap-10">
+    <section className="relative border-b border-border/70 hero-surface overflow-hidden">
+      <div className="content-width relative py-7 md:py-9 lg:py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-8 lg:gap-10">
           <div className="min-w-0 lg:max-w-[52rem]">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-secondary mb-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-600 mb-3">
               Akademik arama ve keşif
             </p>
             <h1

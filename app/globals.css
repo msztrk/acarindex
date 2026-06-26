@@ -32,7 +32,24 @@
   --color-brand-secondary: var(--brand-secondary);
   --color-brand-accent: var(--brand-accent);
   --color-brand-accent-warm: var(--brand-accent-warm);
+  --color-brand-950: var(--brand-950);
+  --color-brand-900: var(--brand-900);
+  --color-brand-800: var(--brand-800);
+  --color-brand-700: var(--brand-700);
+  --color-brand-600: var(--brand-600);
+  --color-teal-600: var(--teal-600);
+  --color-teal-500: var(--teal-500);
+  --color-teal-100: var(--teal-100);
+  --color-teal-50: var(--teal-50);
+  --color-gold-600: var(--gold-600);
+  --color-gold-500: var(--gold-500);
+  --color-gold-100: var(--gold-100);
+  --color-page: var(--page);
   --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-border-strong: var(--border-strong);
+  --color-text-soft: var(--text-soft);
+  --color-muted-light: var(--muted-light);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -54,57 +71,80 @@
 
 :root {
   /* ── AcarIndex D2 Brand Tokens ─────────────────────────────────────────── */
-  --brand-primary: #123B5D;
-  --brand-primary-deep: #0F2740;
-  --brand-secondary: #1E5A85;
-  --brand-accent: #2A9D8F;
-  --brand-accent-warm: #C89B3C;
+  --brand-950: #0B2239;
+  --brand-900: #0F2A43;
+  --brand-800: #123B5D;
+  --brand-700: #174C72;
+  --brand-600: #1E5A85;
+
+  --teal-600: #21867A;
+  --teal-500: #2A9D8F;
+  --teal-100: #DDF3EF;
+  --teal-50: #EFFAF8;
+
+  --gold-600: #A97824;
+  --gold-500: #C89B3C;
+  --gold-100: #F5E9CC;
+
+  --page: #F7F9FC;
   --surface: #FFFFFF;
+  --surface-soft: #F1F5F9;
+  --border-strong: #CBD5E1;
+  --text: #0F172A;
+  --text-soft: #334155;
+  --muted-light: #94A3B8;
+
+  /* Semantic aliases */
+  --brand-primary: var(--brand-800);
+  --brand-primary-deep: var(--brand-900);
+  --brand-secondary: var(--brand-600);
+  --brand-accent: var(--teal-500);
+  --brand-accent-warm: var(--gold-500);
 
   /* Semantic (shadcn) — D2 palette eşlemesi */
-  --background: #F7F9FC;
-  --foreground: #0F172A;
+  --background: var(--page);
+  --foreground: var(--text);
 
-  --card: #FFFFFF;
-  --card-foreground: #0F172A;
+  --card: var(--surface);
+  --card-foreground: var(--text);
 
-  --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
 
-  --primary: #123B5D;
+  --primary: var(--brand-800);
   --primary-foreground: #FFFFFF;
 
-  --secondary: #EEF2F7;
-  --secondary-foreground: #123B5D;
+  --secondary: var(--surface-soft);
+  --secondary-foreground: var(--brand-800);
 
-  --muted: #EEF2F7;
+  --muted: var(--surface-soft);
   --muted-foreground: #64748B;
 
-  --accent: #2A9D8F;
+  --accent: var(--teal-500);
   --accent-foreground: #FFFFFF;
 
   --destructive: oklch(0.577 0.245 27.325);
 
   --border: #E2E8F0;
   --input: #E2E8F0;
-  --ring: #2A9D8F;
+  --ring: var(--teal-500);
 
   --radius: 0.5rem;
 
-  --chart-1: #123B5D;
-  --chart-2: #2A9D8F;
-  --chart-3: #1E5A85;
-  --chart-4: #C89B3C;
+  --chart-1: var(--brand-800);
+  --chart-2: var(--teal-500);
+  --chart-3: var(--brand-600);
+  --chart-4: var(--gold-500);
   --chart-5: #64748B;
 
-  --sidebar: #F7F9FC;
-  --sidebar-foreground: #0F172A;
-  --sidebar-primary: #123B5D;
+  --sidebar: var(--page);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--brand-800);
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EEF2F7;
-  --sidebar-accent-foreground: #123B5D;
+  --sidebar-accent: var(--surface-soft);
+  --sidebar-accent-foreground: var(--brand-800);
   --sidebar-border: #E2E8F0;
-  --sidebar-ring: #2A9D8F;
+  --sidebar-ring: var(--teal-500);
 }
 
 .dark {
@@ -151,45 +191,40 @@
     font-feature-settings: "cv11", "ss01";
   }
 
-  /* Başlık tipografisi — serif */
   h1, h2, h3 {
     @apply font-serif tracking-tight;
   }
 
-  /* Link — marka birincil */
   a {
-    @apply text-brand-secondary hover:text-brand-accent transition-colors duration-150;
+    @apply text-brand-secondary hover:text-teal-600 transition-colors duration-150;
   }
 
-  /* Odak erişilebilirlik */
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring rounded-sm;
   }
 }
 
-/* ── Yardımcı sınıflar ──────────────────────────────────────────────────── */
 @layer utilities {
-  /* Sayfa içerik genişliği */
   .content-width {
-    @apply max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8;
+    @apply w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8;
   }
 
-  /* Makale okuma genişliği */
   .reading-width {
     @apply max-w-3xl mx-auto;
   }
 
-  /* Hesabım panel — header ile aynı px, daha dar max-width */
   .account-panel-width {
     @apply mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8;
   }
 
-  /* Ana sayfa kart yüzeyi */
   .home-surface-card {
     @apply rounded-xl border border-border/80 bg-surface shadow-sm;
   }
 
   .hero-surface {
-    @apply bg-background;
+    background-color: var(--page);
+    background-image:
+      radial-gradient(ellipse 80% 60% at 100% 0%, color-mix(in srgb, var(--teal-50) 70%, transparent), transparent 55%),
+      radial-gradient(ellipse 60% 50% at 0% 100%, color-mix(in srgb, var(--brand-800) 4%, transparent), transparent 50%);
   }
 }

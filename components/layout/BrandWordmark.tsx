@@ -3,13 +3,12 @@ import { cn } from '@/lib/utils'
 
 type BrandWordmarkProps = {
   className?: string
-  /** compact: yalnızca monogram + kısa marka (mobil header) */
   variant?: 'default' | 'compact' | 'footer'
   asLink?: boolean
 }
 
 /**
- * Tipografik AcarIndex markası. Gelecekte raster logo yerine kullanılabilecek monogram slotu.
+ * Tipografik AcarIndex wordmark. Nihai vektörel sembol logo ayrı çalışma olarak gelecek.
  */
 export function BrandWordmark({
   className,
@@ -20,32 +19,20 @@ export function BrandWordmark({
   const isFooter = variant === 'footer'
 
   const content = (
-    <span className={cn('inline-flex items-center gap-2.5 min-w-0', className)}>
+    <span className={cn('inline-flex min-w-0 flex-col leading-none', className)}>
       <span
         className={cn(
-          'inline-flex shrink-0 items-center justify-center rounded-lg font-semibold text-primary-foreground',
-          'bg-gradient-to-br from-brand-primary to-brand-secondary shadow-sm',
-          isCompact ? 'h-8 w-8 text-xs' : 'h-9 w-9 text-sm',
+          'font-serif font-bold tracking-tight text-brand-900',
+          isCompact ? 'text-lg' : isFooter ? 'text-xl' : 'text-[1.375rem]',
         )}
-        aria-hidden
       >
-        AI
+        AcarIndex
       </span>
-      <span className="flex flex-col min-w-0 leading-none">
-        <span
-          className={cn(
-            'font-serif font-bold tracking-tight text-brand-primary',
-            isCompact ? 'text-lg' : isFooter ? 'text-xl' : 'text-[1.375rem]',
-          )}
-        >
-          AcarIndex
+      {!isCompact && (
+        <span className="mt-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Akademik indeks
         </span>
-        {!isCompact && (
-          <span className="mt-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Akademik indeks
-          </span>
-        )}
-      </span>
+      )}
     </span>
   )
 

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { SiteHeader } from '@/components/layout/SiteHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
@@ -13,7 +14,9 @@ export const metadata: Metadata = {
 export default function GlobalNotFound() {
   return (
     <>
-      <SiteHeader />
+      <Suspense fallback={<header className="sticky top-0 z-40 w-full border-b h-16 bg-surface" />}>
+        <SiteHeader />
+      </Suspense>
       <main className="flex-1">
         <div className="content-width py-20 text-center">
           <p className="text-5xl font-serif font-bold text-primary/15 mb-4 select-none">404</p>
