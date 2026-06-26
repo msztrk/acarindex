@@ -17,7 +17,7 @@ export function CatalogPdfLink({
       aria-label={label}
       className={cn('catalog-pdf-badge', className)}
     >
-      <FileText className="h-3.5 w-3.5 shrink-0 text-brand-accent" aria-hidden />
+      <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
       PDF
     </Link>
   )

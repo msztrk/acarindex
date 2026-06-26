@@ -187,10 +187,10 @@ function JournalCard({ journal }: { journal: Partial<Journal> }) {
   return (
     <Link
       href={href}
-      className="group flex gap-3 p-4 rounded-xl border border-border bg-card hover:border-accent/50 hover:shadow-sm transition-all no-underline"
+      className="group flex gap-3 p-4 rounded-xl border border-border/80 bg-surface shadow-sm hover:bg-brand-primary/[0.035] transition-colors no-underline"
     >
       {/* Kapak küçük */}
-      <div className="shrink-0 w-10 h-14 bg-secondary rounded flex items-center justify-center border border-border">
+      <div className="shrink-0 w-10 h-14 bg-secondary rounded flex items-center justify-center border border-border/80">
         {journal.cover_path ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -203,7 +203,7 @@ function JournalCard({ journal }: { journal: Partial<Journal> }) {
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <h2 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors line-clamp-2 leading-snug mb-1">
+        <h2 className="text-sm font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug mb-1">
           {title}
         </h2>
         {journal.issn && (

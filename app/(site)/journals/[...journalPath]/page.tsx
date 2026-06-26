@@ -515,7 +515,7 @@ async function JournalHome({
 
       <aside className="space-y-5 min-w-0 lg:pt-0">
         {issues[0] && (
-          <div className="rounded-lg border border-border/80 p-4 bg-muted/20 min-w-0">
+          <div className="aside-panel min-w-0">
             <h3 className="text-sm font-semibold text-foreground mb-2">Son sayı</h3>
             <Link
               href={`/journals/${segment}/sayi/${issues[0].id}`}
@@ -529,7 +529,7 @@ async function JournalHome({
           </div>
         )}
 
-        <div className="rounded-lg border border-border/80 p-4 bg-muted/20 min-w-0">
+        <div className="aside-panel min-w-0">
           <h3 className="text-sm font-semibold text-foreground mb-3">Hızlı bağlantılar</h3>
           <ul className="space-y-2 text-sm">
             <li>
@@ -604,13 +604,13 @@ async function JournalArsiv({
                 <h3 className="text-sm font-semibold text-foreground mb-3 pb-2 border-b border-border/80">
                   {group.heading}
                 </h3>
-                <ul className="divide-y divide-border/80 min-w-0 rounded-lg border border-border/80 overflow-hidden">
+                <ul className="catalog-list-container divide-y divide-border/60 min-w-0">
                   {group.issues.map((issue) => (
                     <li key={issue.id}>
                       <Link
                         href={buildArchiveIssueHref(segment, issue.id)}
                         className={cn(
-                          'flex items-center gap-2 min-w-0 px-3 py-3 sm:px-4 text-sm font-medium text-primary hover:text-accent hover:bg-muted/40 transition-colors no-underline',
+                          'flex items-center gap-2 min-w-0 px-3 py-3 sm:px-4 text-sm font-medium text-foreground hover:text-primary hover:bg-brand-primary/[0.035] transition-colors no-underline',
                           linkFocusClass,
                         )}
                       >
@@ -839,12 +839,9 @@ function IssueArticleRow({ article }: { article: Partial<Article> }) {
         <Link
           href={`/pdfs/${article.id}`}
           aria-label={`${title} — tam metin PDF`}
-          className={cn(
-            'inline-flex items-center gap-1.5 shrink-0 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/15 hover:border-primary/50 transition-colors no-underline',
-            linkFocusClass,
-          )}
+          className={cn('catalog-pdf-badge', linkFocusClass)}
         >
-          <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
           PDF
         </Link>
       </div>
@@ -891,12 +888,9 @@ function ArticleRow({ article }: { article: Partial<Article> }) {
         <Link
           href={`/pdfs/${article.id}`}
           aria-label={`${title} — tam metin PDF`}
-          className={cn(
-            'inline-flex items-center gap-1.5 shrink-0 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/15 hover:border-primary/50 transition-colors no-underline',
-            linkFocusClass,
-          )}
+          className={cn('catalog-pdf-badge', linkFocusClass)}
         >
-          <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
           PDF
         </Link>
       </div>

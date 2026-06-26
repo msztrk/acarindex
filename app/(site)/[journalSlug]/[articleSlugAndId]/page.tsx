@@ -595,7 +595,7 @@ export default async function ArticlePage({ params }: PageProps) {
 
           <aside className="space-y-5 min-w-0 lg:pt-1">
             {pdfAvailable && (
-              <div className="rounded-lg border border-border/80 p-4 bg-muted/20 min-w-0">
+              <div className="aside-panel min-w-0">
                 <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary shrink-0" aria-hidden />
                   Tam metin
@@ -632,7 +632,7 @@ export default async function ArticlePage({ params }: PageProps) {
             )}
 
             {journal && journalHref && (
-              <div className="rounded-lg border border-border/80 p-4 bg-muted/20 min-w-0">
+              <div className="aside-panel min-w-0">
                 <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-primary shrink-0" aria-hidden />
                   Dergi

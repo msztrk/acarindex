@@ -105,7 +105,7 @@ function AuthorArticleListItem({ article }: { article: AuthorArticleRow }) {
       <Link
         href={href}
         className={cn(
-          'flex items-start gap-2 min-w-0 px-3 py-3 sm:px-4 text-sm font-medium text-primary hover:text-accent hover:bg-muted/40 transition-colors no-underline',
+          'flex items-start gap-2 min-w-0 px-3 py-3 sm:px-4 text-sm font-medium text-foreground hover:text-primary hover:bg-brand-primary/[0.035] transition-colors no-underline',
           linkFocusClass,
         )}
       >
@@ -131,12 +131,10 @@ function AuthorArticleListItem({ article }: { article: AuthorArticleRow }) {
         {pdfAvailable && (
           <Link
             href={`/pdfs/${article.id}`}
-            className={cn(
-              'inline-flex items-center gap-1 text-accent hover:text-accent/80 no-underline shrink-0',
-              linkFocusClass,
-            )}
+            aria-label={`${title} — tam metin PDF`}
+            className={cn('catalog-pdf-badge', linkFocusClass)}
           >
-            <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             PDF
           </Link>
         )}
@@ -274,11 +272,14 @@ export default async function AuthorPage({
               </div>
 
               {articles.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-6">
-                  Bu yazara ait yayımlanmış makale bulunmuyor.
-                </p>
+                <div className="catalog-empty-panel">
+                  <p className="font-medium text-foreground">Yayımlanmış makale yok</p>
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                    Bu yazara ait katalogda listelenmiş makale bulunmuyor.
+                  </p>
+                </div>
               ) : (
-                <ul className="divide-y divide-border/80 min-w-0 rounded-lg border border-border/80 overflow-hidden">
+                <ul className="catalog-list-container divide-y divide-border/60 min-w-0">
                   {articles.map((article) => (
                     <AuthorArticleListItem key={article.id} article={article} />
                   ))}
@@ -289,7 +290,7 @@ export default async function AuthorPage({
 
           {articles.length > 0 && (
             <aside className="space-y-4 min-w-0">
-              <div className="rounded-lg border border-border/80 p-4 bg-muted/20 min-w-0">
+              <div className="aside-panel min-w-0">
                 <h3 className="text-sm font-semibold text-foreground mb-3">İstatistikler</h3>
                 <dl className="space-y-2 text-sm">
                   <div className="flex justify-between gap-4">
@@ -310,7 +311,7 @@ export default async function AuthorPage({
               </div>
 
               {years.length > 0 && (
-                <div className="rounded-lg border border-border/80 p-4 bg-muted/20 min-w-0">
+                <div className="aside-panel min-w-0">
                   <h3 className="text-sm font-semibold text-foreground mb-3">Yıllara göre</h3>
                   <ul className="space-y-1.5">
                     {years.slice(0, 10).map((year) => (
