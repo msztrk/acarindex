@@ -19,7 +19,6 @@ rm -f "$ENV_FILE"
 
 echo "=== FIXTURES ==="
 docker compose --env-file /etc/acarindex/pilot.env -f docker-compose.pilot.yml --profile tools run --rm --no-deps \
-  -v "$ROOT:/app" -w /app \
   -e ACAR_RESPONSIVE_ENV_FILE=/tokens/tokens.env \
   -v "$TOKEN_DIR:/tokens" \
   etl scripts/test/beta-responsive-fixtures.ts
@@ -40,7 +39,6 @@ docker run --rm \
 
 echo "=== CLEANUP ==="
 docker compose --env-file /etc/acarindex/pilot.env -f docker-compose.pilot.yml --profile tools run --rm --no-deps \
-  -v "$ROOT:/app" -w /app \
   etl scripts/test/beta-responsive-cleanup.ts
 rm -f "$ENV_FILE"
 rmdir "$TOKEN_DIR" 2>/dev/null || true
