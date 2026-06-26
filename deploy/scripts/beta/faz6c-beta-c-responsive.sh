@@ -39,6 +39,8 @@ HESABIM_ENV="$TOKEN_DIR/hesabim.env"
 printf 'ACAR_HESABIM_TEST_EMAIL=%s\nACAR_HESABIM_TEST_PASSWORD=%s\n' "$HESABIM_EMAIL" "$HESABIM_PASS" > "$HESABIM_ENV"
 chmod 600 "$HESABIM_ENV"
 
+$ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -c "DELETE FROM login_attempts;" >/dev/null
+
 echo "=== PLAYWRIGHT ==="
 docker run --rm \
   -v "$ROOT:/app" \
