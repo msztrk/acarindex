@@ -71,7 +71,8 @@ async function loginResponsiveUser(page: Page): Promise<void> {
     },
     data: { email: TEST_EMAIL, password: TEST_PASSWORD },
   })
-  expect(loginRes.ok(), `login HTTP ${loginRes.status()}`).toBe(true)
+  const loginBody = await loginRes.text()
+  expect(loginRes.ok(), `login HTTP ${loginRes.status()} ${loginBody}`).toBe(true)
   const gotoRes = await page.goto('/hesabim', { waitUntil: 'domcontentloaded' })
   expect(gotoRes?.status(), 'hesabim HTTP').toBeLessThan(400)
 }

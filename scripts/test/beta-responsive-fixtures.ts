@@ -10,7 +10,7 @@ const RESET_INVALID_PROBE = 'invalid-reset-token-probe-beta-c'
 const OUT = process.env.ACAR_RESPONSIVE_ENV_FILE ?? '/tokens/tokens.env'
 
 async function main(): Promise<void> {
-  const PASS = process.env.NEW_PASS ?? 'ResponsivePass1!X'
+  const PASS = process.env.NEW_PASS ?? 'ResponsivePass1Xy9'
   await prisma.abuseEvent.deleteMany()
   await prisma.user.deleteMany({ where: { email: TEST_EMAIL } })
 
