@@ -18,7 +18,7 @@ export async function HomeMainSection({ qa }: { qa?: HomeQaMode }) {
 
   return (
     <section className="content-width py-8 md:py-10 lg:py-12">
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-8 lg:gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-8 lg:gap-10 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 mb-5">
             <div>

@@ -91,7 +91,7 @@ export default async function IstatistiklerPage() {
       </p>
 
       {/* Sayaçlar */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
         {counters.map(({ label, sublabel, value, icon: Icon, color, bg }) => (
           <div key={label} className="rounded-xl border border-border/80 bg-surface shadow-sm p-5">
             <div className={`inline-flex items-center justify-center h-10 w-10 rounded-lg ${bg} mb-3`}>
@@ -106,7 +106,7 @@ export default async function IstatistiklerPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-[1200px]">
         {/* Yıllık makale bar chart (CSS-only) */}
         {yearlyData.length > 0 && (
           <section className="rounded-xl border border-border/80 bg-surface shadow-sm p-5">

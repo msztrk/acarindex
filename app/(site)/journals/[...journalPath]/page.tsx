@@ -437,7 +437,7 @@ async function JournalHome({
   const arsivHref = `/journals/${segment}/arsiv`
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-8 lg:gap-10 min-w-0">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_360px] gap-8 lg:gap-10 min-w-0">
       <div className="min-w-0 space-y-8 md:space-y-10 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
         {issues.length > 0 && (
           <section className="min-w-0">

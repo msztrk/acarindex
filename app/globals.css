@@ -205,16 +205,32 @@
 }
 
 @layer utilities {
+  /* ─── Container Sistemi ───────────────────────────────────────
+     standard : 1640px — genel sayfalar, detay sayfaları
+     wide     : 1720px — arama, listeleme, filtreleme sayfaları
+     reading  : 85ch   — uzun metin paragrafları
+     Padding  : responsive clamp(1rem → 3rem)
+  ─────────────────────────────────────────────────────────────── */
   .content-width {
-    @apply w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8;
+    @apply w-full mx-auto;
+    max-width: 1640px;
+    padding-inline: clamp(1rem, 2.5vw, 3rem);
+  }
+
+  .content-width-wide {
+    @apply w-full mx-auto;
+    max-width: 1720px;
+    padding-inline: clamp(1rem, 2.5vw, 3rem);
   }
 
   .reading-width {
-    @apply max-w-3xl mx-auto;
+    @apply max-w-[85ch] mx-auto;
   }
 
   .account-panel-width {
-    @apply mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8;
+    @apply w-full mx-auto;
+    max-width: 1640px;
+    padding-inline: clamp(1rem, 2.5vw, 3rem);
   }
 
   .home-surface-card {

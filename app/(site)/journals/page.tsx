@@ -34,7 +34,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
 
   if (result.status === 'error') {
     return (
-      <div className="content-width py-8">
+      <div className="content-width-wide py-8">
         <h1 className="font-serif text-3xl font-bold mb-6">Dergiler</h1>
         <CatalogErrorAlert message={catalogErrorMessage(result)} />
       </div>
@@ -43,7 +43,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
 
   if (result.status === 'empty') {
     return (
-      <div className="content-width py-8">
+      <div className="content-width-wide py-8">
         <h1 className="font-serif text-3xl font-bold mb-6">Dergiler</h1>
         <CatalogEmptyState icon={BookOpen} title="Dergi bulunamadı" />
       </div>
@@ -64,7 +64,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="content-width py-8">
+    <div className="content-width-wide py-8">
       <div className="mb-8">
         <h1 className="font-serif text-2xl font-semibold mb-2">Dergiler</h1>
         <p className="text-muted-foreground">
@@ -72,7 +72,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] gap-8">
         {/* Filtre sidebar */}
         <aside className="rounded-xl border border-border/80 bg-surface shadow-sm p-4 h-fit">
           {/* Arama */}

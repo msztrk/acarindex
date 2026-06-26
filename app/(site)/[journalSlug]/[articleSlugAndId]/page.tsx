@@ -397,7 +397,7 @@ export default async function ArticlePage({ params }: PageProps) {
           </BreadcrumbList>
         </Breadcrumb>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-8 lg:gap-10 min-w-0">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_360px] gap-8 lg:gap-10 min-w-0">
           <article className="min-w-0 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7 lg:p-8">
             <header className="mb-6 md:mb-8 space-y-4">
               <div className="space-y-2 min-w-0">
@@ -544,7 +544,7 @@ export default async function ArticlePage({ params }: PageProps) {
             {abstractTr && (
               <section className="mb-8 min-w-0">
                 <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Özet</h2>
-                <div className="text-base leading-relaxed text-foreground/90 max-w-3xl whitespace-pre-line text-justify hyphens-auto">
+                <div className="text-base leading-relaxed text-foreground/90 max-w-[85ch] whitespace-pre-line text-justify hyphens-auto">
                   {abstractTr}
                 </div>
               </section>
@@ -553,7 +553,7 @@ export default async function ArticlePage({ params }: PageProps) {
             {abstractEn && (
               <section className="mb-8 min-w-0">
                 <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Abstract</h2>
-                <div className="text-base leading-relaxed text-foreground/85 max-w-3xl whitespace-pre-line text-justify hyphens-auto">
+                <div className="text-base leading-relaxed text-foreground/85 max-w-[85ch] whitespace-pre-line text-justify hyphens-auto">
                   {abstractEn}
                 </div>
               </section>

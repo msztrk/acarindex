@@ -35,7 +35,7 @@ export default async function HesabimLayout({ children }: { children: React.Reac
       </div>
       <p className="text-sm text-muted-foreground mb-6">{session.user.email}</p>
       <div
-        className="grid grid-cols-1 lg:grid-cols-[minmax(11rem,13rem)_minmax(0,1fr)] gap-6 lg:gap-8 items-start"
+        className="grid grid-cols-1 lg:grid-cols-[minmax(12rem,14rem)_minmax(0,1fr)] xl:grid-cols-[minmax(13rem,15rem)_minmax(0,1fr)] gap-6 lg:gap-8 xl:gap-10 items-start"
       >
         <HesabimNav />
         <div className="min-w-0">{children}</div>

@@ -103,8 +103,8 @@ export function SiteHeader({
             })}
           </nav>
 
-          <div className="hidden lg:flex items-center gap-3 flex-1 max-w-sm justify-end min-w-0">
-            {!isHome && <SearchBar variant="compact" className="flex-1 max-w-xs min-w-0" />}
+          <div className="hidden lg:flex items-center gap-3 flex-1 max-w-lg justify-end min-w-0">
+            {!isHome && <SearchBar variant="compact" className="flex-1 max-w-sm min-w-0" />}
             {showAuth && (
               authReady && initialAuth
                 ? <HeaderAuthNav initialAuth={initialAuth} />
