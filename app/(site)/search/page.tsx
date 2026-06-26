@@ -104,7 +104,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const typeLabel = type === 'article' ? 'Makaleler' : type === 'journal' ? 'Dergiler' : 'Yazarlar'
 
   return (
-    <div className="content-width-wide py-6 md:py-8 min-w-0">
+    <div className="content-width py-6 md:py-8 min-w-0">
       <SitePageHeader title="Arama" className="mb-5 md:mb-6" />
 
         <form method="GET" className="space-y-3 mb-6 md:mb-8">
