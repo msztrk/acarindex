@@ -64,17 +64,29 @@ async function loginHesabimUser(page: Page): Promise<void> {
     throw new Error('ACAR_HESABIM_TEST_EMAIL/PASSWORD missing')
   }
   await page.goto('/login', { waitUntil: 'domcontentloaded' })
-  const submit = page.getByRole('button', { name: /Giriş/i })
-  await expect(submit).toBeEnabled({ timeout: 15000 })
-  await page.locator('#email').fill(HESABIM_EMAIL)
-  await page.locator('#password').fill(HESABIM_PASSWORD)
-  await submit.click()
-  try {
-    await page.waitForURL(/\/hesabim/, { timeout: 20000 })
-  } catch {
-    const err = await page.locator('.text-destructive').first().textContent()
-    throw new Error(`login failed: url=${page.url()} err=${err ?? 'none'}`)
+  const ok = await page.evaluate(
+    async ({ email, password }) => {
+      const csrfRes = await fetch('/api/auth/csrf', { credentials: 'include' })
+      const { csrfToken } = (await csrfRes.json()) as { csrfToken?: string }
+      if (!csrfToken) return false
+      const loginRes = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
+        },
+        body: JSON.stringify({ email, password }),
+      })
+      return loginRes.ok
+    },
+    { email: HESABIM_EMAIL, password: HESABIM_PASSWORD },
+  )
+  if (!ok) {
+    throw new Error('login failed via API in browser context')
   }
+  const gotoRes = await page.goto('/hesabim', { waitUntil: 'domcontentloaded' })
+  expect(gotoRes?.status(), 'hesabim HTTP').toBeLessThan(400)
 }
 
 async function shot(page: Page, name: string, width: number): Promise<void> {
