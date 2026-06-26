@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { cn, buttonVariants } from '@/lib/utils'
 import { RotateCcw } from 'lucide-react'
@@ -20,7 +20,9 @@ export default function SiteError({
 
   return (
     <>
-      <SiteHeader />
+      <Suspense fallback={<header className="sticky top-0 z-40 w-full border-b h-16 bg-surface" />}>
+        <SiteHeader />
+      </Suspense>
       <main className="flex-1">
         <div className="content-width py-20 text-center">
           <h1 className="text-2xl font-serif font-bold mb-3">Bir hata oluştu</h1>

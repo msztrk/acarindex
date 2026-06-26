@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { SiteHeader } from '@/components/layout/SiteHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
 import { getAuthUiFlags } from '@/lib/features/user-auth'
@@ -27,7 +28,13 @@ export default async function SiteLayout({
 
   return (
     <>
-      <SiteHeader showAuth={flags.userAuth} initialAuth={initialAuth} />
+      <Suspense
+        fallback={
+          <header className="sticky top-0 z-40 w-full border-b border-border/70 bg-surface h-16" />
+        }
+      >
+        <SiteHeader showAuth={flags.userAuth} initialAuth={initialAuth} />
+      </Suspense>
       <main className="flex-1 w-full">{children}</main>
       <SiteFooter initialAuth={initialAuth} showAuth={flags.userAuth} />
     </>

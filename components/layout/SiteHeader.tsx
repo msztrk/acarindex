@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { SearchBar } from '@/components/search/SearchBar'
@@ -14,12 +14,34 @@ import { BrandWordmark } from '@/components/layout/BrandWordmark'
 import type { PublicAuthState } from '@/lib/auth/public-session'
 import { cn } from '@/lib/utils'
 
-const NAV_LINKS = [
-  { href: '/journals', label: 'Dergiler', match: (p: string) => p.startsWith('/journals') },
-  { href: '/search?type=article', label: 'Makaleler', match: (p: string) => p === '/search' },
-  { href: '/search?type=author', label: 'Yazarlar', match: () => false },
-  { href: '/istatistikler', label: 'İstatistikler', match: (p: string) => p === '/istatistikler' },
-] as const
+type NavLink = {
+  href: string
+  label: string
+  match: (pathname: string, searchType: string | null) => boolean
+}
+
+const NAV_LINKS: NavLink[] = [
+  {
+    href: '/journals',
+    label: 'Dergiler',
+    match: (p) => p.startsWith('/journals'),
+  },
+  {
+    href: '/search?type=article',
+    label: 'Makaleler',
+    match: (p, type) => p === '/search' && (type === 'article' || type === null),
+  },
+  {
+    href: '/search?type=author',
+    label: 'Yazarlar',
+    match: (p, type) => p === '/search' && type === 'author',
+  },
+  {
+    href: '/istatistikler',
+    label: 'İstatistikler',
+    match: (p) => p === '/istatistikler',
+  },
+]
 
 export function SiteHeader({
   showAuth = false,
@@ -31,6 +53,8 @@ export function SiteHeader({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const searchType = searchParams.get('type')
   const isHome = pathname === '/'
 
   const handleMenuOpenChange = (open: boolean) => {
@@ -44,10 +68,10 @@ export function SiteHeader({
 
   return (
     <header
-      className="sticky top-0 z-40 w-full border-b border-border/80 bg-surface/95 shadow-[0_1px_0_0_rgba(15,23,42,0.04),0_4px_12px_-2px_rgba(15,23,42,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-surface/90"
+      className="sticky top-0 z-40 w-full border-b border-border/70 bg-surface/95 shadow-[0_1px_0_0_rgba(15,23,42,0.03)] backdrop-blur-sm supports-[backdrop-filter]:bg-surface/92"
     >
       <div className="content-width">
-        <div className="flex h-[4.25rem] items-center justify-between gap-3 min-w-0">
+        <div className="flex h-16 items-center justify-between gap-3 min-w-0">
           <BrandWordmark variant="compact" className="shrink-0" />
 
           <nav
@@ -55,19 +79,25 @@ export function SiteHeader({
             aria-label="Ana menü"
           >
             {NAV_LINKS.map((item) => {
-              const active = item.match(pathname)
+              const active = item.match(pathname, searchType)
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'rounded-md px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline',
+                    'relative rounded-md px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline',
                     active
-                      ? 'text-brand-primary bg-brand-primary/8'
-                      : 'text-foreground/80 hover:text-brand-primary hover:bg-brand-primary/5',
+                      ? 'text-brand-primary font-semibold'
+                      : 'text-text-soft hover:text-brand-primary hover:bg-brand-primary/5',
                   )}
                 >
                   {item.label}
+                  {active && (
+                    <span
+                      className="absolute inset-x-2 -bottom-[1px] h-0.5 rounded-full bg-teal-500"
+                      aria-hidden
+                    />
+                  )}
                 </Link>
               )
             })}
