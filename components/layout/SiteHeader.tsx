@@ -71,7 +71,7 @@ export function SiteHeader({
       className="sticky top-0 z-40 w-full border-b border-border/70 bg-surface/95 shadow-[0_1px_0_0_rgba(15,23,42,0.03)] backdrop-blur-sm supports-[backdrop-filter]:bg-surface/92"
     >
       <div className="content-width">
-        <div className="flex h-16 items-center justify-between gap-3 min-w-0">
+        <div className="flex h-[3.75rem] sm:h-16 items-center justify-between gap-2 sm:gap-3 min-w-0">
           <BrandWordmark variant="compact" className="shrink-0" />
 
           <nav

@@ -26,19 +26,19 @@ export function HomeHero({
 
   return (
     <section className="relative border-b border-border/70 hero-surface overflow-hidden">
-      <div className="content-width relative py-7 md:py-9 lg:py-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-8 lg:gap-10">
+      <div className="content-width relative py-5 md:py-9 lg:py-10">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10">
           <div className="min-w-0 lg:max-w-[52rem]">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-600 mb-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-brand-600 md:mb-3">
               Akademik arama ve keşif
             </p>
             <h1
-              className="font-serif text-2xl sm:text-[1.75rem] lg:text-[2rem] font-semibold text-foreground tracking-tight text-balance leading-[1.3] mb-3 lg:mb-4 max-w-[40rem] xl:max-w-[44rem]"
+              className="mb-2 max-w-[40rem] text-balance font-serif text-2xl font-semibold leading-[1.24] tracking-tight text-foreground sm:text-[1.75rem] md:mb-3 lg:mb-4 lg:text-[2rem] lg:leading-[1.3] xl:max-w-[44rem]"
             >
               {heroTitle}
             </h1>
             {heroSubtitle && (
-              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-5 max-w-[40rem]">
+              <p className="mb-3 max-w-[40rem] text-sm leading-relaxed text-muted-foreground sm:text-base md:mb-5">
                 {heroSubtitle}
               </p>
             )}
@@ -49,7 +49,7 @@ export function HomeHero({
                 placeholder="Makale, yazar veya anahtar kelime…"
                 className="w-full"
               />
-              <div className="mt-3 space-y-2">
+              <div className="mt-2 space-y-1.5 md:mt-3 md:space-y-2">
                 <SearchScopeLinks />
                 <p className="text-[0.8125rem] text-muted-foreground leading-relaxed">
                   <span className="sm:hidden">Başlık, yazar ve anahtar kelime.</span>
@@ -61,7 +61,7 @@ export function HomeHero({
             </div>
 
             {statsError ? (
-              <p className="mt-5 text-sm text-muted-foreground" role="status">
+              <p className="mt-3 text-sm text-muted-foreground md:mt-5" role="status">
                 Platform istatistikleri geçici olarak yüklenemedi.
               </p>
             ) : (
@@ -73,7 +73,7 @@ export function HomeHero({
               />
             )}
 
-            <div className="mt-6 lg:hidden">
+            <div className="mt-4 lg:hidden">
               <PopularSearchesCard />
             </div>
           </div>

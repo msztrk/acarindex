@@ -23,7 +23,7 @@ export function BrandWordmark({
       <span
         className={cn(
           'font-serif font-bold tracking-tight text-brand-900',
-          isCompact ? 'text-lg' : isFooter ? 'text-xl' : 'text-[1.375rem]',
+          isCompact ? 'text-[1.0625rem] sm:text-[1.25rem]' : isFooter ? 'text-xl' : 'text-[1.375rem]',
         )}
       >
         AcarIndex

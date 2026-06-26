@@ -12,7 +12,10 @@ const SCOPE_LINKS = [
 export function SearchScopeLinks({ className }: { className?: string }) {
   return (
     <nav
-      className={cn('flex flex-wrap items-center gap-1.5', className)}
+      className={cn(
+        '-mx-1 flex flex-nowrap items-center gap-1.5 overflow-x-auto px-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden',
+        className,
+      )}
       aria-label="Arama kapsamı"
     >
       {SCOPE_LINKS.map((item) => (
@@ -20,7 +23,7 @@ export function SearchScopeLinks({ className }: { className?: string }) {
           key={item.href}
           href={item.href}
           className={cn(
-            'rounded-full px-3 py-1 text-[0.8125rem] font-medium no-underline transition-colors',
+            'inline-flex min-h-8 shrink-0 items-center rounded-full px-2.5 py-1 text-[0.8125rem] font-medium no-underline transition-colors sm:px-3',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
             item.label === 'Tümü'
               ? 'bg-brand-primary/10 text-brand-primary font-semibold'

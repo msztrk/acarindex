@@ -35,7 +35,10 @@ export function RecentArticlesList({ articles }: { articles: RecentArticleItem[]
   }
 
   return (
-    <ul className="divide-y divide-border/60 rounded-xl border border-border/80 bg-surface shadow-sm overflow-hidden">
+    <ul
+      className="-mx-4 divide-y divide-border/60 bg-transparent sm:mx-0 sm:overflow-hidden sm:rounded-xl sm:border sm:border-border/80 sm:bg-surface sm:shadow-sm"
+      data-d2-recent-articles
+    >
       {articles.map((a) => {
         const title = a.title_tr ?? a.title_en ?? 'Başlıksız'
         const href = `/${a.legacy_journal_slug}/${a.slug}-${a.id}`
@@ -43,7 +46,7 @@ export function RecentArticlesList({ articles }: { articles: RecentArticleItem[]
         const journalTitle = a.journal?.title_tr
 
         return (
-          <li key={a.id} className="group px-4 sm:px-5 py-4 hover:bg-brand-primary/[0.04] transition-colors">
+          <li key={a.id} className="group px-4 py-3.5 transition-colors hover:bg-brand-primary/[0.035] sm:px-5 sm:py-4">
             <Link
               href={href}
               className="block no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

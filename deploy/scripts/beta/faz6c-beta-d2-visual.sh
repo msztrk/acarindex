@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib-pilot-guard.sh
 source "$SCRIPT_DIR/lib-pilot-guard.sh"
 
-SHOT_DIR="/var/log/acarindex-d2-visual-shots"
+SHOT_DIR="/var/log/acarindex-d2-1-visual-shots"
 PLAYWRIGHT_IMAGE="${ACAR_PLAYWRIGHT_IMAGE:-mcr.microsoft.com/playwright:v1.49.1-noble}"
 
 acar_beta_require_pilot
@@ -37,7 +37,7 @@ docker run --rm \
   -w /app \
   --env-file "$HESABIM_ENV" \
   -e BASE_URL=http://127.0.0.1:3002 \
-  -e ACAR_D2_VISUAL_SHOTS="$SHOT_DIR" \
+  -e ACAR_D2_1_VISUAL_SHOTS="$SHOT_DIR" \
   --network host \
   "$PLAYWRIGHT_IMAGE" \
   bash -c 'npm install @playwright/test@1.49.1 --no-save && npx playwright test --config=playwright.beta-d2.config.ts'
