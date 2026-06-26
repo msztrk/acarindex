@@ -438,7 +438,7 @@ async function JournalHome({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-8 lg:gap-10 min-w-0">
-      <div className="min-w-0 space-y-8 md:space-y-10">
+      <div className="min-w-0 space-y-8 md:space-y-10 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
         {issues.length > 0 && (
           <section className="min-w-0">
             <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
@@ -506,7 +506,7 @@ async function JournalHome({
         {journal.description?.trim() && (
           <section className="min-w-0">
             <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Dergi hakkında</h2>
-            <p className="text-sm sm:text-base leading-relaxed text-foreground/85 max-w-3xl">
+            <p className="text-sm sm:text-base leading-relaxed text-foreground/85 max-w-3xl text-justify hyphens-auto">
               {journal.description.trim()}
             </p>
           </section>
@@ -585,7 +585,7 @@ async function JournalArsiv({
   return (
     <>
       <JsonLd data={archiveJsonLd} />
-      <section className="min-w-0">
+      <section className="min-w-0 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
         <header className="mb-6 md:mb-8 space-y-2 min-w-0">
           <h2 className="text-lg font-serif font-semibold text-foreground">Arşiv</h2>
           <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">
@@ -752,7 +752,7 @@ async function JournalSayi({
         )}
       </header>
 
-      <section className="min-w-0">
+      <section className="min-w-0 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-4">
           <h2 className="text-lg font-serif font-semibold text-foreground">
             Bu sayıdaki makaleler
@@ -795,16 +795,17 @@ async function JournalSayi({
 function CmsSection({ title, html }: { title: string; html: string | null | undefined }) {
   if (!html?.trim()) {
     return (
-      <p className="text-sm text-muted-foreground py-6">
-        Bu bölüm için içerik henüz eklenmemiş.
-      </p>
+      <div className="catalog-empty-panel">
+        <p className="font-medium text-foreground">{title}</p>
+        <p className="mt-2 text-sm text-muted-foreground">Bu bölüm için içerik henüz eklenmemiş.</p>
+      </div>
     )
   }
   return (
-    <section className="min-w-0">
+    <section className="min-w-0 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
       <h2 className="text-lg font-serif font-semibold text-foreground mb-4">{title}</h2>
       <div
-        className="prose prose-sm max-w-3xl text-foreground/90"
+        className="prose prose-sm max-w-3xl text-foreground/90 text-justify hyphens-auto"
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </section>

@@ -218,7 +218,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       ) : !hasResults ? (
         <NoResults q={q} />
       ) : (
-        <>
+        <div className="rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-6 min-w-0">
           <div
             className="mb-4 md:mb-5 pb-4 border-b border-border/80"
             id="search-results-heading"
@@ -287,7 +287,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
           {totalPages > 1 && (
             <Pagination page={page} totalPages={totalPages} qs={qs} />
           )}
-        </>
+        </div>
       )}
     </div>
   )
