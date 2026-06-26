@@ -206,8 +206,8 @@
 
 @layer utilities {
   /* ─── Container Sistemi ───────────────────────────────────────
-     standard : 1640px — genel sayfalar, detay sayfaları
-     wide     : 1720px — arama, listeleme, filtreleme sayfaları
+     standard : 1440px — site geneli tek standart dış kapsayıcı
+     wide     : 1440px — arama/listeleme (aynı dış sınır, anlam farkı)
      reading  : 85ch   — uzun metin paragrafları
      Padding  : responsive clamp(1rem → 3rem)
   ─────────────────────────────────────────────────────────────── */
@@ -219,7 +219,7 @@
 
   .content-width-wide {
     @apply w-full mx-auto;
-    max-width: 1640px;
+    max-width: 1440px;
     padding-inline: clamp(1rem, 2.5vw, 3rem);
   }
 
@@ -229,7 +229,7 @@
 
   .account-panel-width {
     @apply w-full mx-auto;
-    max-width: 1640px;
+    max-width: 1440px;
     padding-inline: clamp(1rem, 2.5vw, 3rem);
   }
 
@@ -285,8 +285,8 @@
     @apply rounded-xl border border-border/80 bg-surface shadow-sm overflow-hidden;
   }
 
-  /* Sidebar / aside panel — matches home-surface-card */
+  /* Sidebar / aside panel — lighter than home-surface-card, no shadow */
   .aside-panel {
-    @apply rounded-xl border border-border/80 bg-surface shadow-sm p-4;
+    @apply rounded-xl border border-border/60 bg-surface p-4;
   }
 }

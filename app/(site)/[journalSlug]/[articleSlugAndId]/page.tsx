@@ -316,9 +316,6 @@ export default async function ArticlePage({ params }: PageProps) {
     ],
   }
 
-  const breadcrumbTitle =
-    title.length > 48 ? `${title.slice(0, 45).trimEnd()}…` : title
-
   const authEnabled = isUserAuthEnabled()
   const session = authEnabled ? await getServerSession() : null
   const isLoggedIn = session?.user.status === 'active'
@@ -389,19 +386,32 @@ export default async function ArticlePage({ params }: PageProps) {
                 <BreadcrumbSeparator />
               </>
             )}
-            <BreadcrumbItem className="min-w-0 max-w-[45%] sm:max-w-xs md:max-w-sm">
-              <BreadcrumbPage className="line-clamp-1" title={title}>
-                {breadcrumbTitle}
-              </BreadcrumbPage>
-            </BreadcrumbItem>
+            {issueHref ? (
+              <BreadcrumbItem className="min-w-0">
+                <BreadcrumbLink
+                  href={issueHref}
+                  className={cn('line-clamp-1', linkFocusClass)}
+                >
+                  {[article.published_year, issue?.issue_label ?? issue?.issue_number]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+            ) : article.published_year ? (
+              <BreadcrumbItem className="min-w-0">
+                <BreadcrumbPage className="line-clamp-1">
+                  {article.published_year}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            ) : null}
           </BreadcrumbList>
         </Breadcrumb>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_360px] gap-8 lg:gap-10 min-w-0">
-          <article className="min-w-0 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7 lg:p-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px] gap-6 lg:gap-8 min-w-0">
+          <article className="min-w-0 rounded-xl border border-border/80 bg-surface p-5 sm:p-7 lg:p-8">
             <header className="mb-6 md:mb-8 space-y-4">
               <div className="space-y-2 min-w-0">
-                <h1 className="text-2xl sm:text-[1.75rem] font-serif font-bold text-foreground leading-snug">
+                <h1 className="text-2xl sm:text-3xl font-semibold leading-tight tracking-tight text-foreground max-w-5xl">
                   {title}
                 </h1>
                 {titleOther && (
@@ -427,7 +437,7 @@ export default async function ArticlePage({ params }: PageProps) {
               )}
 
               {hasPublicationMeta && (
-                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 pt-1 min-w-0">
+                <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-4 pt-1 min-w-0">
                   {journalTitle && journalHref && (
                     <MetadataItem label="Dergi">
                       <Link
@@ -509,7 +519,7 @@ export default async function ArticlePage({ params }: PageProps) {
               )}
 
               {pdfAvailable && (
-                <div className="flex flex-wrap items-center gap-3 pt-1">
+                <div className="flex flex-wrap items-center gap-3 pt-1 lg:hidden">
                   <Link
                     href={pdfViewerUrl}
                     aria-label={`${title} — PDF görüntüle`}
@@ -542,7 +552,7 @@ export default async function ArticlePage({ params }: PageProps) {
             </header>
 
             {abstractTr && (
-              <section className="mb-8 min-w-0">
+              <section className="mb-8 min-w-0 max-w-[900px]">
                 <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Özet</h2>
                 <div className="text-base leading-relaxed text-foreground/90 whitespace-pre-line text-justify hyphens-auto">
                   {abstractTr}
@@ -551,7 +561,7 @@ export default async function ArticlePage({ params }: PageProps) {
             )}
 
             {abstractEn && (
-              <section className="mb-8 min-w-0">
+              <section className="mb-8 min-w-0 max-w-[900px]">
                 <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Abstract</h2>
                 <div className="text-base leading-relaxed text-foreground/85 whitespace-pre-line text-justify hyphens-auto">
                   {abstractEn}
@@ -589,7 +599,7 @@ export default async function ArticlePage({ params }: PageProps) {
             )}
 
             {article.references_raw?.trim() && (
-              <section className="min-w-0">
+              <section className="min-w-0 max-w-[900px]">
                 <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Kaynakça</h2>
                 <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                   {article.references_raw}
@@ -681,7 +691,7 @@ export default async function ArticlePage({ params }: PageProps) {
                   Bu sayıdaki makaleler
                 </h3>
                 <ul className="space-y-0 divide-y divide-border/60 -mx-4">
-                  {issueArticles.slice(0, 10).map((a) => {
+                  {issueArticles.slice(0, 5).map((a) => {
                     const aTitle = a.title_tr ?? a.title_en ?? 'Başlıksız'
                     const aHref = `/${a.legacy_journal_slug}/${a.slug}-${a.id}`
                     return (
