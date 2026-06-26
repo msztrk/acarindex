@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    exclude: ['**/node_modules/**', '**/dist/**', 'tests/external/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/external/**', 'tests/beta-responsive-auth.spec.ts'],
     fileParallelism:
       process.env.USER_PANEL_INTEGRATION !== '1' &&
       process.env.AUTH_LIFECYCLE_INTEGRATION !== '1',

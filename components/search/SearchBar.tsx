@@ -119,51 +119,60 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
   return (
     <div className={cn('relative', className)}>
       <form onSubmit={handleSubmit}>
-        <div className={cn(
-          'flex items-center border border-border rounded-xl overflow-hidden bg-background',
-          'focus-within:ring-2 focus-within:ring-ring focus-within:border-ring',
-          isHero ? 'shadow-md' : '',
-        )}>
-          <Search className={cn(
-            'shrink-0 text-muted-foreground',
-            isHero ? 'ml-4 h-5 w-5' : 'ml-3 h-4 w-4',
-          )} />
-          <input
-            ref={inputRef}
-            value={q}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            onFocus={() => q.length >= 2 && results.length > 0 && setOpen(true)}
-            type="search"
-            autoComplete="off"
-            aria-label={placeholder ?? (isHero ? 'Makale, yazar veya anahtar kelime' : 'Ara')}
-            placeholder={placeholder ?? (isHero ? 'Makale, yazar, dergi veya konu ara…' : 'Ara…')}
-            className={cn(
-              'flex-1 min-w-0 bg-transparent outline-none placeholder:text-muted-foreground',
-              isHero ? 'px-3 py-3.5 text-base' : 'px-2 py-2 text-sm',
-            )}
-          />
-          {q && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Temizle"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+        <div
+          className={cn(
+            'flex items-stretch overflow-hidden border border-border bg-background',
+            'focus-within:ring-2 focus-within:ring-ring focus-within:border-ring',
+            isHero ? 'rounded-xl shadow-md' : 'rounded-xl',
           )}
+        >
+          <div className="flex flex-1 items-center min-w-0">
+            <Search
+              className={cn(
+                'shrink-0 text-muted-foreground',
+                isHero ? 'ml-4 h-5 w-5' : 'ml-3 h-4 w-4',
+              )}
+            />
+            <input
+              ref={inputRef}
+              value={q}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onFocus={() => q.length >= 2 && results.length > 0 && setOpen(true)}
+              type="search"
+              autoComplete="off"
+              aria-label={placeholder ?? (isHero ? 'Makale, yazar veya anahtar kelime' : 'Ara')}
+              placeholder={placeholder ?? (isHero ? 'Makale, yazar, dergi veya konu ara…' : 'Ara…')}
+              className={cn(
+                'flex-1 min-w-0 bg-transparent outline-none placeholder:text-muted-foreground rounded-none',
+                isHero ? 'px-3 py-3 text-base min-h-[44px]' : 'px-2 py-2 text-sm',
+              )}
+            />
+            {q && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="p-2 text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                aria-label="Temizle"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
           <button
             type="submit"
             className={cn(
-              'shrink-0 font-medium bg-primary text-primary-foreground transition-colors hover:bg-primary/90',
-              isHero ? 'px-3 py-3.5 sm:px-5 text-sm min-w-[44px] sm:min-w-0' : 'px-3 py-2 text-xs',
+              'shrink-0 inline-flex items-center justify-center gap-1.5 font-medium bg-primary text-primary-foreground',
+              'transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              isHero
+                ? 'px-4 sm:px-5 min-h-[44px] min-w-[44px] rounded-none rounded-r-xl text-sm'
+                : 'px-3 py-2 min-h-[36px] rounded-none rounded-r-xl text-xs',
             )}
-            aria-label={isHero ? 'Ara' : undefined}
+            aria-label="Ara"
           >
             {isHero ? (
               <>
-                <ArrowRight className="h-5 w-5 sm:hidden" aria-hidden />
+                <Search className="h-4 w-4 shrink-0" aria-hidden />
                 <span className="hidden sm:inline">Ara</span>
               </>
             ) : (
@@ -228,7 +237,7 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
         <div
           className={cn(
             'absolute top-1/2 -translate-y-1/2',
-            isHero ? 'right-12 sm:right-14' : 'right-10',
+            isHero ? 'right-14 sm:right-24' : 'right-10',
           )}
         >
           <div className="h-3.5 w-3.5 rounded-full border-2 border-accent border-t-transparent animate-spin" />

@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { SearchBar } from '@/components/search/SearchBar'
 
 interface HomeStatsProps {
+  heroTitle: string
+  heroSubtitle?: string | null
   journalCount: number | null
   articleCount: number | null
   pdfCount: number | null
@@ -26,6 +28,8 @@ function fmt(n: number | null): string {
 }
 
 export function HomeHero({
+  heroTitle,
+  heroSubtitle,
   journalCount,
   articleCount,
   pdfCount,
@@ -43,10 +47,15 @@ export function HomeHero({
               Akademik arama ve keşif
             </p>
             <h1
-              className="font-serif text-xl sm:text-2xl lg:text-[1.875rem] font-semibold text-foreground tracking-tight text-balance leading-[1.35] sm:leading-[1.32] mb-4 lg:mb-5 max-w-[40rem] xl:max-w-[44rem]"
+              className="font-serif text-xl sm:text-2xl lg:text-[1.875rem] font-semibold text-foreground tracking-tight text-balance leading-[1.35] sm:leading-[1.32] mb-3 lg:mb-4 max-w-[40rem] xl:max-w-[44rem]"
             >
-              Türkçe akademik makale, dergi ve yazarları tek yerden keşfedin
+              {heroTitle}
             </h1>
+            {heroSubtitle && (
+              <p className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-4 max-w-[40rem]">
+                {heroSubtitle}
+              </p>
+            )}
 
             <SearchBar
               variant="hero"

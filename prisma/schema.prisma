@@ -574,3 +574,13 @@ model AbuseEvent {
   @@index([eventType, ipAddress, createdAt(sort: Desc)])
   @@map("abuse_events")
 }
+
+/// Site-wide düzenlenebilir metin ayarları (hero vb.)
+model SiteSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  @@map("site_settings")
+}

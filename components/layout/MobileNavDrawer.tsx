@@ -10,6 +10,9 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { SearchBar } from '@/components/search/SearchBar'
+import type { PublicAuthState } from '@/lib/auth/public-session'
+import { buttonVariants } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
 const NAV_ID = 'mobile-nav-drawer'
 
@@ -18,9 +21,16 @@ interface MobileNavDrawerProps {
   onOpenChange: (open: boolean) => void
   showSearch: boolean
   showAuth?: boolean
+  initialAuth?: PublicAuthState
 }
 
-export function MobileNavDrawer({ open, onOpenChange, showSearch, showAuth = false }: MobileNavDrawerProps) {
+export function MobileNavDrawer({
+  open,
+  onOpenChange,
+  showSearch,
+  showAuth = false,
+  initialAuth,
+}: MobileNavDrawerProps) {
   const pathname = usePathname()
 
   const close = () => onOpenChange(false)
@@ -59,12 +69,28 @@ export function MobileNavDrawer({ open, onOpenChange, showSearch, showAuth = fal
           <MobileNavLink href="/istatistikler" active={pathname === '/istatistikler'} onNavigate={close}>
             İstatistikler
           </MobileNavLink>
-          {showAuth && (
-          <div className="mt-2 pt-2 border-t border-border">
-            <MobileNavLink href="/login" onNavigate={close}>
-              Giriş Yap
-            </MobileNavLink>
-          </div>
+          {showAuth && initialAuth !== undefined && (
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              {initialAuth.authenticated ? (
+                <>
+                  <MobileNavLink href="/hesabim" onNavigate={close}>Hesabım</MobileNavLink>
+                  <MobileNavLink href="/hesabim/kaydedilen" onNavigate={close}>Kaydettiklerim</MobileNavLink>
+                  <MobileNavLink href="/hesabim/listeler" onNavigate={close}>Listelerim</MobileNavLink>
+                  <MobileNavLink href="/profile" onNavigate={close}>Profilim</MobileNavLink>
+                </>
+              ) : (
+                <>
+                  <MobileNavLink href="/login" onNavigate={close}>Giriş Yap</MobileNavLink>
+                  <Link
+                    href="/register"
+                    onClick={close}
+                    className={cn(buttonVariants({ size: 'sm' }), 'w-full mt-2')}
+                  >
+                    Kayıt Ol
+                  </Link>
+                </>
+              )}
+            </div>
           )}
         </nav>
       </SheetContent>

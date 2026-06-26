@@ -12,6 +12,7 @@ const NAV = [
   { href: '/admin/etl', label: 'ETL İşlemleri' },
   { href: '/admin/url-aliases', label: 'URL Yönlendirmeleri' },
   { href: '/admin/users', label: 'Kullanıcılar' },
+  { href: '/admin/site-content', label: 'Site İçeriği' },
   { href: '/admin/audit', label: 'Audit Log' },
   { href: '/admin/health', label: 'Sistem Sağlığı' },
 ]

@@ -4,15 +4,21 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { cn, buttonVariants } from '@/lib/utils'
 import { SearchBar } from '@/components/search/SearchBar'
 import {
   MobileNavDrawer,
   MOBILE_NAV_DRAWER_ID,
 } from '@/components/layout/MobileNavDrawer'
+import { HeaderAuthNav, HeaderAuthSkeleton } from '@/components/layout/HeaderAuthNav'
+import type { PublicAuthState } from '@/lib/auth/public-session'
 
-export function SiteHeader({ showAuth = false }: { showAuth?: boolean }) {
+export function SiteHeader({
+  showAuth = false,
+  initialAuth,
+}: {
+  showAuth?: boolean
+  initialAuth?: PublicAuthState
+}) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const pathname = usePathname()
@@ -24,6 +30,8 @@ export function SiteHeader({ showAuth = false }: { showAuth?: boolean }) {
       requestAnimationFrame(() => menuButtonRef.current?.focus())
     }
   }
+
+  const authReady = !showAuth || initialAuth !== undefined
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -38,7 +46,10 @@ export function SiteHeader({ showAuth = false }: { showAuth?: boolean }) {
             </span>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-6 text-[0.9375rem] font-semibold" aria-label="Ana menü">
+          <nav
+            className="hidden lg:flex items-center gap-6 text-[0.9375rem] font-semibold"
+            aria-label="Ana menü"
+          >
             <Link
               href="/journals"
               className="text-foreground/85 hover:text-foreground transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -65,27 +76,24 @@ export function SiteHeader({ showAuth = false }: { showAuth?: boolean }) {
             </Link>
           </nav>
 
-          <div className="hidden lg:flex items-center gap-3 flex-1 max-w-sm justify-end">
-            {!isHome && <SearchBar variant="compact" className="flex-1 max-w-xs" />}
+          <div className="hidden lg:flex items-center gap-3 flex-1 max-w-sm justify-end min-w-0">
+            {!isHome && <SearchBar variant="compact" className="flex-1 max-w-xs min-w-0" />}
             {showAuth && (
-            <Link
-              href="/login"
-              className={cn(
-                buttonVariants({ variant: 'outline', size: 'sm' }),
-                'shrink-0 border-foreground/30 text-foreground font-semibold hover:bg-secondary hover:border-foreground/45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-              )}
-            >
-              Giriş
-            </Link>
+              authReady && initialAuth
+                ? <HeaderAuthNav initialAuth={initialAuth} />
+                : <HeaderAuthSkeleton />
             )}
           </div>
 
-          <div className="flex lg:hidden items-center">
-            <Button
+          <div className="flex lg:hidden items-center gap-1 shrink-0">
+            {showAuth && authReady && initialAuth && (
+              <HeaderAuthNav initialAuth={initialAuth} compact />
+            )}
+            {showAuth && !authReady && <HeaderAuthSkeleton compact />}
+            <button
               ref={menuButtonRef}
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
+              type="button"
+              className="inline-flex lg:hidden items-center justify-center h-10 w-10 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               onClick={() => handleMenuOpenChange(true)}
               aria-expanded={mobileMenuOpen}
               aria-controls={MOBILE_NAV_DRAWER_ID}
@@ -93,7 +101,7 @@ export function SiteHeader({ showAuth = false }: { showAuth?: boolean }) {
               aria-label="Menüyü aç"
             >
               <Menu className="h-5 w-5" />
-            </Button>
+            </button>
           </div>
         </div>
       </div>
@@ -103,6 +111,7 @@ export function SiteHeader({ showAuth = false }: { showAuth?: boolean }) {
         onOpenChange={handleMenuOpenChange}
         showSearch={!isHome}
         showAuth={showAuth}
+        initialAuth={initialAuth}
       />
     </header>
   )
