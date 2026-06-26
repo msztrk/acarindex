@@ -3,7 +3,7 @@ import type { PublicAuthState } from '@/lib/auth/public-session'
 import { BrandWordmark } from '@/components/layout/BrandWordmark'
 
 const footerLinkClass =
-  'inline-flex min-h-7 items-center text-muted-foreground hover:text-brand-primary transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline'
+  'inline-flex min-h-6 items-center text-muted-foreground hover:text-brand-primary transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline'
 
 const GUEST_ACCOUNT_LINKS = [
   { href: '/login', label: 'Giriş Yap' },
@@ -31,21 +31,21 @@ export function SiteFooter({
 
   return (
     <footer className="mt-8 border-t border-border/80 bg-surface-soft md:mt-10">
-      <div className="content-width py-5 md:py-8">
-        <div className="grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+      <div className="content-width py-4 md:py-8">
+        <div className="grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
           <div className="col-span-2 sm:col-span-2 lg:col-span-1">
             <BrandWordmark variant="footer" asLink />
-            <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground md:mt-3">
+            <p className="mt-1.5 max-w-sm text-xs leading-snug text-muted-foreground sm:text-sm md:mt-3 md:leading-relaxed">
               Türkçe ve uluslararası akademik yayınlara güvenilir, açık erişimli keşif ve indeks
               platformu.
             </p>
           </div>
 
           <div>
-            <h3 className="mb-1.5 text-xs font-bold uppercase tracking-[0.12em] text-foreground/70 md:mb-2">
+            <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.12em] text-foreground/70 md:mb-2">
               Keşfet
             </h3>
-            <ul className="space-y-1 text-sm md:space-y-2">
+            <ul className="space-y-0 text-sm md:space-y-2">
               <li><Link href="/journals" className={footerLinkClass}>Dergiler</Link></li>
               <li><Link href="/search?type=article" className={footerLinkClass}>Makaleler</Link></li>
               <li><Link href="/search?type=author" className={footerLinkClass}>Yazarlar</Link></li>
@@ -54,10 +54,10 @@ export function SiteFooter({
           </div>
 
           <div>
-            <h3 className="mb-1.5 text-xs font-bold uppercase tracking-[0.12em] text-foreground/70 md:mb-2">
+            <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.12em] text-foreground/70 md:mb-2">
               Platform
             </h3>
-            <ul className="space-y-1 text-sm md:space-y-2">
+            <ul className="space-y-0 text-sm md:space-y-2">
               <li><Link href="/applications" className={footerLinkClass}>Başvurular</Link></li>
               <li><Link href="/kurumsal" className={footerLinkClass}>Kurumsal Abonelik</Link></li>
               <li><Link href="/about" className={footerLinkClass}>Hakkımızda</Link></li>
@@ -67,10 +67,10 @@ export function SiteFooter({
 
           {showAuth && initialAuth !== undefined && (
             <div>
-              <h3 className="mb-1.5 text-xs font-bold uppercase tracking-[0.12em] text-foreground/70 md:mb-2">
+              <h3 className="mb-1 text-xs font-bold uppercase tracking-[0.12em] text-foreground/70 md:mb-2">
                 Hesap
               </h3>
-              <ul className="space-y-1 text-sm md:space-y-2">
+              <ul className="space-y-0 text-sm md:space-y-2">
                 {accountLinks.map((item) => (
                   <li key={item.href}>
                     <Link href={item.href} className={footerLinkClass}>{item.label}</Link>
@@ -81,7 +81,7 @@ export function SiteFooter({
           )}
         </div>
 
-        <div className="mt-4 flex flex-col items-center justify-between gap-1.5 border-t border-border/70 pt-3 text-xs text-muted-foreground sm:flex-row md:mt-6 md:gap-2 md:pt-4">
+        <div className="mt-3 flex flex-col items-center justify-between gap-1 border-t border-border/70 pt-2.5 text-xs text-muted-foreground sm:flex-row md:mt-6 md:gap-2 md:pt-4">
           <p>© {currentYear} AcarIndex. Tüm hakları saklıdır.</p>
           <div className="flex gap-4">
             <Link href="/page/gizlilik-politikasi" className={footerLinkClass}>
