@@ -28,7 +28,7 @@ const TOKEN_INVALID = process.env.TOKEN_INVALID ?? 'invalid-token-probe'
 const TOKEN_RESET_INVALID = process.env.TOKEN_RESET_INVALID ?? 'invalid-reset-token-probe'
 const TEST_EMAIL =
   process.env.ACAR_RESPONSIVE_TEST_EMAIL ?? 'faz6c-responsive@acarindex-beta.invalid'
-const TEST_PASSWORD = (process.env.ACAR_RESPONSIVE_TEST_PASSWORD ?? 'ResponsivePass1Xy9').trim()
+const TEST_PASSWORD = 'ResponsivePass1Xy9'
 const LONG_EMAIL =
   'msztrk+very-long-responsive-alias-for-overflow-test@acarindex-beta.invalid'
 
