@@ -183,6 +183,11 @@
     @apply max-w-3xl mx-auto;
   }
 
+  /* Hesabım panel — header ile aynı px, daha dar max-width */
+  .account-panel-width {
+    @apply mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8;
+  }
+
   /* Kurumsal yeşil-mavi renk sınıfı */
   .text-accent-brand {
     color: var(--accent);

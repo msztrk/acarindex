@@ -18,7 +18,7 @@ export default async function HesabimLayout({ children }: { children: React.Reac
     isAdminPanelEnabled() && canAccessAdminPanel(session.user.roles)
 
   return (
-    <div className="container max-w-4xl py-8 px-4 sm:px-6">
+    <div className="account-panel-width py-8 min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
         <h1 className="text-2xl font-semibold">Hesabım</h1>
         <div className="flex items-center gap-4 text-sm">
