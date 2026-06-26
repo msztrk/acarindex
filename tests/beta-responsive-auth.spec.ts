@@ -60,21 +60,15 @@ async function assertAccountPanelCentered(page: Page, slug: string, width: numbe
 
 async function loginResponsiveUser(page: Page): Promise<void> {
   if (!TEST_PASSWORD) throw new Error('ACAR_RESPONSIVE_TEST_PASSWORD missing')
-  const csrfRes = await page.request.get('/api/auth/csrf')
-  expect(csrfRes.ok()).toBe(true)
-  const { csrfToken } = (await csrfRes.json()) as { csrfToken?: string }
-  expect(csrfToken).toBeTruthy()
-  const loginRes = await page.request.post('/api/auth/login', {
-    headers: {
-      'Content-Type': 'application/json',
-      'x-csrf-token': csrfToken ?? '',
-    },
-    data: { email: TEST_EMAIL, password: TEST_PASSWORD },
-  })
-  const loginBody = await loginRes.text()
-  expect(loginRes.ok(), `login HTTP ${loginRes.status()} ${loginBody}`).toBe(true)
-  const gotoRes = await page.goto('/hesabim', { waitUntil: 'domcontentloaded' })
-  expect(gotoRes?.status(), 'hesabim HTTP').toBeLessThan(400)
+  await page.goto('/login', { waitUntil: 'domcontentloaded' })
+  const submit = page.getByRole('button', { name: /Giriş/i })
+  await expect(submit).toBeEnabled({ timeout: 15000 })
+  await page.locator('#email').fill(TEST_EMAIL)
+  await page.locator('#password').fill(TEST_PASSWORD)
+  await Promise.all([
+    page.waitForURL(/\/hesabim/, { timeout: 20000 }),
+    submit.click(),
+  ])
 }
 
 async function shot(page: Page, name: string, width: number): Promise<void> {
