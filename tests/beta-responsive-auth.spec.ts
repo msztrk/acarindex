@@ -28,7 +28,8 @@ const TOKEN_INVALID = process.env.TOKEN_INVALID ?? 'invalid-token-probe'
 const TOKEN_RESET_INVALID = process.env.TOKEN_RESET_INVALID ?? 'invalid-reset-token-probe'
 const TEST_EMAIL =
   process.env.ACAR_RESPONSIVE_TEST_EMAIL ?? 'faz6c-responsive@acarindex-beta.invalid'
-const TEST_PASSWORD = 'ResponsivePass1Xy9'
+const HESABIM_EMAIL = process.env.ACAR_HESABIM_TEST_EMAIL ?? ''
+const HESABIM_PASSWORD = process.env.ACAR_HESABIM_TEST_PASSWORD ?? ''
 const LONG_EMAIL =
   'msztrk+very-long-responsive-alias-for-overflow-test@acarindex-beta.invalid'
 
@@ -58,12 +59,15 @@ async function assertAccountPanelCentered(page: Page, slug: string, width: numbe
   )
 }
 
-async function loginResponsiveUser(page: Page): Promise<void> {
+async function loginHesabimUser(page: Page): Promise<void> {
+  if (!HESABIM_EMAIL || !HESABIM_PASSWORD) {
+    throw new Error('ACAR_HESABIM_TEST_EMAIL/PASSWORD missing')
+  }
   await page.goto('/login', { waitUntil: 'domcontentloaded' })
   const submit = page.getByRole('button', { name: /Giriş/i })
   await expect(submit).toBeEnabled({ timeout: 15000 })
-  await page.locator('#email').fill(TEST_EMAIL)
-  await page.locator('#password').fill(TEST_PASSWORD)
+  await page.locator('#email').fill(HESABIM_EMAIL)
+  await page.locator('#password').fill(HESABIM_PASSWORD)
   await submit.click()
   try {
     await page.waitForURL(/\/hesabim/, { timeout: 20000 })
@@ -287,7 +291,7 @@ test.describe('beta responsive auth lifecycle', () => {
   })
 
   test('hesabim layout centered and responsive', async ({ page }) => {
-    await loginResponsiveUser(page)
+    await loginHesabimUser(page)
     for (const { width, height } of HESABIM_VIEWPORTS) {
       await page.setViewportSize({ width, height })
       await page.goto('/hesabim', { waitUntil: 'domcontentloaded' })
