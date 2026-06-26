@@ -1,19 +1,65 @@
 # AI Handoff — AcarIndex Web
 
-Son güncelleme: 2026-06-26 (Faz 6C-Beta D2.1 — final kabul)
+Son güncelleme: 2026-06-26 (Faz 6C-Beta D3 — görsel denetim hazır)
 
 ## Aktif branch
 
-- `redesign-v2`
+- `faz-6c-beta-d3` (D3 çalışma branch'i; `redesign-v2` merge bekliyor — manuel onay sonrası)
+- `redesign-v2` (D2.1 merged)
 - D2 feature branchleri korunuyor: `faz-6c-beta-d2`, `faz-6c-beta-d2-final`
 
 ## Son commit
 
 | Ortam | SHA | Not |
 |--------|-----|-----|
-| `origin/redesign-v2` | `70f66db` | D2.1 kod merge; bu doküman commit'i sonrası yalnızca docs SHA ilerler |
-| `origin/faz-6c-beta-d2-final` | `70f66db` | D2.1 final feature branch |
-| Beta sunucu git HEAD | `70f66db` | temiz `redesign-v2` checkout, app rebuild |
+| `origin/faz-6c-beta-d3` | `8b1bba5` | D3 suite + deploy script |
+| D3 kod | `588ac9c` | Ortak görsel sistem + sayfa düzeltmeleri |
+| `origin/redesign-v2` | `365f4f7` | D2.1 docs-only follow-up |
+| D2.1 kod | `70f66db` | Ana sayfa D2.1 final |
+| Beta sunucu (önceki) | `70f66db` | D3 deploy sonrası `faz-6c-beta-d3` SHA ile güncellenmeli |
+
+## Faz 6C-Beta D3 — site geneli görsel denetim
+
+**Durum: teknik hazır** (`FAZ_6C_BETA_D3_VISUAL_REVIEW_READY` — beta deploy + D3 Playwright sonrası doğrulanmalı)
+
+- Branch tabanı: Strategy A — `origin/redesign-v2` (D2.1 merged)
+- `redesign-v2` ile otomatik merge yapılmadı
+- Production deploy yapılmadı
+
+### Ortak düzeltmeler
+
+- `AuthPageShell`, `SitePageHeader`, `CatalogPdfLink`
+- `globals.css`: `catalog-list`, `catalog-pdf-badge`, `auth-page-*`, `catalog-empty-panel`
+- Auth formları (login/register/forgot/reset) D2.1 token + wordmark
+- Arama: SitePageHeader, catalog list, PDF badge, boş/sıfır sonuç paneli
+- PDF viewer: mobil `100dvh` yükseklik, boş durum paneli
+- Hesabım: serif başlık, nav aktif durumu teal vurgu
+
+### Test / deploy
+
+| Öğe | Yol |
+|-----|-----|
+| D3 Playwright | `tests/beta-d3-visual-acceptance.spec.ts` |
+| Config | `playwright.beta-d3.config.ts` |
+| Beta visual script | `deploy/scripts/beta/faz6c-beta-d3-visual.sh` |
+| Beta deploy script | `deploy/scripts/beta/faz6c-beta-d3-deploy.sh` |
+| Galeri | `docs/visual-audit/d3/index.html` |
+| Screenshot dizini (beta) | `/var/log/acarindex-d3-visual-review/` |
+
+### Yerel doğrulama
+
+| Test | Sonuç |
+|------|--------|
+| `npm test` | 335 passed, 10 skipped |
+| `npm run lint` | 0 error |
+| `npm run build` | OK |
+
+### Sonraki adım
+
+1. Beta: `git fetch && git checkout faz-6c-beta-d3 && git reset --hard origin/faz-6c-beta-d3`
+2. `bash deploy/scripts/beta/faz6c-beta-d3-deploy.sh`
+3. Smoke, D1, D2.1, D3, Beta C responsive
+4. Manuel görsel onay → `redesign-v2` merge (fast-forward veya PR)
 
 ## Faz 6C-Beta D2.1 — final görsel kabul
 
