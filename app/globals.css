@@ -213,13 +213,13 @@
   ─────────────────────────────────────────────────────────────── */
   .content-width {
     @apply w-full mx-auto;
-    max-width: 1360px;
+    max-width: 1440px;
     padding-inline: clamp(1rem, 2.5vw, 3rem);
   }
 
   .content-width-wide {
     @apply w-full mx-auto;
-    max-width: 1440px;
+    max-width: 1640px;
     padding-inline: clamp(1rem, 2.5vw, 3rem);
   }
 
