@@ -1,17 +1,25 @@
 import { getUserPanelSummary } from '@/lib/user-panel/summary'
 import { listRecentViews } from '@/lib/user-panel/recent-views'
+import { getUserProfile } from '@/lib/user-panel/profile'
+import { listActiveCategories } from '@/lib/data/catalog'
 import { requireUserAuth } from '@/lib/auth/guards'
+import { ProfileOverviewForm } from '@/components/user-panel/ProfileOverviewForm'
 import Link from 'next/link'
 
 export const metadata = { title: 'Genel Bakış | Hesabım' }
 
 export default async function HesabimOverviewPage() {
   const session = await requireUserAuth()
-  const summary = await getUserPanelSummary(session.user.id)
-  const recent = await listRecentViews(session.user.id)
+  const [summary, recent, profile, categories] = await Promise.all([
+    getUserPanelSummary(session.user.id),
+    listRecentViews(session.user.id),
+    getUserProfile(session.user.id),
+    listActiveCategories(),
+  ])
 
   return (
     <div className="space-y-6">
+      <ProfileOverviewForm initial={profile} categories={categories} />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Kaydedilen', value: summary.savedArticles, href: '/hesabim/kaydedilen' },

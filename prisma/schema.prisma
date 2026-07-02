@@ -280,6 +280,7 @@ model User {
   followedJournals      FollowedJournal[]
   followedAuthors       FollowedAuthor[]
   notificationPrefs     NotificationPreference?
+  profile               UserProfile?
   recentViews           RecentView[]
   legalAcceptances      UserLegalAcceptance[]
   accountDeletionRequests AccountDeletionRequest[]
@@ -496,6 +497,20 @@ model NotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_preferences")
+}
+
+model UserProfile {
+  userId        String   @id @map("user_id") @db.Uuid
+  firstName     String?  @map("first_name")
+  lastName      String?  @map("last_name")
+  institution   String?
+  scienceField  String?  @map("science_field")
+  interestAreas String[] @default([]) @map("interest_areas")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
 }
 
 model RecentView {
