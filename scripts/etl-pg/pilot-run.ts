@@ -7,6 +7,8 @@
  *   npx tsx scripts/etl-pg/pilot-run.ts
  *   npx tsx scripts/etl-pg/pilot-run.ts --write --article-limit=8000
  *   npx tsx scripts/etl-pg/pilot-run.ts --write --batch-size=500
+ *   npx tsx scripts/etl-pg/pilot-run.ts --full --write --batch-size=400
+ *   npx tsx scripts/etl-pg/pilot-run.ts --full --write --batch-size=400 --skip-authors --start-after-id=397019
  */
 import mysql from 'mysql2/promise'
 import { Prisma } from '@prisma/client'
@@ -40,25 +42,39 @@ const DEFAULT_ARTICLE_LIMIT = 8000
 
 interface PilotArgs {
   write: boolean
+  full: boolean
   articleLimit: number
   batchSize: number
   transactionTimeoutMs: number
   transactionMaxWaitMs: number
+  startAfterId: number
+  skipAuthors: boolean
 }
 
 function parseArgs(): PilotArgs {
   const write = process.argv.includes('--write')
+  const full = process.argv.includes('--full')
   const limitArg = process.argv.find((a) => a.startsWith('--article-limit='))
+  const startAfterArg = process.argv.find((a) => a.startsWith('--start-after-id='))
+  const skipAuthors = process.argv.includes('--skip-authors')
   const runtime = resolvePgEtlRuntimeConfig(process.argv)
-  const articleLimit = limitArg
-    ? Math.max(1, parseInt(limitArg.split('=')[1] ?? '', 10) || DEFAULT_ARTICLE_LIMIT)
-    : DEFAULT_ARTICLE_LIMIT
+  const startAfterId = startAfterArg
+    ? Math.max(0, parseInt(startAfterArg.split('=')[1] ?? '', 10) || 0)
+    : 0
+  const articleLimit = full
+    ? Number.MAX_SAFE_INTEGER
+    : limitArg
+      ? Math.max(1, parseInt(limitArg.split('=')[1] ?? '', 10) || DEFAULT_ARTICLE_LIMIT)
+      : DEFAULT_ARTICLE_LIMIT
   return {
     write,
+    full,
     articleLimit,
     batchSize: runtime.batchSize,
     transactionTimeoutMs: runtime.transactionTimeoutMs,
     transactionMaxWaitMs: runtime.transactionMaxWaitMs,
+    startAfterId,
+    skipAuthors,
   }
 }
 
@@ -140,7 +156,13 @@ interface LegacyMakale {
   issue_id: number
 }
 
-async function selectPilotJournalIds(conn: mysql.Connection): Promise<number[]> {
+async function selectJournalIds(conn: mysql.Connection, full: boolean): Promise<number[]> {
+  if (full) {
+    const [rows] = await conn.query<mysql.RowDataPacket[]>(
+      `SELECT DergiID FROM dergiler ORDER BY DergiID ASC`,
+    )
+    return rows.map((r) => r.DergiID as number)
+  }
   const [rows] = await conn.query<mysql.RowDataPacket[]>(
     `SELECT DergiID FROM dergiler ORDER BY Hit DESC, DergiID ASC LIMIT ?`,
     [PILOT_JOURNAL_COUNT],
@@ -443,7 +465,9 @@ async function migrateArticlesBatch(
   transactionTimeoutMs: number,
   transactionMaxWaitMs: number,
   dryRun: boolean,
-  registry: Awaited<ReturnType<typeof loadAuthorRegistry>>['registry'],
+  startAfterId: number,
+  skipAuthors: boolean,
+  registry: Awaited<ReturnType<typeof loadAuthorRegistry>>['registry'] | null,
   counters: {
     articles: number
     pdfs: number
@@ -466,9 +490,10 @@ async function migrateArticlesBatch(
     journalSlugMap.set(r.DergiID, urlYap(r.DergiBASLIK ?? ''))
   }
 
-  let offset = 0
-  while (offset < articleLimit) {
-    const limit = Math.min(batchSize, articleLimit - offset)
+  let lastId = startAfterId
+  let processed = 0
+  while (processed < articleLimit) {
+    const limit = Math.min(batchSize, articleLimit - processed)
     const [rows] = await conn.query<mysql.RowDataPacket[]>(
       `SELECT MakaleID, IlkSAYFA, SonSAYFA, Tarih,
               TitleEN, TitleTR, Yazarlar, OzetEN, OzetTR,
@@ -478,10 +503,10 @@ async function migrateArticlesBatch(
               document_language, doi, document_type, article_type, access_type,
               Aktif, issue_id
        FROM makaleler
-       WHERE DergiID IN (${placeholders})
+       WHERE DergiID IN (${placeholders}) AND MakaleID > ?
        ORDER BY MakaleID ASC
-       LIMIT ? OFFSET ?`,
-      [...journalIds, limit, offset],
+       LIMIT ?`,
+      [...journalIds, lastId, limit],
     )
     if (rows.length === 0) break
 
@@ -490,26 +515,34 @@ async function migrateArticlesBatch(
       for (const raw of rows as LegacyMakale[]) {
         const pdfPath = raw.PdfLINK?.trim()
         if (pdfPath && pdfPath !== '' && pdfPath !== 'pdf-bulunamadi') counters.pdfs++
-        const planned = planAuthorsForArticle(
-          {
-            id: raw.MakaleID,
-            authors_raw: mapMakaleAuthorFields({
-              Yazarlar: raw.Yazarlar,
-              YazarlarKAYNAKCA: raw.YazarlarKAYNAKCA,
-            }).authors_raw,
-            status: raw.Aktif === 1 ? 'published' : 'draft',
-          },
-          registry,
-          false,
-        )
-        counters.authors += planned.authors.length
-        counters.articleAuthors += planned.authors.length
+        if (!skipAuthors && registry) {
+          const planned = planAuthorsForArticle(
+            {
+              id: raw.MakaleID,
+              authors_raw: mapMakaleAuthorFields({
+                Yazarlar: raw.Yazarlar,
+                YazarlarKAYNAKCA: raw.YazarlarKAYNAKCA,
+              }).authors_raw,
+              status: raw.Aktif === 1 ? 'published' : 'draft',
+            },
+            registry,
+            false,
+          )
+          counters.authors += planned.authors.length
+          counters.articleAuthors += planned.authors.length
+        }
       }
-      offset += rows.length
+      lastId = (rows[rows.length - 1] as LegacyMakale).MakaleID
+      processed += rows.length
       continue
     }
 
     await prisma.$transaction(async (tx) => {
+      const aliasRows = await tx.urlAlias.findMany({
+        select: { legacyPath: true, canonicalPath: true },
+      })
+      const aliasMap = new Map(aliasRows.map((a) => [a.legacyPath, a.canonicalPath]))
+
       for (const raw of rows as LegacyMakale[]) {
         if (!raw.MakaleID || !raw.DergiID) {
           counters.skipped++
@@ -539,10 +572,6 @@ async function migrateArticlesBatch(
           })
 
           if (resolved.urlAlias) {
-            const aliasRows = await tx.urlAlias.findMany({
-              select: { legacyPath: true, canonicalPath: true },
-            })
-            const aliasMap = new Map(aliasRows.map((a) => [a.legacyPath, a.canonicalPath]))
             if (
               !isAliasCycle(
                 resolved.urlAlias.legacyPath,
@@ -596,6 +625,8 @@ async function migrateArticlesBatch(
             },
           })
           if (pdf.hasPdf) counters.pdfs++
+
+          if (skipAuthors || !registry) continue
 
           const planned = planAuthorsForArticle(
             {
@@ -684,18 +715,22 @@ async function migrateArticlesBatch(
       }
     }, { maxWait: transactionMaxWaitMs, timeout: transactionTimeoutMs })
 
-    offset += rows.length
-    process.stdout.write(`\r  Makale batch: ${Math.min(offset, articleLimit)}/${articleLimit}`)
+    lastId = (rows[rows.length - 1] as LegacyMakale).MakaleID
+    processed += rows.length
+    const limitLabel =
+      articleLimit >= Number.MAX_SAFE_INTEGER / 2 ? '' : `/${articleLimit}`
+    process.stdout.write(`\r  Makale batch: ${processed} işlendi, son MakaleID=${lastId}${limitLabel}`)
   }
   if (!dryRun) process.stdout.write('\n')
 }
 
 async function main() {
   const args = parseArgs()
-  const mode = args.write ? 'pilot' : 'dry-run'
+  const etlScope = args.full ? 'full' : 'pilot'
+  const mode = args.write ? etlScope : 'dry-run'
 
   console.log(
-    `Pilot ETL [${mode}] article-limit=${args.articleLimit} batch=${args.batchSize} tx_timeout_ms=${args.transactionTimeoutMs}`,
+    `ETL [${mode}] scope=${etlScope} article-limit=${args.full ? 'all' : args.articleLimit} batch=${args.batchSize} tx_timeout_ms=${args.transactionTimeoutMs}${args.startAfterId ? ` start-after-id=${args.startAfterId}` : ''}${args.skipAuthors ? ' skip-authors' : ''}`,
   )
   console.log(`  Tam katalog ipucu: ${JSON.stringify(FULL_CATALOG_ETL_HINTS)}`)
 
@@ -741,13 +776,17 @@ async function main() {
       decimalNumbers: true,
     })
 
-    const journalIds = await selectPilotJournalIds(conn)
+    const journalIds = await selectJournalIds(conn, args.full)
     if (journalIds.length === 0) {
-      throw new Error('Pilot dergi seçilemedi')
+      throw new Error(args.full ? 'Kaynak dergi bulunamadı' : 'Pilot dergi seçilemedi')
     }
 
-    const registryLoad = await loadAuthorRegistry(conn)
-    assertAuthorRegistryReadyForWrite(registryLoad)
+    const registryLoad = args.skipAuthors
+      ? { registry: null, mode: 'skipped' as const }
+      : await loadAuthorRegistry(conn)
+    if (!args.skipAuthors) {
+      assertAuthorRegistryReadyForWrite(registryLoad)
+    }
 
     const errors: PgEtlErrorEntry[] = []
     const sourceKeyConflicts: string[] = []
@@ -756,11 +795,11 @@ async function main() {
     if (args.write) {
       runId = await startPgEtlRun({
         script: 'pilot-run',
-        mode: 'pilot',
+        mode: etlScope,
         sourceTable: 'dergiler+dergi_arsiv+makaleler',
         targetTable: 'journals+issues+articles+pdf_files+authors',
-        limitRows: args.articleLimit,
-        notes: `journals=${journalIds.length}`,
+        limitRows: args.full ? undefined : args.articleLimit,
+        notes: `journals=${journalIds.length}${args.full ? ',full_catalog' : ''}${args.startAfterId ? `,start_after=${args.startAfterId}` : ''}${args.skipAuthors ? ',skip_authors' : ''}`,
       })
     }
 
@@ -776,6 +815,8 @@ async function main() {
       args.transactionTimeoutMs,
       args.transactionMaxWaitMs,
       !args.write,
+      args.startAfterId,
+      args.skipAuthors,
       registryLoad.registry,
       counters,
       errors,
@@ -787,8 +828,9 @@ async function main() {
 
     const report = {
       mode,
+      scope: etlScope,
       writes_to_postgres: args.write,
-      pilot_journal_count: journalIds.length,
+      journal_count: journalIds.length,
       journal_ids_sample: journalIds.slice(0, 5),
       author_registry_mode: registryLoad.mode,
       counters,
