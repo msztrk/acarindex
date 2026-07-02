@@ -14,6 +14,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  isAppReservedPath,
+  resolveLegacyAuthRedirect,
+} from '@/lib/seo/legacy-auth-redirects'
 
 const CANONICAL_HOST = 'www.acarindex.com'
 
@@ -40,6 +44,15 @@ export async function proxy(req: NextRequest) {
   // İç path'leri atla
   if (SKIP_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next()
+  }
+
+  // ─── Legacy üyelik / auth URL redirect ─────────────────────────────────────
+  const authRedirect = resolveLegacyAuthRedirect(pathname)
+  if (authRedirect) {
+    const redirectUrl = req.nextUrl.clone()
+    redirectUrl.pathname = authRedirect
+    const redirect = NextResponse.redirect(redirectUrl, { status: 301 })
+    return applyIndexingHeaders(redirect, host)
   }
 
   const res = NextResponse.next()
@@ -88,11 +101,11 @@ export async function proxy(req: NextRequest) {
 
   // ─── url_aliases tablosu ────────────────────────────────────────────────────
   // http_status=301 olan aliaslar için redirect uygula
-  // (küçük siteye göre bu lookup opsiyoneldir; büyük ölçekte Redis cache ekle)
+  // Uygulama rotaları (hesabim, login, …) alias lookup'tan muaf — yanlış 301 engeli
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_ANON_KEY
 
-  if (supabaseUrl && supabaseKey) {
+  if (supabaseUrl && supabaseKey && !isAppReservedPath(pathname)) {
     try {
       const apiUrl = `${supabaseUrl}/rest/v1/url_aliases?legacy_path=eq.${encodeURIComponent(pathname)}&http_status=eq.301&select=canonical_path&limit=1`
       const r = await fetch(apiUrl, {

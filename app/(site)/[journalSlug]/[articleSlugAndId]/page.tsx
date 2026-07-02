@@ -1,4 +1,5 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
+import { resolveReservedJournalSlugRedirect } from '@/lib/seo/legacy-auth-redirects'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import * as articleData from '@/lib/data/articles'
@@ -213,6 +214,11 @@ function AuthorLinks({
 
 export default async function ArticlePage({ params }: PageProps) {
   const { journalSlug, articleSlugAndId } = await params
+
+  const reservedRedirect = resolveReservedJournalSlugRedirect(journalSlug)
+  if (reservedRedirect) {
+    redirect(reservedRedirect)
+  }
 
   const parsed = parseArticlePath(journalSlug, articleSlugAndId)
   const articleId = parsed?.articleId ?? extractArticleId(articleSlugAndId)
