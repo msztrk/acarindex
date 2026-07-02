@@ -28,6 +28,8 @@ import { isArticleSaved } from '@/lib/user-panel/saved-articles'
 import { listReadingLists } from '@/lib/user-panel/reading-lists'
 import { ArticleSaveActions } from '@/components/user-panel/ArticleSaveActions'
 import { buildLoginHref } from '@/lib/user-panel/login-redirect'
+import { getRequestLocale } from '@/lib/i18n/request-locale'
+import { buildArticleMetadataAlternates, pickLocalizedTitle } from '@/lib/seo/hreflang'
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 interface ArticleRow {
@@ -112,10 +114,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const article = await getArticle(articleId)
   if (!article) return { title: 'Makale bulunamadı' }
 
-  const title = article.title_tr ?? article.title_en ?? 'Makale'
-  const description = article.abstract_tr ?? article.abstract_en ?? undefined
+  const locale = await getRequestLocale()
+  const title = pickLocalizedTitle(article.title_tr, article.title_en, locale) || 'Makale'
+  const description =
+    (locale === 'en' ? article.abstract_en ?? article.abstract_tr : article.abstract_tr ?? article.abstract_en) ??
+    undefined
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
-  const canonicalUrl = `${canonicalBase}/${article.legacy_journal_slug}/${article.slug}-${article.id}`
+  const alternates = buildArticleMetadataAlternates(
+    canonicalBase,
+    {
+      id: article.id,
+      slug: article.slug,
+      slugTr: article.slug_tr,
+      slugEn: article.slug_en,
+      legacyJournalSlug: article.legacy_journal_slug,
+      legacyJournalSlugEn: article.legacy_journal_slug_en,
+      titleEn: article.title_en,
+    },
+    locale,
+  )
 
   const legacyCoverUrl = article.journal?.cover_path
     ? `https://www.acarindex.com/${article.journal.cover_path}`
@@ -124,7 +141,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description: description?.slice(0, 160),
-    alternates: { canonical: canonicalUrl },
+    alternates,
     openGraph: {
       title,
       description: description?.slice(0, 200),

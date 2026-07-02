@@ -10,6 +10,7 @@ import {
   MOBILE_NAV_DRAWER_ID,
 } from '@/components/layout/MobileNavDrawer'
 import { HeaderAuthNav, HeaderAuthSkeleton } from '@/components/layout/HeaderAuthNav'
+import { LocaleSwitcher } from '@/components/layout/LocaleSwitcher'
 import { BrandWordmark } from '@/components/layout/BrandWordmark'
 import type { PublicAuthState } from '@/lib/auth/public-session'
 import { cn } from '@/lib/utils'
@@ -105,6 +106,7 @@ export function SiteHeader({
 
           <div className="hidden lg:flex items-center gap-3 flex-1 max-w-lg justify-end min-w-0">
             {!isHome && <SearchBar variant="compact" className="flex-1 max-w-sm min-w-0" />}
+            <LocaleSwitcher className="shrink-0" />
             {showAuth && (
               authReady && initialAuth
                 ? <HeaderAuthNav initialAuth={initialAuth} />
@@ -113,6 +115,7 @@ export function SiteHeader({
           </div>
 
           <div className="flex lg:hidden items-center gap-1 shrink-0 min-w-0">
+            <LocaleSwitcher className="shrink-0" />
             {showAuth && authReady && initialAuth && (
               <HeaderAuthNav initialAuth={initialAuth} compact />
             )}

@@ -45,6 +45,8 @@ export interface Category {
   name_tr: string | null
   name_en: string | null
   slug: string | null
+  slug_tr: string | null
+  slug_en: string | null
   active: boolean
   created_at: string
   updated_at: string
@@ -54,6 +56,8 @@ export interface Journal {
   id: number
   legacy_id: number | null
   slug: string
+  slug_tr: string | null
+  slug_en: string | null
 
   title_tr: string | null
   title_en: string | null
@@ -117,7 +121,10 @@ export interface Article {
   id: number
   legacy_id: number | null
   slug: string
+  slug_tr: string | null
+  slug_en: string | null
   legacy_journal_slug: string
+  legacy_journal_slug_en: string | null
 
   journal_id: number
   issue_id: number | null

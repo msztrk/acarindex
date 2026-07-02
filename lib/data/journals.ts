@@ -145,11 +145,13 @@ export async function listJournalsForSitemap(limit: number) {
     where: { status: 'published' },
     orderBy: { id: 'asc' },
     take: limit,
-    select: { id: true, slug: true, updatedAt: true },
+    select: { id: true, slug: true, slugTr: true, slugEn: true, updatedAt: true },
   })
   return rows.map((r) => ({
     id: Number(r.id),
     slug: r.slug,
+    slug_tr: r.slugTr ?? r.slug,
+    slug_en: r.slugEn,
     updated_at: r.updatedAt.toISOString(),
   }))
 }

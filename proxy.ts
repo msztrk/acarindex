@@ -46,6 +46,17 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next()
   }
 
+  // ─── EN locale rewrite (/en/... → same handler, x-site-locale: en) ─────────
+  if (pathname === '/en' || pathname.startsWith('/en/')) {
+    const stripped = pathname === '/en' ? '/' : pathname.slice(3) || '/'
+    const rewriteUrl = req.nextUrl.clone()
+    rewriteUrl.pathname = stripped
+    const requestHeaders = new Headers(req.headers)
+    requestHeaders.set('x-site-locale', 'en')
+    const rewritten = NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } })
+    return applyIndexingHeaders(rewritten, host)
+  }
+
   // ─── Legacy üyelik / auth URL redirect ─────────────────────────────────────
   const authRedirect = resolveLegacyAuthRedirect(pathname)
   if (authRedirect) {
@@ -106,8 +117,14 @@ export async function proxy(req: NextRequest) {
   const supabaseKey = process.env.SUPABASE_ANON_KEY
 
   if (supabaseUrl && supabaseKey && !isAppReservedPath(pathname)) {
+    const aliasPath =
+      pathname === '/en' || pathname.startsWith('/en/')
+        ? pathname === '/en'
+          ? '/'
+          : pathname.slice(3) || '/'
+        : pathname
     try {
-      const apiUrl = `${supabaseUrl}/rest/v1/url_aliases?legacy_path=eq.${encodeURIComponent(pathname)}&http_status=eq.301&select=canonical_path&limit=1`
+      const apiUrl = `${supabaseUrl}/rest/v1/url_aliases?legacy_path=eq.${encodeURIComponent(aliasPath)}&http_status=eq.301&select=canonical_path&limit=1`
       const r = await fetch(apiUrl, {
         headers: {
           apikey: supabaseKey,

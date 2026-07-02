@@ -13,39 +13,55 @@
 
 import { NextResponse } from 'next/server'
 import { countPublishedArticles } from '@/lib/data/articles'
+import { prisma } from '@/lib/db/prisma'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 3600
 
 const PAGE_SIZE = 5000
 
+async function countEnglishArticles() {
+  return prisma.article.count({ where: { status: 'published', slugEn: { not: null } } })
+}
+
 export async function GET() {
   const base = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
   const now = new Date().toISOString().slice(0, 10)
 
-  const total = await countPublishedArticles()
+  const [total, enTotal] = await Promise.all([countPublishedArticles(), countEnglishArticles()])
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const enPageCount = enTotal > 0 ? Math.ceil(enTotal / PAGE_SIZE) : 0
 
   const sitemaps: string[] = []
 
-  // Statik sayfalar
   sitemaps.push(`  <sitemap>
     <loc>${base}/sitemap-static</loc>
     <lastmod>${now}</lastmod>
   </sitemap>`)
 
-  // Dergiler
   sitemaps.push(`  <sitemap>
     <loc>${base}/sitemap-journals</loc>
     <lastmod>${now}</lastmod>
   </sitemap>`)
 
-  // Makaleler (sayfalanmış)
   for (let i = 1; i <= pageCount; i++) {
     sitemaps.push(`  <sitemap>
     <loc>${base}/sitemap-articles/${i}</loc>
     <lastmod>${now}</lastmod>
   </sitemap>`)
+  }
+
+  if (enTotal > 0) {
+    sitemaps.push(`  <sitemap>
+    <loc>${base}/sitemap-journals-en</loc>
+    <lastmod>${now}</lastmod>
+  </sitemap>`)
+    for (let i = 1; i <= enPageCount; i++) {
+      sitemaps.push(`  <sitemap>
+    <loc>${base}/sitemap-articles-en/${i}</loc>
+    <lastmod>${now}</lastmod>
+  </sitemap>`)
+    }
   }
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

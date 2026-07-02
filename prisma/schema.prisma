@@ -16,6 +16,8 @@ model Category {
   nameTr    String?  @map("name_tr")
   nameEn    String?  @map("name_en")
   slug      String?
+  slugTr    String?  @map("slug_tr")
+  slugEn    String?  @map("slug_en")
   active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -29,6 +31,8 @@ model Journal {
   id                BigInt   @id
   legacyId          BigInt?  @unique @map("legacy_id")
   slug              String
+  slugTr            String?  @map("slug_tr")
+  slugEn            String?  @map("slug_en")
   titleTr           String?  @map("title_tr")
   titleEn           String?  @map("title_en")
   oldName           String?  @map("old_name")
@@ -97,7 +101,10 @@ model Article {
   id                BigInt    @id
   legacyId          BigInt?   @unique @map("legacy_id")
   slug              String
+  slugTr            String?   @map("slug_tr")
+  slugEn            String?   @map("slug_en")
   legacyJournalSlug String    @map("legacy_journal_slug")
+  legacyJournalSlugEn String? @map("legacy_journal_slug_en")
   journalId         BigInt    @map("journal_id")
   issueId           BigInt?   @map("issue_id")
   titleTr           String?   @map("title_tr")

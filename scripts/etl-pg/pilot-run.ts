@@ -202,11 +202,15 @@ async function migrateCategories(
           nameTr: c.KategoriBASLIKTR || null,
           nameEn: c.KategoriBASLIKEN || null,
           slug: c.KategoriURL || null,
+          slugTr: c.KategoriURL || (c.KategoriBASLIKTR ? urlYap(c.KategoriBASLIKTR) : null),
+          slugEn: c.KategoriBASLIKEN?.trim() ? urlYap(c.KategoriBASLIKEN) : null,
         },
         update: {
           nameTr: c.KategoriBASLIKTR || null,
           nameEn: c.KategoriBASLIKEN || null,
           slug: c.KategoriURL || null,
+          slugTr: c.KategoriURL || (c.KategoriBASLIKTR ? urlYap(c.KategoriBASLIKTR) : null),
+          slugEn: c.KategoriBASLIKEN?.trim() ? urlYap(c.KategoriBASLIKEN) : null,
         },
       })
       upserted++
@@ -261,14 +265,24 @@ async function migrateJournals(
       }
     }
 
+    const slugTr = urlYap(raw.DergiBASLIK)
+    const titleEn =
+      (raw as { DergiBASLIKEN?: string; title_en?: string }).DergiBASLIKEN?.trim() ||
+      (raw as { title_en?: string }).title_en?.trim() ||
+      null
+    const slugEn = titleEn ? urlYap(titleEn) : null
+
     try {
       await prisma.journal.upsert({
         where: { id: BigInt(raw.DergiID) },
         create: {
           id: BigInt(raw.DergiID),
           legacyId: BigInt(raw.DergiID),
-          slug: urlYap(raw.DergiBASLIK),
+          slug: slugTr,
+          slugTr,
+          slugEn,
           titleTr: raw.DergiBASLIK.trim(),
+          titleEn,
           oldName: raw.old_name?.trim() || null,
           issn: raw.Issn?.trim() || null,
           eissn: raw.Eissn?.trim() || null,
@@ -299,8 +313,11 @@ async function migrateJournals(
           hitCount: raw.Hit || 0,
         },
         update: {
-          slug: urlYap(raw.DergiBASLIK),
+          slug: slugTr,
+          slugTr,
+          slugEn,
           titleTr: raw.DergiBASLIK.trim(),
+          titleEn,
           status: raw.Aktif === 1 ? 'published' : 'draft',
           hitCount: raw.Hit || 0,
         },
@@ -383,15 +400,21 @@ async function migrateIssues(
 function mapMakaleToArticle(
   raw: LegacyMakale,
   journalSlugMap: Map<number, string>,
+  journalSlugEnMap: Map<number, string>,
 ): {
   article: Prisma.ArticleCreateInput
   pdf: { hasPdf: boolean; path: string | null }
   authorFields: ReturnType<typeof mapMakaleAuthorFields>
-  baseSlug: string
+  slugTrBase: string
+  slugEnBase: string | null
 } {
   const legacyJournalSlug = journalSlugMap.get(raw.DergiID) ?? `dergi-${raw.DergiID}`
-  const titleForSlug = raw.TitleTR?.trim() || raw.TitleEN?.trim()
-  const baseSlug = (titleForSlug ? urlYap(titleForSlug) : '') || `makale-${raw.MakaleID}`
+  const legacyJournalSlugEn = journalSlugEnMap.get(raw.DergiID) ?? legacyJournalSlug
+  const slugTrBase =
+    (raw.TitleTR?.trim() ? urlYap(raw.TitleTR) : '') ||
+    (raw.TitleEN?.trim() ? urlYap(raw.TitleEN) : '') ||
+    `makale-${raw.MakaleID}`
+  const slugEnBase = raw.TitleEN?.trim() ? urlYap(raw.TitleEN) : null
 
   const pageStart = raw.IlkSAYFA?.trim() ? parseInt(raw.IlkSAYFA.trim(), 10) || null : null
   const pageEnd = raw.SonSAYFA?.trim() ? parseInt(raw.SonSAYFA.trim(), 10) || null : null
@@ -419,8 +442,11 @@ function mapMakaleToArticle(
   const article: Prisma.ArticleCreateInput = {
     id: BigInt(raw.MakaleID),
     legacyId: BigInt(raw.MakaleID),
-    slug: baseSlug,
+    slug: slugTrBase,
+    slugTr: slugTrBase,
+    slugEn: slugEnBase,
     legacyJournalSlug,
+    legacyJournalSlugEn,
     journal: { connect: { id: BigInt(raw.DergiID) } },
     issue: raw.ArsivID ? { connect: { id: BigInt(raw.ArsivID) } } : undefined,
     titleTr: raw.TitleTR?.trim() || null,
@@ -454,7 +480,7 @@ function mapMakaleToArticle(
     status: raw.Aktif === 1 ? 'published' : 'draft',
   }
 
-  return { article, pdf: { hasPdf, path: hasPdf ? pdfPath! : null }, authorFields, baseSlug }
+  return { article, pdf: { hasPdf, path: hasPdf ? pdfPath! : null }, authorFields, slugTrBase, slugEnBase }
 }
 
 async function migrateArticlesBatch(
@@ -481,13 +507,17 @@ async function migrateArticlesBatch(
   legacyIdConflicts: string[],
 ): Promise<void> {
   const placeholders = journalIds.map(() => '?').join(',')
-  const [slugRows] = await conn.query<mysql.RowDataPacket[]>(
-    `SELECT DergiID, DergiBASLIK FROM dergiler WHERE DergiID IN (${placeholders})`,
-    journalIds,
-  )
   const journalSlugMap = new Map<number, string>()
-  for (const r of slugRows as { DergiID: number; DergiBASLIK: string }[]) {
-    journalSlugMap.set(r.DergiID, urlYap(r.DergiBASLIK ?? ''))
+  const journalSlugEnMap = new Map<number, string>()
+  const journalRows = await prisma.journal.findMany({
+    where: { id: { in: journalIds.map((id) => BigInt(id)) } },
+    select: { id: true, slug: true, slugTr: true, slugEn: true },
+  })
+  for (const j of journalRows) {
+    const id = Number(j.id)
+    const slugTr = j.slugTr ?? j.slug
+    journalSlugMap.set(id, slugTr)
+    journalSlugEnMap.set(id, j.slugEn ?? slugTr)
   }
 
   let lastId = startAfterId
@@ -549,27 +579,49 @@ async function migrateArticlesBatch(
           continue
         }
 
-        const { article, pdf, authorFields, baseSlug } = mapMakaleToArticle(raw, journalSlugMap)
+        const { article, pdf, authorFields, slugTrBase, slugEnBase } = mapMakaleToArticle(
+          raw,
+          journalSlugMap,
+          journalSlugEnMap,
+        )
         const articleId = BigInt(raw.MakaleID)
         const legacyJournalSlug = article.legacyJournalSlug as string
+        const legacyJournalSlugEn = article.legacyJournalSlugEn as string
 
         try {
           const existing = await tx.article.findUnique({
             where: { id: articleId },
-            select: { slug: true },
+            select: { slug: true, slugEn: true },
           })
           const conflict = await tx.article.findFirst({
-            where: { slug: baseSlug, id: { not: articleId } },
+            where: { slug: slugTrBase, id: { not: articleId } },
             select: { id: true },
             orderBy: { id: 'asc' },
           })
           const resolved = resolveArticleSlug({
-            baseSlug,
+            baseSlug: slugTrBase,
             legacyId: raw.MakaleID,
             legacyJournalSlug,
             existingSlug: existing?.slug,
             conflictingArticleLegacyId: conflict ? Number(conflict.id) : null,
           })
+
+          let slugEn: string | null = null
+          if (slugEnBase) {
+            const enConflict = await tx.article.findFirst({
+              where: { slugEn: slugEnBase, id: { not: articleId } },
+              select: { id: true },
+              orderBy: { id: 'asc' },
+            })
+            const enResolved = resolveArticleSlug({
+              baseSlug: slugEnBase,
+              legacyId: raw.MakaleID,
+              legacyJournalSlug: legacyJournalSlugEn,
+              existingSlug: existing?.slugEn,
+              conflictingArticleLegacyId: enConflict ? Number(enConflict.id) : null,
+            })
+            slugEn = enResolved.slug
+          }
 
           if (resolved.urlAlias) {
             if (
@@ -598,9 +650,12 @@ async function migrateArticlesBatch(
 
           await tx.article.upsert({
             where: { id: articleId },
-            create: { ...article, slug: resolved.slug },
+            create: { ...article, slug: resolved.slug, slugTr: resolved.slug, slugEn },
             update: {
               slug: resolved.slug,
+              slugTr: resolved.slug,
+              slugEn,
+              legacyJournalSlugEn,
               titleTr: article.titleTr,
               titleEn: article.titleEn,
               authorsRaw: authorFields.authors_raw,

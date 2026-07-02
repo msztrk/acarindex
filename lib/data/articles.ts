@@ -130,14 +130,20 @@ export async function listArticlesForSitemapPage(page: number, perPage: number) 
     select: {
       id: true,
       slug: true,
+      slugTr: true,
+      slugEn: true,
       legacyJournalSlug: true,
+      legacyJournalSlugEn: true,
       updatedAt: true,
     },
   })
   return rows.map((r) => ({
     id: Number(r.id),
     slug: r.slug,
+    slug_tr: r.slugTr ?? r.slug,
+    slug_en: r.slugEn,
     legacy_journal_slug: r.legacyJournalSlug,
+    legacy_journal_slug_en: r.legacyJournalSlugEn,
     updated_at: r.updatedAt.toISOString(),
   }))
 }
