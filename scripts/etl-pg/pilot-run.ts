@@ -270,7 +270,7 @@ async function migrateJournals(
       (raw as { DergiBASLIKEN?: string; title_en?: string }).DergiBASLIKEN?.trim() ||
       (raw as { title_en?: string }).title_en?.trim() ||
       null
-    const slugEn = titleEn ? urlYap(titleEn) : null
+    const slugEn = titleEn ? urlYap(titleEn) : slugTr
 
     try {
       await prisma.journal.upsert({
@@ -606,22 +606,20 @@ async function migrateArticlesBatch(
             conflictingArticleLegacyId: conflict ? Number(conflict.id) : null,
           })
 
-          let slugEn: string | null = null
-          if (slugEnBase) {
-            const enConflict = await tx.article.findFirst({
-              where: { slugEn: slugEnBase, id: { not: articleId } },
-              select: { id: true },
-              orderBy: { id: 'asc' },
-            })
-            const enResolved = resolveArticleSlug({
-              baseSlug: slugEnBase,
-              legacyId: raw.MakaleID,
-              legacyJournalSlug: legacyJournalSlugEn,
-              existingSlug: existing?.slugEn,
-              conflictingArticleLegacyId: enConflict ? Number(enConflict.id) : null,
-            })
-            slugEn = enResolved.slug
-          }
+          const enBase = slugEnBase ?? resolved.slug
+          const enConflict = await tx.article.findFirst({
+            where: { slugEn: enBase, id: { not: articleId } },
+            select: { id: true },
+            orderBy: { id: 'asc' },
+          })
+          const enResolved = resolveArticleSlug({
+            baseSlug: enBase,
+            legacyId: raw.MakaleID,
+            legacyJournalSlug: legacyJournalSlugEn,
+            existingSlug: existing?.slugEn,
+            conflictingArticleLegacyId: enConflict ? Number(enConflict.id) : null,
+          })
+          const slugEn = enResolved.slug
 
           if (resolved.urlAlias) {
             if (
