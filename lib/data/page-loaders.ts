@@ -30,6 +30,8 @@ export async function loadSearchPageData(options: {
   language?: 'tr' | 'en'
   yearFrom?: number
   yearTo?: number
+  boostCategoryIds?: number[]
+  personalize?: boolean
 }) {
   const { searchArticles, searchJournals, searchAuthors } = await import('@/lib/search/search')
   const { SEARCH_PER_PAGE } = await import('@/lib/data/constants')
@@ -38,17 +40,29 @@ export async function loadSearchPageData(options: {
     return {
       status: 'ok' as const,
       data: {
-        articleResults: { data: [], total: 0 },
-        journalResults: { data: [], total: 0 },
+        articleResults: { data: [], total: 0, interestTotal: 0 },
+        journalResults: { data: [], total: 0, interestTotal: 0 },
         authorResults: { data: [], total: 0 },
         perPage: SEARCH_PER_PAGE,
+        personalized: false,
       },
     }
   }
 
+  const personalize = options.personalize !== false
+  const boostCategoryIds = personalize ? options.boostCategoryIds ?? [] : []
+
   return runCatalogQuery(async () => {
-    let articleResults = { data: [] as Awaited<ReturnType<typeof searchArticles>>['data'], total: 0 }
-    let journalResults = { data: [] as Awaited<ReturnType<typeof searchJournals>>['data'], total: 0 }
+    let articleResults = {
+      data: [] as Awaited<ReturnType<typeof searchArticles>>['data'],
+      total: 0,
+      interestTotal: 0,
+    }
+    let journalResults = {
+      data: [] as Awaited<ReturnType<typeof searchJournals>>['data'],
+      total: 0,
+      interestTotal: 0,
+    }
     let authorResults = { data: [] as Awaited<ReturnType<typeof searchAuthors>>['data'], total: 0 }
 
     if (options.type === 'article') {
@@ -61,9 +75,14 @@ export async function loadSearchPageData(options: {
         yearTo: options.yearTo,
         page: options.page,
         perPage: SEARCH_PER_PAGE,
+        boostCategoryIds,
+        personalize,
       })
     } else if (options.type === 'journal') {
-      journalResults = await searchJournals(options.q, options.page, SEARCH_PER_PAGE)
+      journalResults = await searchJournals(options.q, options.page, SEARCH_PER_PAGE, {
+        boostCategoryIds,
+        personalize,
+      })
     } else {
       authorResults = await searchAuthors(options.q, options.page, SEARCH_PER_PAGE)
     }
@@ -73,6 +92,7 @@ export async function loadSearchPageData(options: {
       journalResults,
       authorResults,
       perPage: SEARCH_PER_PAGE,
+      personalized: boostCategoryIds.length > 0 && personalize,
     }
   })
 }

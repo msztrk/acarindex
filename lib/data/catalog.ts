@@ -9,23 +9,28 @@ export function bigintToNumber(v: bigint | number | null | undefined): number | 
   return typeof v === 'bigint' ? Number(v) : v
 }
 
-export async function listRecentArticles(limit = 8) {
-  const rows = await prisma.article.findMany({
-    where: { status: 'published' },
-    orderBy: { id: 'desc' },
-    take: limit,
-    select: {
-      id: true,
-      slug: true,
-      legacyJournalSlug: true,
-      titleTr: true,
-      titleEn: true,
-      authorsRaw: true,
-      publishedYear: true,
-      journal: { select: { id: true, slug: true, titleTr: true } },
-    },
-  })
-  return rows.map((r) => ({
+const recentArticleSelect = {
+  id: true,
+  slug: true,
+  legacyJournalSlug: true,
+  titleTr: true,
+  titleEn: true,
+  authorsRaw: true,
+  publishedYear: true,
+  journal: { select: { id: true, slug: true, titleTr: true } },
+} satisfies Prisma.ArticleSelect
+
+function mapRecentArticleRow(r: {
+  id: bigint
+  slug: string
+  legacyJournalSlug: string
+  titleTr: string | null
+  titleEn: string | null
+  authorsRaw: string | null
+  publishedYear: number | null
+  journal: { id: bigint; slug: string; titleTr: string | null } | null
+}) {
+  return {
     id: bigintToNumber(r.id)!,
     slug: r.slug,
     legacy_journal_slug: r.legacyJournalSlug,
@@ -40,7 +45,30 @@ export async function listRecentArticles(limit = 8) {
           title_tr: r.journal.titleTr,
         }
       : null,
-  }))
+  }
+}
+
+export async function listRecentArticles(limit = 8) {
+  const rows = await prisma.article.findMany({
+    where: { status: 'published' },
+    orderBy: { id: 'desc' },
+    take: limit,
+    select: recentArticleSelect,
+  })
+  return rows.map(mapRecentArticleRow)
+}
+
+export async function listRecentArticlesByCategory(categoryId: number, limit = 6) {
+  const rows = await prisma.article.findMany({
+    where: {
+      status: 'published',
+      journal: { categoryId: BigInt(categoryId) },
+    },
+    orderBy: { id: 'desc' },
+    take: limit,
+    select: recentArticleSelect,
+  })
+  return rows.map(mapRecentArticleRow)
 }
 
 export async function listFeaturedJournals(limit = 6) {

@@ -22,6 +22,8 @@ export interface SearchParams {
   yearTo?: number
   page: number
   perPage: number
+  boostCategoryIds?: number[]
+  personalize?: boolean
 }
 
 export interface ArticleResult {
@@ -36,6 +38,8 @@ export interface ArticleResult {
   journal_title: string | null
   journal_slug: string | null
   journal_id: number | null
+  category_label: string | null
+  matches_interest: boolean
 }
 
 export interface JournalResult {
@@ -45,6 +49,8 @@ export interface JournalResult {
   title_en: string | null
   issn: string | null
   publisher: string | null
+  category_label: string | null
+  matches_interest: boolean
 }
 
 export interface AuthorResult {
@@ -104,8 +110,13 @@ export async function searchArticles(params: SearchParams) {
   return searchArticlesPrisma(params)
 }
 
-export async function searchJournals(q: string, page: number, perPage: number) {
-  return searchJournalsPrisma(q, page, perPage)
+export async function searchJournals(
+  q: string,
+  page: number,
+  perPage: number,
+  options?: { boostCategoryIds?: number[]; personalize?: boolean },
+) {
+  return searchJournalsPrisma(q, page, perPage, options)
 }
 
 export async function searchAuthors(q: string, page: number, perPage: number) {

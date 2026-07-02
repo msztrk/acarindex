@@ -102,3 +102,29 @@ export async function loadFeaturedJournals(qa?: HomeQaMode): Promise<FeaturedJou
 export async function loadTopicAreas(): Promise<TopicAreaItem[]> {
   return (await catalogData.listActiveCategories()) as TopicAreaItem[]
 }
+
+export type InterestAreaArticlesSection = {
+  categoryId: number
+  categoryLabel: string
+  articles: RecentArticleItem[]
+}
+
+export async function loadInterestAreaArticleSections(
+  interests: { id: number; label: string }[],
+  limitPerArea = 6,
+): Promise<InterestAreaArticlesSection[]> {
+  if (interests.length === 0) return []
+
+  const sections = await Promise.all(
+    interests.map(async (interest) => ({
+      categoryId: interest.id,
+      categoryLabel: interest.label,
+      articles: (await catalogData.listRecentArticlesByCategory(
+        interest.id,
+        limitPerArea,
+      )) as RecentArticleItem[],
+    })),
+  )
+
+  return sections.filter((s) => s.articles.length > 0)
+}

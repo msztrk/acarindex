@@ -13,6 +13,10 @@ import { loadSearchPageData } from '@/lib/data/page-loaders'
 import { SEARCH_PER_PAGE } from '@/lib/data/constants'
 import { CatalogErrorAlert } from '@/components/catalog/CatalogErrorAlert'
 import { catalogErrorMessage } from '@/lib/data/query'
+import {
+  getSessionInterestCategories,
+  interestCategoryIds,
+} from '@/lib/personalization/interest-categories'
 
 export const metadata: Metadata = {
   title: 'Arama — AcarIndex',
@@ -28,6 +32,7 @@ interface PageProps {
     year_from?: string
     year_to?: string
     page?: string
+    personalize?: string
   }>
 }
 
@@ -58,11 +63,24 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const language = sp.language === 'en' ? 'en' : sp.language === 'tr' ? 'tr' : undefined
   const yearFrom = sp.year_from ? parseInt(sp.year_from, 10) : undefined
   const yearTo = sp.year_to ? parseInt(sp.year_to, 10) : undefined
+  const personalize = sp.personalize !== '0'
 
-  let articleResults: Awaited<ReturnType<typeof searchArticles>> = { data: [], total: 0 }
-  let journalResults: Awaited<ReturnType<typeof searchJournals>> = { data: [], total: 0 }
+  const interestCategories = personalize ? await getSessionInterestCategories() : []
+  const boostCategoryIds = interestCategoryIds(interestCategories)
+
+  let articleResults: Awaited<ReturnType<typeof searchArticles>> & { interestTotal?: number } = {
+    data: [],
+    total: 0,
+    interestTotal: 0,
+  }
+  let journalResults: Awaited<ReturnType<typeof searchJournals>> & { interestTotal?: number } = {
+    data: [],
+    total: 0,
+    interestTotal: 0,
+  }
   let authorResults: Awaited<ReturnType<typeof searchAuthors>> = { data: [], total: 0 }
   let searchError: string | null = null
+  let searchPersonalized = false
 
   if (q) {
     const result = await loadSearchPageData({
@@ -73,6 +91,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
       yearFrom,
       yearTo,
       page,
+      boostCategoryIds,
+      personalize,
     })
     if (result.status === 'error') {
       searchError = catalogErrorMessage(result)
@@ -80,6 +100,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       articleResults = result.data.articleResults
       journalResults = result.data.journalResults
       authorResults = result.data.authorResults
+      searchPersonalized = result.data.personalized
     }
   }
 
@@ -95,6 +116,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     if (language) base.language = language
     if (sp.year_from) base.year_from = sp.year_from
     if (sp.year_to) base.year_to = sp.year_to
+    if (sp.personalize === '0') base.personalize = '0'
     const merged = { ...base, ...overrides }
     return '/search?' + new URLSearchParams(
       Object.fromEntries(Object.entries(merged).filter(([, v]) => v !== undefined)) as Record<string, string>
@@ -102,6 +124,10 @@ export default async function SearchPage({ searchParams }: PageProps) {
   }
 
   const typeLabel = type === 'article' ? 'Makaleler' : type === 'journal' ? 'Dergiler' : 'Yazarlar'
+  const interestArticleItems = articleResults.data.filter((a) => a.matches_interest)
+  const otherArticleItems = articleResults.data.filter((a) => !a.matches_interest)
+  const interestJournalItems = journalResults.data.filter((j) => j.matches_interest)
+  const otherJournalItems = journalResults.data.filter((j) => !j.matches_interest)
 
   return (
     <div className="content-width py-6 md:py-8 min-w-0">
@@ -235,33 +261,85 @@ export default async function SearchPage({ searchParams }: PageProps) {
                 <span className="text-muted-foreground"> ({typeLabel})</span>
               </span>
             </p>
+            {searchPersonalized && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Sonuçlar ilgi alanlarınıza göre önceliklendirildi.
+                {' '}
+                <Link href={qs({ personalize: '0', page: '1' })} className="text-primary hover:underline">
+                  Tüm alanlarda göster
+                </Link>
+              </p>
+            )}
           </div>
 
           {type === 'article' && (
-            <ul className="catalog-list">
-              {articleResults.data.map((a) => (
-                <ArticleResultItem key={a.id} article={a} />
-              ))}
-            </ul>
+            <>
+              {searchPersonalized && interestArticleItems.length > 0 && (
+                <section className="mb-6">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">
+                    İlgi alanlarınıza uygun sonuçlar ({articleResults.interestTotal?.toLocaleString('tr-TR') ?? interestArticleItems.length})
+                  </h3>
+                  <ul className="catalog-list">
+                    {interestArticleItems.map((a) => (
+                      <ArticleResultItem key={a.id} article={a} showCategory />
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {searchPersonalized && otherArticleItems.length > 0 && (
+                <section className={interestArticleItems.length > 0 ? 'pt-4 border-t border-border/80' : ''}>
+                  <h3 className="text-sm font-semibold text-foreground mb-3">
+                    Diğer sonuçlar
+                  </h3>
+                  <ul className="catalog-list">
+                    {otherArticleItems.map((a) => (
+                      <ArticleResultItem key={a.id} article={a} showCategory />
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {!searchPersonalized && (
+                <ul className="catalog-list">
+                  {articleResults.data.map((a) => (
+                    <ArticleResultItem key={a.id} article={a} />
+                  ))}
+                </ul>
+              )}
+            </>
           )}
 
           {type === 'journal' && (
-            <ul className="catalog-list">
-              {journalResults.data.map((j) => (
-                <li key={j.id} className="catalog-list-item">
-                  <Link
-                    href={`/journals/${j.slug}-${j.id}`}
-                    className="font-medium text-foreground hover:text-primary transition-colors no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    {j.title_tr ?? j.title_en}
-                  </Link>
-                  <div className="flex flex-wrap gap-2 mt-1.5 text-xs text-muted-foreground">
-                    {j.issn && <Badge variant="outline" className="text-xs">ISSN: {j.issn}</Badge>}
-                    {j.publisher && <span>{j.publisher}</span>}
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <>
+              {searchPersonalized && interestJournalItems.length > 0 && (
+                <section className="mb-6">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">
+                    İlgi alanlarınıza uygun dergiler ({journalResults.interestTotal?.toLocaleString('tr-TR') ?? interestJournalItems.length})
+                  </h3>
+                  <ul className="catalog-list">
+                    {interestJournalItems.map((j) => (
+                      <JournalResultItem key={j.id} journal={j} showCategory />
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {searchPersonalized && otherJournalItems.length > 0 && (
+                <section className={interestJournalItems.length > 0 ? 'pt-4 border-t border-border/80' : ''}>
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Diğer dergiler</h3>
+                  <ul className="catalog-list">
+                    {otherJournalItems.map((j) => (
+                      <JournalResultItem key={j.id} journal={j} showCategory />
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {!searchPersonalized && (
+                <ul className="catalog-list">
+                  {journalResults.data.map((j) => (
+                    <JournalResultItem key={j.id} journal={j} />
+                  ))}
+                </ul>
+              )}
+            </>
           )}
 
           {type === 'author' && (
@@ -295,8 +373,10 @@ export default async function SearchPage({ searchParams }: PageProps) {
 
 function ArticleResultItem({
   article,
+  showCategory = false,
 }: {
   article: Awaited<ReturnType<typeof searchArticles>>['data'][number]
+  showCategory?: boolean
 }) {
   const title = article.title_tr ?? article.title_en ?? 'Başlıksız'
   const href = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
@@ -345,6 +425,11 @@ function ArticleResultItem({
               {article.journal_title}
             </Link>
           )}
+          {showCategory && article.category_label && (
+            <Badge variant="secondary" className="text-[0.6875rem] shrink-0">
+              {article.category_label}
+            </Badge>
+          )}
           <CatalogPdfLink href={`/pdfs/${article.id}`} label={`${title} — tam metin PDF`} />
         </div>
 
@@ -366,6 +451,32 @@ function ArticleResultItem({
             ))}
           </div>
         )}
+      </div>
+    </li>
+  )
+}
+
+function JournalResultItem({
+  journal,
+  showCategory = false,
+}: {
+  journal: Awaited<ReturnType<typeof searchJournals>>['data'][number]
+  showCategory?: boolean
+}) {
+  return (
+    <li className="catalog-list-item">
+      <Link
+        href={`/journals/${journal.slug}-${journal.id}`}
+        className="font-medium text-foreground hover:text-primary transition-colors no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        {journal.title_tr ?? journal.title_en}
+      </Link>
+      <div className="flex flex-wrap gap-2 mt-1.5 text-xs text-muted-foreground">
+        {journal.issn && <Badge variant="outline" className="text-xs">ISSN: {journal.issn}</Badge>}
+        {showCategory && journal.category_label && (
+          <Badge variant="secondary" className="text-xs">{journal.category_label}</Badge>
+        )}
+        {journal.publisher && <span>{journal.publisher}</span>}
       </div>
     </li>
   )

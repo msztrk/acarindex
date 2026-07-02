@@ -13,6 +13,8 @@ export interface PrismaSearchParams {
   yearTo?: number
   page: number
   perPage: number
+  boostCategoryIds?: number[]
+  personalize?: boolean
 }
 
 export interface ArticleResult {
@@ -27,6 +29,8 @@ export interface ArticleResult {
   journal_title: string | null
   journal_slug: string | null
   journal_id: number | null
+  category_label: string | null
+  matches_interest: boolean
 }
 
 export interface JournalResult {
@@ -36,6 +40,8 @@ export interface JournalResult {
   title_en: string | null
   issn: string | null
   publisher: string | null
+  category_label: string | null
+  matches_interest: boolean
 }
 
 export interface AuthorResult {
@@ -46,10 +52,25 @@ export interface AuthorResult {
 
 export async function searchArticlesPrisma(
   params: PrismaSearchParams,
-): Promise<{ data: ArticleResult[]; total: number }> {
-  const { q, area, language, journalId, yearFrom, yearTo, page, perPage } = params
+): Promise<{ data: ArticleResult[]; total: number; interestTotal: number }> {
+  const {
+    q,
+    area,
+    language,
+    journalId,
+    yearFrom,
+    yearTo,
+    page,
+    perPage,
+    boostCategoryIds = [],
+    personalize = true,
+  } = params
   const terms = expandSearchTerms(q)
   const offset = (page - 1) * perPage
+  const boostIds =
+    personalize && boostCategoryIds.length > 0
+      ? boostCategoryIds.map((id) => BigInt(id))
+      : []
 
   const textOr: Record<string, unknown>[] = []
   if (terms.length) {
@@ -76,7 +97,7 @@ export async function searchArticlesPrisma(
         }
       : undefined
 
-  const where = {
+  const baseWhere = {
     status: 'published' as const,
     ...(textOr.length ? { OR: textOr } : {}),
     ...(language ? { language } : {}),
@@ -84,19 +105,39 @@ export async function searchArticlesPrisma(
     ...(publishedYearFilter ? { publishedYear: publishedYearFilter } : {}),
   }
 
-  const [rows, total] = await prisma.$transaction([
-    prisma.article.findMany({
-      where,
-      orderBy: { publishedYear: 'desc' },
-      skip: offset,
-      take: perPage,
-      include: { journal: { select: { id: true, slug: true, titleTr: true } } },
-    }),
-    prisma.article.count({ where }),
-  ])
+  const journalInclude = {
+    journal: {
+      select: {
+        id: true,
+        slug: true,
+        titleTr: true,
+        categoryId: true,
+        category: { select: { nameTr: true } },
+      },
+    },
+  } as const
 
-  return {
-    data: rows.map((row) => ({
+  const mapRow = (row: {
+    id: bigint
+    slug: string
+    legacyJournalSlug: string
+    titleTr: string | null
+    titleEn: string | null
+    authorsRaw: string | null
+    keywordsTr: string | null
+    publishedYear: number | null
+    journal: {
+      id: bigint
+      slug: string
+      titleTr: string | null
+      categoryId: bigint | null
+      category: { nameTr: string | null } | null
+    } | null
+  }): ArticleResult => {
+    const categoryId = row.journal?.categoryId ?? null
+    const matchesInterest =
+      boostIds.length > 0 && categoryId != null && boostIds.includes(categoryId)
+    return {
       id: Number(row.id),
       slug: row.slug,
       legacy_journal_slug: row.legacyJournalSlug,
@@ -108,45 +149,215 @@ export async function searchArticlesPrisma(
       journal_title: row.journal?.titleTr ?? null,
       journal_slug: row.journal?.slug ?? null,
       journal_id: row.journal ? Number(row.journal.id) : null,
-    })),
+      category_label: row.journal?.category?.nameTr ?? null,
+      matches_interest: matchesInterest,
+    }
+  }
+
+  if (boostIds.length === 0) {
+    const where = baseWhere
+    const [rows, total] = await prisma.$transaction([
+      prisma.article.findMany({
+        where,
+        orderBy: [{ publishedYear: 'desc' }, { id: 'desc' }],
+        skip: offset,
+        take: perPage,
+        include: journalInclude,
+      }),
+      prisma.article.count({ where }),
+    ])
+    return { data: rows.map(mapRow), total, interestTotal: 0 }
+  }
+
+  const boostedWhere = {
+    ...baseWhere,
+    journal: { categoryId: { in: boostIds } },
+  }
+  const otherWhere = {
+    AND: [
+      baseWhere,
+      {
+        OR: [
+          { journal: { categoryId: null } },
+          { journal: { categoryId: { notIn: boostIds } } },
+        ],
+      },
+    ],
+  }
+
+  const [boostedTotal, otherTotal] = await prisma.$transaction([
+    prisma.article.count({ where: boostedWhere }),
+    prisma.article.count({ where: otherWhere }),
+  ])
+  const total = boostedTotal + otherTotal
+
+  let rows: Awaited<ReturnType<typeof prisma.article.findMany>> = []
+
+  if (offset < boostedTotal) {
+    const boostedRows = await prisma.article.findMany({
+      where: boostedWhere,
+      orderBy: [{ publishedYear: 'desc' }, { id: 'desc' }],
+      skip: offset,
+      take: perPage,
+      include: journalInclude,
+    })
+    rows = boostedRows
+    const remaining = perPage - boostedRows.length
+    if (remaining > 0) {
+      const otherRows = await prisma.article.findMany({
+        where: otherWhere,
+        orderBy: [{ publishedYear: 'desc' }, { id: 'desc' }],
+        skip: 0,
+        take: remaining,
+        include: journalInclude,
+      })
+      rows = [...boostedRows, ...otherRows]
+    }
+  } else {
+    rows = await prisma.article.findMany({
+      where: otherWhere,
+      orderBy: [{ publishedYear: 'desc' }, { id: 'desc' }],
+      skip: offset - boostedTotal,
+      take: perPage,
+      include: journalInclude,
+    })
+  }
+
+  return {
+    data: rows.map(mapRow),
     total,
+    interestTotal: boostedTotal,
   }
 }
 
-export async function searchJournalsPrisma(q: string, page: number, perPage: number) {
+export async function searchJournalsPrisma(
+  q: string,
+  page: number,
+  perPage: number,
+  options?: { boostCategoryIds?: number[]; personalize?: boolean },
+) {
   const terms = expandSearchTerms(q)
   const offset = (page - 1) * perPage
+  const boostIds =
+    options?.personalize !== false && options?.boostCategoryIds?.length
+      ? options.boostCategoryIds.map((id) => BigInt(id))
+      : []
+
   const textOr: Record<string, unknown>[] = []
   for (const term of terms) {
     textOr.push({ titleTr: { contains: term, mode: 'insensitive' as const } })
     textOr.push({ titleEn: { contains: term, mode: 'insensitive' as const } })
     textOr.push({ issn: { contains: term, mode: 'insensitive' as const } })
   }
-  const where = {
+  const baseWhere = {
     status: 'published' as const,
     ...(textOr.length ? { OR: textOr } : {}),
   }
-  const [rows, total] = await prisma.$transaction([
-    prisma.journal.findMany({
-      where,
+
+  const journalSelect = {
+    id: true,
+    slug: true,
+    titleTr: true,
+    titleEn: true,
+    issn: true,
+    publisher: true,
+    categoryId: true,
+    category: { select: { nameTr: true } },
+  } as const
+
+  const mapRow = (row: {
+    id: bigint
+    slug: string
+    titleTr: string | null
+    titleEn: string | null
+    issn: string | null
+    publisher: string | null
+    categoryId: bigint | null
+    category: { nameTr: string | null } | null
+  }): JournalResult => ({
+    id: Number(row.id),
+    slug: row.slug,
+    title_tr: row.titleTr,
+    title_en: row.titleEn,
+    issn: row.issn,
+    publisher: row.publisher,
+    category_label: row.category?.nameTr ?? null,
+    matches_interest:
+      boostIds.length > 0 && row.categoryId != null && boostIds.includes(row.categoryId),
+  })
+
+  if (boostIds.length === 0) {
+    const [rows, total] = await prisma.$transaction([
+      prisma.journal.findMany({
+        where: baseWhere,
+        orderBy: { titleTr: 'asc' },
+        skip: offset,
+        take: perPage,
+        select: journalSelect,
+      }),
+      prisma.journal.count({ where: baseWhere }),
+    ])
+    return { data: rows.map(mapRow), total, interestTotal: 0 }
+  }
+
+  const boostedWhere = { ...baseWhere, categoryId: { in: boostIds } }
+  const otherWhere = {
+    AND: [
+      baseWhere,
+      {
+        OR: [{ categoryId: null }, { categoryId: { notIn: boostIds } }],
+      },
+    ],
+  }
+
+  const [boostedTotal, otherTotal] = await prisma.$transaction([
+    prisma.journal.count({ where: boostedWhere }),
+    prisma.journal.count({ where: otherWhere }),
+  ])
+  const total = boostedTotal + otherTotal
+
+  let rows: Array<{
+    id: bigint
+    slug: string
+    titleTr: string | null
+    titleEn: string | null
+    issn: string | null
+    publisher: string | null
+    categoryId: bigint | null
+    category: { nameTr: string | null } | null
+  }> = []
+
+  if (offset < boostedTotal) {
+    const boostedRows = await prisma.journal.findMany({
+      where: boostedWhere,
       orderBy: { titleTr: 'asc' },
       skip: offset,
       take: perPage,
-      select: { id: true, slug: true, titleTr: true, titleEn: true, issn: true, publisher: true },
-    }),
-    prisma.journal.count({ where }),
-  ])
-  return {
-    data: rows.map((r) => ({
-      id: Number(r.id),
-      slug: r.slug,
-      title_tr: r.titleTr,
-      title_en: r.titleEn,
-      issn: r.issn,
-      publisher: r.publisher,
-    })) as JournalResult[],
-    total,
+      select: journalSelect,
+    })
+    rows = boostedRows
+    const remaining = perPage - boostedRows.length
+    if (remaining > 0) {
+      const otherRows = await prisma.journal.findMany({
+        where: otherWhere,
+        orderBy: { titleTr: 'asc' },
+        skip: 0,
+        take: remaining,
+        select: journalSelect,
+      })
+      rows = [...boostedRows, ...otherRows]
+    }
+  } else {
+    rows = await prisma.journal.findMany({
+      where: otherWhere,
+      orderBy: { titleTr: 'asc' },
+      skip: offset - boostedTotal,
+      take: perPage,
+      select: journalSelect,
+    })
   }
+
+  return { data: rows.map(mapRow), total, interestTotal: boostedTotal }
 }
 
 export async function searchAuthorsPrisma(q: string, page: number, perPage: number) {
