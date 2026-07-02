@@ -191,7 +191,8 @@ export async function searchArticlesPrisma(
   ])
   const total = boostedTotal + otherTotal
 
-  let rows: Awaited<ReturnType<typeof prisma.article.findMany>> = []
+  type ArticleSearchRow = Parameters<typeof mapRow>[0]
+  let rows: ArticleSearchRow[] = []
 
   if (offset < boostedTotal) {
     const boostedRows = await prisma.article.findMany({
