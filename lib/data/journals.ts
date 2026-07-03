@@ -145,13 +145,45 @@ export async function listJournalsForSitemap(limit: number) {
     where: { status: 'published' },
     orderBy: { id: 'asc' },
     take: limit,
-    select: { id: true, slug: true, slugTr: true, slugEn: true, updatedAt: true },
+    select: {
+      id: true,
+      slug: true,
+      slugTr: true,
+      slugEn: true,
+      hasEnContent: true,
+      updatedAt: true,
+    },
   })
   return rows.map((r) => ({
     id: Number(r.id),
     slug: r.slug,
     slug_tr: r.slugTr ?? r.slug,
     slug_en: r.slugEn,
+    has_en_content: r.hasEnContent,
+    updated_at: r.updatedAt.toISOString(),
+  }))
+}
+
+export async function listEnglishJournalsForSitemap(limit: number) {
+  const rows = await prisma.journal.findMany({
+    where: { status: 'published', hasEnContent: true },
+    orderBy: { id: 'asc' },
+    take: limit,
+    select: {
+      id: true,
+      slug: true,
+      slugTr: true,
+      slugEn: true,
+      hasEnContent: true,
+      updatedAt: true,
+    },
+  })
+  return rows.map((r) => ({
+    id: Number(r.id),
+    slug: r.slug,
+    slug_tr: r.slugTr ?? r.slug,
+    slug_en: r.slugEn,
+    has_en_content: r.hasEnContent,
     updated_at: r.updatedAt.toISOString(),
   }))
 }

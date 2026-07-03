@@ -1,6 +1,10 @@
 import { urlYap } from '@/lib/urls/slug'
 import type { SiteLocale } from '@/lib/i18n/locale'
 import { localePathPrefix } from '@/lib/i18n/locale'
+import {
+  hasEnglishArticleContent,
+  type ArticleContentFields,
+} from '@/lib/i18n/content-availability'
 
 export interface LocalizedJournalSlugs {
   slugTr: string
@@ -78,10 +82,11 @@ export function buildJournalCatalogPath(
   return `${localePathPrefix(locale)}/journals/${slug}-${row.id}`
 }
 
-export function hasEnglishUrl(row: {
+export function hasEnglishUrl(row: ArticleContentFields & {
   slugEn?: string | null
   legacyJournalSlugEn?: string | null
-  titleEn?: string | null
+  hasEnContent?: boolean | null
 }): boolean {
-  return !!(row.slugEn && (row.legacyJournalSlugEn ?? true))
+  if (row.hasEnContent != null) return row.hasEnContent
+  return hasEnglishArticleContent(row)
 }

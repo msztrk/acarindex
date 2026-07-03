@@ -13,6 +13,7 @@
 import mysql from 'mysql2/promise'
 import { Prisma } from '@prisma/client'
 import { prisma, disconnectPrisma } from '../../lib/db/prisma'
+import { computeArticleHasEnContent, computeJournalHasEnContent } from '../../lib/i18n/content-availability'
 import { urlYap } from '../../lib/urls/slug'
 import { mapMakaleAuthorFields } from '../../lib/etl/article-author-source'
 import {
@@ -271,6 +272,13 @@ async function migrateJournals(
       (raw as { title_en?: string }).title_en?.trim() ||
       null
     const slugEn = titleEn ? urlYap(titleEn) : slugTr
+    const hasEnContent = computeJournalHasEnContent({
+      titleEn,
+      titleTr: raw.DergiBASLIK.trim(),
+      description: raw.Aciklama?.trim() || null,
+      about: raw.about?.trim() || null,
+      aimAndScope: aimAndScope,
+    })
 
     try {
       await prisma.journal.upsert({
@@ -281,6 +289,7 @@ async function migrateJournals(
           slug: slugTr,
           slugTr,
           slugEn,
+          hasEnContent,
           titleTr: raw.DergiBASLIK.trim(),
           titleEn,
           oldName: raw.old_name?.trim() || null,
@@ -316,6 +325,7 @@ async function migrateJournals(
           slug: slugTr,
           slugTr,
           slugEn,
+          hasEnContent,
           titleTr: raw.DergiBASLIK.trim(),
           titleEn,
           status: raw.Aktif === 1 ? 'published' : 'draft',
@@ -425,6 +435,15 @@ function mapMakaleToArticle(
     raw.document_language?.trim() ||
     (raw.BirinciDIL?.trim().toLowerCase().startsWith('en') ? 'en' : 'tr')
 
+  const titleEnValue = raw.TitleEN?.trim() || null
+  const abstractEnValue = raw.OzetEN?.trim() || null
+  const hasEnContent = computeArticleHasEnContent({
+    titleEn: titleEnValue,
+    abstractEn: abstractEnValue,
+    language: lang,
+    documentLanguage: raw.document_language?.trim() || null,
+  })
+
   const pdfPath = raw.PdfLINK?.trim()
   const hasPdf = !!(pdfPath && pdfPath !== '' && pdfPath !== 'pdf-bulunamadi')
   const authorFields = mapMakaleAuthorFields({
@@ -445,18 +464,19 @@ function mapMakaleToArticle(
     slug: slugTrBase,
     slugTr: slugTrBase,
     slugEn: slugEnBase,
+    hasEnContent,
     legacyJournalSlug,
     legacyJournalSlugEn,
     journal: { connect: { id: BigInt(raw.DergiID) } },
     issue: raw.ArsivID ? { connect: { id: BigInt(raw.ArsivID) } } : undefined,
     titleTr: raw.TitleTR?.trim() || null,
-    titleEn: raw.TitleEN?.trim() || null,
+    titleEn: titleEnValue,
     authorsRaw: authorFields.authors_raw,
     authorsCitation: authorFields.authors_citation,
     legacyAuthorIds: raw.YazarID?.trim() || null,
     institutionRaw: raw.Kurum?.trim() || null,
     abstractTr: raw.OzetTR?.trim() || null,
-    abstractEn: raw.OzetEN?.trim() || null,
+    abstractEn: abstractEnValue,
     keywordsTr: raw.KeywordsTR?.trim() || null,
     keywordsEn: raw.KeywordsEN?.trim() || null,
     referencesRaw: raw.Kaynakca?.trim() || null,
@@ -648,11 +668,22 @@ async function migrateArticlesBatch(
 
           await tx.article.upsert({
             where: { id: articleId },
-            create: { ...article, slug: resolved.slug, slugTr: resolved.slug, slugEn },
+            create: { ...article, slug: resolved.slug, slugTr: resolved.slug, slugEn, hasEnContent: computeArticleHasEnContent({
+              titleEn: article.titleEn,
+              abstractEn: article.abstractEn,
+              language: article.language,
+              documentLanguage: article.documentLanguage,
+            }) },
             update: {
               slug: resolved.slug,
               slugTr: resolved.slug,
               slugEn,
+              hasEnContent: computeArticleHasEnContent({
+                titleEn: article.titleEn,
+                abstractEn: article.abstractEn,
+                language: article.language,
+                documentLanguage: article.documentLanguage,
+              }),
               legacyJournalSlugEn,
               titleTr: article.titleTr,
               titleEn: article.titleEn,

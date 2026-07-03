@@ -14,6 +14,7 @@
 import { NextResponse } from 'next/server'
 import { countPublishedArticles } from '@/lib/data/articles'
 import { prisma } from '@/lib/db/prisma'
+import { publishedEnglishArticleWhere } from '@/lib/i18n/prisma-english-content'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 3600
@@ -21,7 +22,7 @@ export const revalidate = 3600
 const PAGE_SIZE = 5000
 
 async function countEnglishArticles() {
-  return prisma.article.count({ where: { status: 'published', slugEn: { not: null } } })
+  return prisma.article.count({ where: publishedEnglishArticleWhere })
 }
 
 export async function GET() {

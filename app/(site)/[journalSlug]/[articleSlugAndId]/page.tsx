@@ -30,6 +30,8 @@ import { ArticleSaveActions } from '@/components/user-panel/ArticleSaveActions'
 import { buildLoginHref } from '@/lib/user-panel/login-redirect'
 import { getRequestLocale } from '@/lib/i18n/request-locale'
 import { buildArticleMetadataAlternates, pickLocalizedTitle } from '@/lib/seo/hreflang'
+import { buildArticlePath } from '@/lib/i18n/slugs'
+import { hasEnglishArticleContent } from '@/lib/i18n/content-availability'
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 interface ArticleRow {
@@ -129,7 +131,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       slugEn: article.slug_en,
       legacyJournalSlug: article.legacy_journal_slug,
       legacyJournalSlugEn: article.legacy_journal_slug_en,
+      titleTr: article.title_tr,
       titleEn: article.title_en,
+      abstractTr: article.abstract_tr,
+      abstractEn: article.abstract_en,
+      language: article.language,
+      documentLanguage: article.document_language,
+      hasEnContent: article.has_en_content,
     },
     locale,
   )
@@ -244,6 +252,29 @@ export default async function ArticlePage({ params }: PageProps) {
 
   const article = await getArticle(articleId)
   if (!article) notFound()
+
+  const locale = await getRequestLocale()
+  const hasEn = article.has_en_content || hasEnglishArticleContent({
+    titleEn: article.title_en,
+    abstractEn: article.abstract_en,
+    language: article.language,
+    documentLanguage: article.document_language,
+  })
+  if (locale === 'en' && !hasEn) {
+    redirect(
+      buildArticlePath(
+        {
+          id: article.id,
+          slug: article.slug,
+          slugTr: article.slug_tr,
+          slugEn: article.slug_en,
+          legacyJournalSlug: article.legacy_journal_slug,
+          legacyJournalSlugEn: article.legacy_journal_slug_en,
+        },
+        'tr',
+      ),
+    )
+  }
 
   const authorLinks = await getArticleAuthorLinks(articleId)
 

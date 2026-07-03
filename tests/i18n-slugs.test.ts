@@ -24,6 +24,8 @@ describe('localized paths', () => {
     legacyJournalSlug: 'turkish-studies',
     legacyJournalSlugEn: 'turkish-studies-en',
     titleEn: 'National Struggle',
+    abstractEn: 'English abstract with sufficient length for content availability.',
+    hasEnContent: true,
   }
 
   it('builds TR article path', () => {

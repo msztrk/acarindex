@@ -11,6 +11,7 @@ export function articleSitemapUrlEntry(
     slug_en?: string | null
     legacy_journal_slug: string
     legacy_journal_slug_en?: string | null
+    has_en_content?: boolean
     updated_at: string
   },
   locale: 'tr' | 'en',
@@ -26,9 +27,8 @@ export function articleSitemapUrlEntry(
   const loc = buildCanonicalUrl(base, buildArticlePath(articleRow, locale))
   const lastmod = row.updated_at.slice(0, 10)
   const trPath = buildArticlePath(articleRow, 'tr')
-  const enPath = row.slug_en ? buildArticlePath(articleRow, 'en') : null
-  const hreflang =
-    locale === 'tr' ? sitemapHreflangLinks(base, trPath, enPath) : sitemapHreflangLinks(base, trPath, enPath)
+  const enPath = row.has_en_content ? buildArticlePath(articleRow, 'en') : null
+  const hreflang = sitemapHreflangLinks(base, trPath, enPath)
 
   return `  <url>
     <loc>${loc}</loc>
@@ -45,6 +45,7 @@ export function journalSitemapUrlEntry(
     slug: string
     slug_tr?: string | null
     slug_en?: string | null
+    has_en_content?: boolean
     updated_at: string
   },
   locale: 'tr' | 'en',
@@ -53,7 +54,7 @@ export function journalSitemapUrlEntry(
   const loc = buildCanonicalUrl(base, buildJournalCatalogPath(journalRow, locale))
   const lastmod = row.updated_at.slice(0, 10)
   const trPath = buildJournalCatalogPath(journalRow, 'tr')
-  const enPath = row.slug_en ? buildJournalCatalogPath(journalRow, 'en') : null
+  const enPath = row.has_en_content ? buildJournalCatalogPath(journalRow, 'en') : null
   const hreflang = sitemapHreflangLinks(base, trPath, enPath)
 
   return `  <url>

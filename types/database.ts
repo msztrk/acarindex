@@ -58,6 +58,7 @@ export interface Journal {
   slug: string
   slug_tr: string | null
   slug_en: string | null
+  has_en_content: boolean
 
   title_tr: string | null
   title_en: string | null
@@ -123,6 +124,7 @@ export interface Article {
   slug: string
   slug_tr: string | null
   slug_en: string | null
+  has_en_content: boolean
   legacy_journal_slug: string
   legacy_journal_slug_en: string | null
 

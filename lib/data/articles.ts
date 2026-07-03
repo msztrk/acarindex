@@ -134,6 +134,7 @@ export async function listArticlesForSitemapPage(page: number, perPage: number) 
       slugEn: true,
       legacyJournalSlug: true,
       legacyJournalSlugEn: true,
+      hasEnContent: true,
       updatedAt: true,
     },
   })
@@ -144,6 +145,7 @@ export async function listArticlesForSitemapPage(page: number, perPage: number) 
     slug_en: r.slugEn,
     legacy_journal_slug: r.legacyJournalSlug,
     legacy_journal_slug_en: r.legacyJournalSlugEn,
+    has_en_content: r.hasEnContent,
     updated_at: r.updatedAt.toISOString(),
   }))
 }

@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import * as journalData from '@/lib/data/journals'
@@ -30,6 +30,10 @@ import { recordRecentView } from '@/lib/user-panel/recent-views'
 import { isJournalFollowed } from '@/lib/user-panel/follows'
 import { FollowJournalButton } from '@/components/user-panel/FollowJournalButton'
 import { buildLoginHref } from '@/lib/user-panel/login-redirect'
+import { getRequestLocale } from '@/lib/i18n/request-locale'
+import { buildJournalCatalogPath } from '@/lib/i18n/slugs'
+import { hasEnglishJournalContent } from '@/lib/i18n/content-availability'
+import { buildJournalMetadataAlternates } from '@/lib/seo/hreflang'
 
 // ─── URL çözümleme ───────────────────────────────────────────────────────────
 
@@ -135,9 +139,30 @@ export async function generateMetadata({
   if (!journal) return {}
 
   const journalTitle = journal.title_tr ?? journal.title_en ?? 'Dergi'
+  const locale = await getRequestLocale()
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
-  const canonicalPath = buildJournalCanonicalPath(resolved, journalPath)
-  const canonicalUrl = `${canonicalBase}${canonicalPath}`
+  const subPath =
+    resolved.subPage === 'home'
+      ? ''
+      : `/${journalPath.slice(1).join('/')}`
+  const journalRow = {
+    id: parsed.journalId,
+    slug: journal.slug,
+    slugTr: journal.slug_tr,
+    slugEn: journal.slug_en,
+    titleTr: journal.title_tr,
+    titleEn: journal.title_en,
+    description: journal.description,
+    about: journal.about,
+    aimAndScope: journal.aim_and_scope,
+    hasEnContent: journal.has_en_content,
+  }
+  const hreflangAlternates = buildJournalMetadataAlternates(
+    canonicalBase,
+    journalRow,
+    locale,
+    subPath,
+  )
 
   if (resolved.subPage === 'sayi' && resolved.issueId) {
     const issue = await requireJournalIssue(parsed.journalId, resolved.issueId)
@@ -149,11 +174,11 @@ export async function generateMetadata({
     return {
       title: pageTitle,
       description,
-      alternates: { canonical: canonicalUrl },
+      alternates: hreflangAlternates,
       openGraph: {
         title: pageTitle,
         description,
-        url: canonicalPath,
+        url: hreflangAlternates.canonical,
       },
     }
   }
@@ -165,11 +190,11 @@ export async function generateMetadata({
     return {
       title: archiveTitle,
       description: archiveDescription,
-      alternates: { canonical: canonicalUrl },
+      alternates: hreflangAlternates,
       openGraph: {
         title: archiveTitle,
         description: archiveDescription,
-        url: canonicalPath,
+        url: hreflangAlternates.canonical,
       },
     }
   }
@@ -177,7 +202,7 @@ export async function generateMetadata({
   return {
     title: journalTitle,
     description: journal.description?.slice(0, 160) ?? undefined,
-    alternates: { canonical: canonicalUrl },
+    alternates: hreflangAlternates,
   }
 }
 
@@ -261,6 +286,34 @@ export default async function JournalPage({
   const parsed = parseJournalSegment(resolved.journalSegment)!
   const journal = await getJournal(parsed.journalId)
   if (!journal) notFound()
+
+  const locale = await getRequestLocale()
+  const hasEn =
+    journal.has_en_content ||
+    hasEnglishJournalContent({
+      titleEn: journal.title_en,
+      titleTr: journal.title_tr,
+      description: journal.description,
+      about: journal.about,
+      aimAndScope: journal.aim_and_scope,
+    })
+  if (locale === 'en' && !hasEn) {
+    const sub =
+      resolved.subPage === 'home'
+        ? ''
+        : `/${journalPath.slice(1).join('/')}`
+    redirect(
+      `${buildJournalCatalogPath(
+        {
+          id: parsed.journalId,
+          slug: journal.slug,
+          slugTr: journal.slug_tr,
+          slugEn: journal.slug_en,
+        },
+        'tr',
+      )}${sub}`,
+    )
+  }
 
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
   const journalBase = `${canonicalBase}/journals/${resolved.journalSegment}`
