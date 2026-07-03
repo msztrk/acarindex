@@ -31,7 +31,8 @@ import { buildLoginHref } from '@/lib/user-panel/login-redirect'
 import { getRequestLocale } from '@/lib/i18n/request-locale'
 import { buildArticleMetadataAlternates, pickLocalizedTitle } from '@/lib/seo/hreflang'
 import { buildArticlePath } from '@/lib/i18n/slugs'
-import { hasEnglishArticleContent } from '@/lib/i18n/content-availability'
+import { shouldRedirectEnArticleToTr } from '@/lib/i18n/en-route-guard'
+import { pickLocalizedAbstract } from '@/lib/i18n/pick-localized-text'
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 interface ArticleRow {
@@ -118,9 +119,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const locale = await getRequestLocale()
   const title = pickLocalizedTitle(article.title_tr, article.title_en, locale) || 'Makale'
-  const description =
-    (locale === 'en' ? article.abstract_en ?? article.abstract_tr : article.abstract_tr ?? article.abstract_en) ??
-    undefined
+  const description = pickLocalizedAbstract(
+    article.abstract_tr,
+    article.abstract_en,
+    locale,
+  )
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
   const alternates = buildArticleMetadataAlternates(
     canonicalBase,
@@ -254,13 +257,15 @@ export default async function ArticlePage({ params }: PageProps) {
   if (!article) notFound()
 
   const locale = await getRequestLocale()
-  const hasEn = article.has_en_content || hasEnglishArticleContent({
-    titleEn: article.title_en,
-    abstractEn: article.abstract_en,
-    language: article.language,
-    documentLanguage: article.document_language,
-  })
-  if (locale === 'en' && !hasEn) {
+  if (
+    shouldRedirectEnArticleToTr(locale, {
+      has_en_content: article.has_en_content,
+      titleEn: article.title_en,
+      abstractEn: article.abstract_en,
+      language: article.language,
+      documentLanguage: article.document_language,
+    })
+  ) {
     redirect(
       buildArticlePath(
         {

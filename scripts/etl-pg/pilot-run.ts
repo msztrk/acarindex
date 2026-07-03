@@ -13,7 +13,8 @@
 import mysql from 'mysql2/promise'
 import { Prisma } from '@prisma/client'
 import { prisma, disconnectPrisma } from '../../lib/db/prisma'
-import { computeArticleHasEnContent, computeJournalHasEnContent } from '../../lib/i18n/content-availability'
+import { computeArticleHasEnglishContent, computeJournalHasEnglishContent } from '../../lib/i18n/content-availability'
+import { triggerEnglishContentRevalidation } from '../../lib/i18n/trigger-revalidate'
 import { urlYap } from '../../lib/urls/slug'
 import { mapMakaleAuthorFields } from '../../lib/etl/article-author-source'
 import {
@@ -272,7 +273,7 @@ async function migrateJournals(
       (raw as { title_en?: string }).title_en?.trim() ||
       null
     const slugEn = titleEn ? urlYap(titleEn) : slugTr
-    const hasEnContent = computeJournalHasEnContent({
+    const hasEnContent = computeJournalHasEnglishContent({
       titleEn,
       titleTr: raw.DergiBASLIK.trim(),
       description: raw.Aciklama?.trim() || null,
@@ -437,7 +438,7 @@ function mapMakaleToArticle(
 
   const titleEnValue = raw.TitleEN?.trim() || null
   const abstractEnValue = raw.OzetEN?.trim() || null
-  const hasEnContent = computeArticleHasEnContent({
+  const hasEnContent = computeArticleHasEnglishContent({
     titleEn: titleEnValue,
     abstractEn: abstractEnValue,
     language: lang,
@@ -668,7 +669,7 @@ async function migrateArticlesBatch(
 
           await tx.article.upsert({
             where: { id: articleId },
-            create: { ...article, slug: resolved.slug, slugTr: resolved.slug, slugEn, hasEnContent: computeArticleHasEnContent({
+            create: { ...article, slug: resolved.slug, slugTr: resolved.slug, slugEn, hasEnContent: computeArticleHasEnglishContent({
               titleEn: article.titleEn,
               abstractEn: article.abstractEn,
               language: article.language,
@@ -678,7 +679,7 @@ async function migrateArticlesBatch(
               slug: resolved.slug,
               slugTr: resolved.slug,
               slugEn,
-              hasEnContent: computeArticleHasEnContent({
+              hasEnContent: computeArticleHasEnglishContent({
                 titleEn: article.titleEn,
                 abstractEn: article.abstractEn,
                 language: article.language,
@@ -941,6 +942,10 @@ async function main() {
         status: errors.length > 0 || counters.errors > 0 ? 'partial' : 'success',
         notes: JSON.stringify({ counters, sourceKeyConflicts: sourceKeyConflicts.length }),
       })
+      const revalidationTriggered = await triggerEnglishContentRevalidation()
+      if (revalidationTriggered) {
+        console.log(JSON.stringify({ revalidation_triggered: true }))
+      }
     }
 
     if (errors.length > 0 && args.write) {

@@ -37,6 +37,7 @@
     "etl:full-run": "npx tsx --env-file=.env.local scripts/etl-pg/pilot-run.ts --full --write --batch-size=400",
     "etl:full-run-resume": "npx tsx --env-file=.env.local scripts/etl-pg/pilot-run.ts --full --write --batch-size=400 --skip-authors --start-after-id=0",
     "validate:i18n-urls": "npx tsx --env-file=.env.local scripts/validate-i18n-urls.ts",
+    "recompute:en-content": "npx tsx --env-file=.env.local scripts/recompute-en-content-flags.ts",
     "rehearsal:build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step build",
     "rehearsal:migrate": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step migrate",
     "rehearsal:seed": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy/rehearsal-up.ps1 -Step seed",

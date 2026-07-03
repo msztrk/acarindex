@@ -31,9 +31,11 @@ import { isJournalFollowed } from '@/lib/user-panel/follows'
 import { FollowJournalButton } from '@/components/user-panel/FollowJournalButton'
 import { buildLoginHref } from '@/lib/user-panel/login-redirect'
 import { getRequestLocale } from '@/lib/i18n/request-locale'
+import type { SiteLocale } from '@/lib/i18n/locale'
 import { buildJournalCatalogPath } from '@/lib/i18n/slugs'
-import { hasEnglishJournalContent } from '@/lib/i18n/content-availability'
-import { buildJournalMetadataAlternates } from '@/lib/seo/hreflang'
+import { shouldRedirectEnJournalToTr } from '@/lib/i18n/en-route-guard'
+import { pickLocalizedJournalDescription } from '@/lib/i18n/pick-localized-text'
+import { buildJournalMetadataAlternates, pickLocalizedTitle } from '@/lib/seo/hreflang'
 
 // ─── URL çözümleme ───────────────────────────────────────────────────────────
 
@@ -200,9 +202,11 @@ export async function generateMetadata({
     }
   }
 
+  const journalDescription = pickLocalizedJournalDescription(journal.description, locale)
+
   return {
     title: journalTitle,
-    description: journal.description?.slice(0, 160) ?? undefined,
+    description: journalDescription?.slice(0, 160),
     alternates: hreflangAlternates,
   }
 }
@@ -289,16 +293,16 @@ export default async function JournalPage({
   if (!journal) notFound()
 
   const locale = await getRequestLocale()
-  const hasEn =
-    journal.has_en_content ||
-    hasEnglishJournalContent({
+  if (
+    shouldRedirectEnJournalToTr(locale, {
+      has_en_content: journal.has_en_content,
       titleEn: journal.title_en,
       titleTr: journal.title_tr,
       description: journal.description,
       about: journal.about,
       aimAndScope: journal.aim_and_scope,
     })
-  if (locale === 'en' && !hasEn) {
+  ) {
     const sub =
       resolved.subPage === 'home'
         ? ''
@@ -318,7 +322,7 @@ export default async function JournalPage({
 
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
   const journalBase = `${canonicalBase}/journals/${resolved.journalSegment}`
-  const title = journal.title_tr ?? journal.title_en ?? 'Dergi'
+  const title = pickLocalizedTitle(journal.title_tr, journal.title_en, locale)
   const breadcrumbTitle =
     title.length > 48 ? `${title.slice(0, 45).trimEnd()}…` : title
 
@@ -416,23 +420,40 @@ export default async function JournalPage({
             <div className="border-b border-border/80 mb-6 md:mb-8" />
 
             {resolved.subPage === 'home' && (
-              <JournalHome journal={journal} journalId={parsed.journalId} segment={resolved.journalSegment} />
+              <JournalHome
+                journal={journal}
+                journalId={parsed.journalId}
+                segment={resolved.journalSegment}
+                locale={locale}
+              />
             )}
             {resolved.subPage === 'arsiv' && (
               <JournalArsiv journal={journal} segment={resolved.journalSegment} />
             )}
-            {resolved.subPage === 'amac-kapsam' && (
-              <CmsSection title="Amaç ve Kapsam" html={journal.aim_and_scope} />
-            )}
-            {resolved.subPage === 'editor-kurulu' && (
-              <CmsSection title="Editör Kurulu" html={journal.editorial_board} />
-            )}
-            {resolved.subPage === 'yazim-kurallari' && (
-              <CmsSection title="Yazım Kuralları" html={journal.writing_rules} />
-            )}
-            {resolved.subPage === 'iletisim' && (
-              <CmsSection title="İletişim" html={journal.contact_text} />
-            )}
+            {resolved.subPage === 'amac-kapsam' &&
+              (locale === 'en' ? (
+                <TrOnlyContentNotice trHref={`/journals/${resolved.journalSegment}/amac-kapsam`} />
+              ) : (
+                <CmsSection title="Amaç ve Kapsam" html={journal.aim_and_scope} />
+              ))}
+            {resolved.subPage === 'editor-kurulu' &&
+              (locale === 'en' ? (
+                <TrOnlyContentNotice trHref={`/journals/${resolved.journalSegment}/editor-kurulu`} />
+              ) : (
+                <CmsSection title="Editör Kurulu" html={journal.editorial_board} />
+              ))}
+            {resolved.subPage === 'yazim-kurallari' &&
+              (locale === 'en' ? (
+                <TrOnlyContentNotice trHref={`/journals/${resolved.journalSegment}/yazim-kurallari`} />
+              ) : (
+                <CmsSection title="Yazım Kuralları" html={journal.writing_rules} />
+              ))}
+            {resolved.subPage === 'iletisim' &&
+              (locale === 'en' ? (
+                <TrOnlyContentNotice trHref={`/journals/${resolved.journalSegment}/iletisim`} />
+              ) : (
+                <CmsSection title="İletişim" html={journal.contact_text} />
+              ))}
           </>
         )}
       </div>
@@ -474,14 +495,27 @@ function JournalNav({ segment, active }: { segment: string; active: SubPage }) {
   )
 }
 
+function TrOnlyContentNotice({ trHref }: { trHref: string }) {
+  return (
+    <p className="text-sm text-muted-foreground leading-relaxed">
+      This section is available in Turkish.{' '}
+      <Link href={trHref} hrefLang="tr" className={cn('text-primary hover:text-accent no-underline', linkFocusClass)}>
+        View Turkish page
+      </Link>
+    </p>
+  )
+}
+
 async function JournalHome({
   journal,
   journalId,
   segment,
+  locale,
 }: {
   journal: Journal
   journalId: number
   segment: string
+  locale: SiteLocale
 }) {
   const [issues, articles] = await Promise.all([
     getIssues(journalId),
@@ -557,7 +591,7 @@ async function JournalHome({
           )}
         </section>
 
-        {journal.description?.trim() && (
+        {locale !== 'en' && journal.description?.trim() && (
           <section className="min-w-0">
             <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Dergi hakkında</h2>
             <p className="text-sm sm:text-base leading-relaxed text-foreground/85 max-w-3xl text-justify hyphens-auto">

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, Source_Serif_4 } from 'next/font/google'
+import { getRequestLocale } from '@/lib/i18n/request-locale'
 import './globals.css'
 
 const inter = Inter({
@@ -38,13 +39,16 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const locale = await getRequestLocale()
+  const htmlLang = locale === 'en' ? 'en' : 'tr'
+
   return (
-    <html lang="tr" className={`${inter.variable} ${sourceSerif.variable}`}>
+    <html lang={htmlLang} className={`${inter.variable} ${sourceSerif.variable}`}>
       <body className="font-sans min-h-screen flex flex-col">
         {children}
       </body>

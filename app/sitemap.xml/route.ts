@@ -15,11 +15,12 @@ import { NextResponse } from 'next/server'
 import { countPublishedArticles } from '@/lib/data/articles'
 import { prisma } from '@/lib/db/prisma'
 import { publishedEnglishArticleWhere } from '@/lib/i18n/prisma-english-content'
+import { computeEnSitemapPageCount, EN_SITEMAP_PAGE_SIZE } from '@/lib/i18n/sitemap-en'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 3600
 
-const PAGE_SIZE = 5000
+const PAGE_SIZE = EN_SITEMAP_PAGE_SIZE
 
 async function countEnglishArticles() {
   return prisma.article.count({ where: publishedEnglishArticleWhere })
@@ -31,7 +32,7 @@ export async function GET() {
 
   const [total, enTotal] = await Promise.all([countPublishedArticles(), countEnglishArticles()])
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const enPageCount = enTotal > 0 ? Math.ceil(enTotal / PAGE_SIZE) : 0
+  const enPageCount = computeEnSitemapPageCount(enTotal, PAGE_SIZE)
 
   const sitemaps: string[] = []
 
