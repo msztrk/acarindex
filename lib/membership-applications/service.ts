@@ -67,3 +67,103 @@ export async function listMembershipApplicationsForUser(userId: string) {
     take: 50,
   })
 }
+
+export async function listPendingMembershipApplications(limit = 100) {
+  return prisma.membershipApplication.findMany({
+    where: { status: 'pending' },
+    orderBy: { createdAt: 'asc' },
+    take: limit,
+    include: {
+      user: { select: { email: true, name: true } },
+      journal: { select: { titleTr: true, slug: true } },
+      institution: { select: { nameTr: true } },
+    },
+  })
+}
+
+export async function reviewMembershipApplication(input: {
+  id: string
+  reviewerId: string
+  status: 'approved' | 'rejected'
+  reviewNote?: string
+}) {
+  const app = await prisma.membershipApplication.findUnique({ where: { id: input.id } })
+  if (!app || app.status !== 'pending') {
+    throw new Error('Application not pending')
+  }
+
+  const now = new Date()
+
+  const row = await prisma.$transaction(async (tx) => {
+    const updated = await tx.membershipApplication.update({
+      where: { id: input.id },
+      data: {
+        status: input.status,
+        reviewedBy: input.reviewerId,
+        reviewedAt: now,
+        reviewNote: input.reviewNote ?? null,
+      },
+    })
+
+    if (input.status === 'approved') {
+      if (app.type === 'journal_editor' && app.journalId) {
+        await tx.journalMembership.upsert({
+          where: {
+            userId_journalId: { userId: app.userId, journalId: app.journalId },
+          },
+          create: {
+            userId: app.userId,
+            journalId: app.journalId,
+            role: 'journal_editor',
+            status: 'approved',
+            approvedBy: input.reviewerId,
+            approvedAt: now,
+          },
+          update: {
+            role: 'journal_editor',
+            status: 'approved',
+            approvedBy: input.reviewerId,
+            approvedAt: now,
+            suspendedAt: null,
+            revokedAt: null,
+          },
+        })
+      } else if (app.type === 'institution_manager' && app.institutionId) {
+        await tx.institutionMembership.upsert({
+          where: {
+            userId_institutionId: { userId: app.userId, institutionId: app.institutionId },
+          },
+          create: {
+            userId: app.userId,
+            institutionId: app.institutionId,
+            role: 'institution_manager',
+            status: 'approved',
+            approvedBy: input.reviewerId,
+            approvedAt: now,
+          },
+          update: {
+            role: 'institution_manager',
+            status: 'approved',
+            approvedBy: input.reviewerId,
+            approvedAt: now,
+            suspendedAt: null,
+            revokedAt: null,
+          },
+        })
+      }
+    }
+
+    return updated
+  })
+
+  await logAudit({
+    actorId: input.reviewerId,
+    action: `membership_application.${input.status}`,
+    entityType: app.type,
+    entityId: app.journalId?.toString() ?? app.institutionId?.toString() ?? '',
+    oldValues: { status: app.status },
+    newValues: { status: input.status, applicationId: app.id },
+  })
+
+  return row
+}

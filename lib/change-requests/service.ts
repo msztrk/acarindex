@@ -54,6 +54,9 @@ export async function listPendingChangeRequests(limit = 100) {
     where: { status: 'pending' },
     orderBy: { createdAt: 'asc' },
     take: limit,
+    include: {
+      requester: { select: { email: true, name: true } },
+    },
   })
 }
 

@@ -7,6 +7,7 @@ import {
 import {
   submitMembershipApplication,
   listMembershipApplicationsForUser,
+  reviewMembershipApplication,
 } from '@/lib/membership-applications/service'
 import { ForbiddenError } from '@/lib/auth/forbidden'
 
@@ -21,7 +22,12 @@ const mockPrisma = vi.hoisted(() => ({
     create: vi.fn(),
     findFirst: vi.fn(),
     findMany: vi.fn(),
+    findUnique: vi.fn(),
+    update: vi.fn(),
   },
+  journalMembership: { upsert: vi.fn() },
+  institutionMembership: { upsert: vi.fn() },
+  $transaction: vi.fn(),
   auditLog: { create: vi.fn() },
 }))
 
@@ -143,5 +149,35 @@ describe('membership application service', () => {
     mockPrisma.membershipApplication.findMany.mockResolvedValue([{ id: 'app-1' }])
     const rows = await listMembershipApplicationsForUser('user-1')
     expect(rows).toHaveLength(1)
+  })
+
+  it('approves journal application and creates membership', async () => {
+    mockPrisma.membershipApplication.findUnique.mockResolvedValue({
+      id: 'app-1',
+      status: 'pending',
+      type: 'journal_editor',
+      userId: 'user-1',
+      journalId: 42n,
+      institutionId: null,
+    })
+    mockPrisma.$transaction.mockImplementation(async (fn) =>
+      fn({
+        membershipApplication: {
+          update: vi.fn().mockResolvedValue({ id: 'app-1', status: 'approved' }),
+        },
+        journalMembership: {
+          upsert: vi.fn().mockResolvedValue({ id: 'jm-1' }),
+        },
+        institutionMembership: { upsert: vi.fn() },
+      }),
+    )
+
+    const row = await reviewMembershipApplication({
+      id: 'app-1',
+      reviewerId: 'admin-1',
+      status: 'approved',
+    })
+    expect(row.status).toBe('approved')
+    expect(mockPrisma.auditLog.create).toHaveBeenCalled()
   })
 })
