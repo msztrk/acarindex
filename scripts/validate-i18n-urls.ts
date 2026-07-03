@@ -33,6 +33,7 @@ import {
   classifyEnSitemapExclusion,
   isArticleEligibleForEnSitemap,
   parseOptionalIntEnv,
+  type EnSitemapExclusionBreakdown,
 } from '../lib/i18n/validate-i18n-metrics'
 
 const PAGE_SIZE = EN_SITEMAP_PAGE_SIZE
@@ -180,32 +181,17 @@ async function checkLiveRedirects() {
   return { invalid_en_redirect_count: invalid, redirect_loop_count: loops, skipped: false }
 }
 
-async function countComputedEnglishContent(): Promise<number> {
-  let count = 0
-  let cursor = 0n
-  while (true) {
-    const rows = await prisma.article.findMany({
-      where: { status: 'published', id: { gt: cursor } },
-      orderBy: { id: 'asc' },
-      take: 3000,
-      select: publishedEnglishArticleSelect,
-    })
-    if (!rows.length) break
-    for (const row of rows) {
-      if (computeArticleHasEnglishContent(row)) count++
-    }
-    cursor = rows[rows.length - 1]!.id
-  }
-  return count
-}
-
-async function scanEnSitemapExclusionBreakdown() {
+async function scanComputedEnContentAndExclusions(): Promise<{
+  computedCount: number
+  breakdown: EnSitemapExclusionBreakdown
+}> {
   const breakdown = {
     byArticleStatus: 0,
     byMissingSlug: 0,
     byMissingJournal: 0,
     byJournalStatus: 0,
   }
+  let computedCount = 0
   let cursor = 0n
 
   while (true) {
@@ -230,6 +216,7 @@ async function scanEnSitemapExclusionBreakdown() {
 
     for (const row of rows) {
       if (!computeArticleHasEnglishContent(row)) continue
+      computedCount++
 
       const exclusionRow = {
         status: row.status,
@@ -244,7 +231,7 @@ async function scanEnSitemapExclusionBreakdown() {
     cursor = rows[rows.length - 1]!.id
   }
 
-  return breakdown
+  return { computedCount, breakdown }
 }
 
 async function main() {
@@ -254,18 +241,17 @@ async function main() {
   const [
     articlesTotal,
     articlesWithSlugEn,
-    computedEnglishContent,
+    computedEnScan,
     englishSitemapEligible,
     duplicateEnSlugs,
     journalMetrics,
     quality,
     flagDrift,
     liveChecks,
-    exclusionBreakdown,
   ] = await Promise.all([
     prisma.article.count({ where: { status: 'published' } }),
     prisma.article.count({ where: { status: 'published', slugEn: { not: null } } }),
-    countComputedEnglishContent(),
+    scanComputedEnContentAndExclusions(),
     prisma.article.count({ where: publishedEnglishArticleWhere }),
     prisma.$queryRaw<{ slug_en: string; n: bigint }[]>`
       SELECT slug_en, COUNT(*) AS n FROM articles
@@ -299,8 +285,10 @@ async function main() {
     scanQualityMetrics(),
     countFlagDrift(),
     checkLiveRedirects(),
-    scanEnSitemapExclusionBreakdown(),
   ])
+
+  const computedEnglishContent = computedEnScan.computedCount
+  const exclusionBreakdown = computedEnScan.breakdown
 
   const enPageCount = computeEnSitemapPageCount(englishSitemapEligible, PAGE_SIZE)
   let emptyEnSitemapPages = 0
