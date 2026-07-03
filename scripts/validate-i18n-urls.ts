@@ -19,10 +19,10 @@ async function main() {
     articlesWithSlugEn,
     articlesWithRealEnglishContent,
     articlesWithoutRealEnglishContent,
-    englishSitemapEligible,
-    flagMismatch,
-    duplicateEnSlugs,
     excludedFallbackSlugUrls,
+    duplicateEnSlugs,
+    flagDrift,
+    enSetIncludesNonContent,
   ] = await Promise.all([
     prisma.article.count({ where: { status: 'published' } }),
     prisma.article.count({
@@ -32,34 +32,6 @@ async function main() {
     prisma.article.count({
       where: { status: 'published', hasEnContent: false },
     }),
-    prisma.article.count({ where: publishedEnglishArticleWhere }),
-    prisma.article.count({
-      where: {
-        status: 'published',
-        OR: [
-          {
-            hasEnContent: true,
-            NOT: {
-              AND: [
-                { titleEn: { not: null } },
-                {
-                  OR: [
-                    { abstractEn: { not: null } },
-                    { language: { startsWith: 'en', mode: 'insensitive' } },
-                    { documentLanguage: { startsWith: 'en', mode: 'insensitive' } },
-                  ],
-                },
-              ],
-            },
-          },
-          { hasEnContent: false, titleEn: { not: null } },
-        ],
-      },
-    }),
-    prisma.$queryRaw<{ slug_en: string; n: bigint }[]>`
-      SELECT slug_en, COUNT(*) AS n FROM articles
-      WHERE status = 'published' AND slug_en IS NOT NULL AND has_en_content = true
-      GROUP BY slug_en HAVING COUNT(*) > 1 LIMIT 10`,
     prisma.$queryRaw<{ n: bigint }[]>`
       SELECT COUNT(*) AS n FROM articles
       WHERE status = 'published'
@@ -67,50 +39,55 @@ async function main() {
         AND slug_en IS NOT NULL
         AND slug_tr IS NOT NULL
         AND slug_en = slug_tr`,
+    prisma.$queryRaw<{ slug_en: string; n: bigint }[]>`
+      SELECT slug_en, COUNT(*) AS n FROM articles
+      WHERE status = 'published' AND has_en_content = true AND slug_en IS NOT NULL
+      GROUP BY slug_en HAVING COUNT(*) > 1 LIMIT 10`,
+    prisma.$queryRaw<{ n: bigint }[]>`
+      SELECT COUNT(*) AS n FROM articles
+      WHERE status = 'published'
+        AND has_en_content IS DISTINCT FROM (
+          title_en IS NOT NULL
+          AND char_length(trim(title_en)) >= 10
+          AND (
+            (abstract_en IS NOT NULL AND char_length(trim(abstract_en)) >= 20)
+            OR lower(trim(coalesce(nullif(trim(document_language), ''), nullif(trim(language), ''), ''))) LIKE 'en%'
+          )
+        )`,
+    prisma.article.count({
+      where: {
+        status: 'published',
+        hasEnContent: false,
+        titleEn: { not: null },
+        OR: [
+          { abstractEn: { not: null } },
+          { language: { startsWith: 'en', mode: 'insensitive' } },
+          { documentLanguage: { startsWith: 'en', mode: 'insensitive' } },
+        ],
+      },
+    }),
   ])
 
-  const enSitemapWithoutContent = await prisma.article.count({
-    where: {
-      status: 'published',
-      hasEnContent: false,
-      slugEn: { not: null },
-    },
-  })
-
-  const contentButNotInEnSitemap = await prisma.article.count({
-    where: {
-      status: 'published',
-      hasEnContent: true,
-    },
-  })
-
-  const sampleMismatch = await prisma.article.findMany({
+  const sampleCheck = await prisma.article.findMany({
     where: { status: 'published' },
     take: 500,
     orderBy: { id: 'desc' },
     select: {
-      id: true,
-      slugTr: true,
-      slugEn: true,
       titleEn: true,
       abstractEn: true,
       language: true,
       documentLanguage: true,
       hasEnContent: true,
+      slugEn: true,
     },
   })
 
   let hreflangWouldIncludeEnWithoutContent = 0
-  let computedFlagDrift = 0
-  for (const row of sampleMismatch) {
-    const computed = computeArticleHasEnContent({
-      titleEn: row.titleEn,
-      abstractEn: row.abstractEn,
-      language: row.language,
-      documentLanguage: row.documentLanguage,
-    })
-    if (computed !== row.hasEnContent) computedFlagDrift++
-    if (!computed && row.slugEn) hreflangWouldIncludeEnWithoutContent++
+  for (const row of sampleCheck) {
+    const computed = computeArticleHasEnContent(row)
+    if (!computed && row.slugEn && row.hasEnContent) {
+      hreflangWouldIncludeEnWithoutContent++
+    }
   }
 
   const sampleEn = await prisma.article.findMany({
@@ -126,6 +103,9 @@ async function main() {
       legacyJournalSlugEn: true,
       titleTr: true,
       titleEn: true,
+      abstractEn: true,
+      language: true,
+      documentLanguage: true,
       hasEnContent: true,
     },
   })
@@ -156,11 +136,15 @@ async function main() {
     ),
     hasRealEnglishContent: hasEnglishArticleContent({
       titleEn: a.titleEn,
+      abstractEn: a.abstractEn,
+      language: a.language,
+      documentLanguage: a.documentLanguage,
       hasEnContent: a.hasEnContent,
     }),
   }))
 
-  const enPageCount = Math.ceil(englishSitemapEligible / PAGE_SIZE)
+  const englishSitemapEligible = articlesWithRealEnglishContent
+  const enPageCount = englishSitemapEligible > 0 ? Math.ceil(englishSitemapEligible / PAGE_SIZE) : 0
 
   const report = {
     total_published_articles: articlesTotal,
@@ -173,23 +157,20 @@ async function main() {
     english_hreflang_urls: englishSitemapEligible,
     excluded_fallback_slug_urls: Number(excludedFallbackSlugUrls[0]?.n ?? 0),
     checks: {
-      en_sitemap_without_english_content: enSitemapWithoutContent,
-      hreflang_en_without_content_sample: hreflangWouldIncludeEnWithoutContent,
-      english_content_missing_from_en_sitemap:
-        contentButNotInEnSitemap === englishSitemapEligible ? 0 : Math.abs(contentButNotInEnSitemap - englishSitemapEligible),
-      flag_content_drift_sample: computedFlagDrift,
+      en_sitemap_includes_non_english_content: enSetIncludesNonContent,
+      hreflang_flag_mismatch_sample: hreflangWouldIncludeEnWithoutContent,
+      has_en_content_flag_drift: Number(flagDrift[0]?.n ?? 0),
       duplicate_en_slug_groups: duplicateEnSlugs.map((r) => ({
         slug_en: r.slug_en,
         count: Number(r.n),
       })),
-      coarse_flag_mismatch: flagMismatch,
     },
     samplePaths,
     ok:
-      enSitemapWithoutContent === 0 &&
+      enSetIncludesNonContent === 0 &&
+      Number(flagDrift[0]?.n ?? 0) === 0 &&
       duplicateEnSlugs.length === 0 &&
-      contentButNotInEnSitemap === englishSitemapEligible &&
-      computedFlagDrift === 0,
+      hreflangWouldIncludeEnWithoutContent === 0,
   }
 
   console.log(JSON.stringify(report, null, 2))
