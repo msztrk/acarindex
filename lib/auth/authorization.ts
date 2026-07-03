@@ -211,6 +211,26 @@ export async function requireInstitutionAccess(
   return membership
 }
 
+export async function listApprovedJournalMemberships(userId: string) {
+  return prisma.journalMembership.findMany({
+    where: { userId, status: APPROVED },
+    include: {
+      journal: { select: { id: true, titleTr: true, slug: true, hitCount: true } },
+    },
+    orderBy: { journal: { titleTr: 'asc' } },
+  })
+}
+
+export async function listApprovedInstitutionMemberships(userId: string) {
+  return prisma.institutionMembership.findMany({
+    where: { userId, status: APPROVED },
+    include: {
+      institution: { select: { id: true, nameTr: true, slug: true } },
+    },
+    orderBy: { institution: { nameTr: 'asc' } },
+  })
+}
+
 /** UI badges only — never use for authorization decisions. */
 export async function deriveAccountBadges(userId: string): Promise<AccountBadge[]> {
   const badges: AccountBadge[] = []
