@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib-pilot-guard.sh"
 
 BASE_LOCAL="${ACAR_BETA_BASE:-http://127.0.0.1:3002}"
+# App is on host loopback; ETL container reaches it via host gateway (Linux Docker).
+LIVE_FROM_ETL="${ACAR_I18N_LIVE_BASE:-http://host.docker.internal:3002}"
 LOG="${ACAR_I18N_VALIDATE_LOG:-/var/log/acarindex-validate-i18n-$(date +%Y%m%d_%H%M%S).json}"
 REPORT_TXT="${LOG%.json}.summary.txt"
 
@@ -23,10 +25,11 @@ curl -sf "$BASE_LOCAL/api/health" || fail "health check"
 echo "=== BUILD ETL (latest validate script) ==="
 $ACAR_COMPOSE --profile tools build etl
 
-echo "=== RUN validate-i18n-urls (live base=$BASE_LOCAL) ==="
+echo "=== RUN validate-i18n-urls (live base=$LIVE_FROM_ETL) ==="
 set +e
 $ACAR_COMPOSE --profile tools run --rm \
-  -e "I18N_VALIDATE_BASE_URL=$BASE_LOCAL" \
+  --add-host=host.docker.internal:host-gateway \
+  -e "I18N_VALIDATE_BASE_URL=$LIVE_FROM_ETL" \
   etl scripts/validate-i18n-urls.ts | tee "$LOG"
 EXIT=$?
 set -e
