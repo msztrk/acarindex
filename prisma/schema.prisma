@@ -67,10 +67,12 @@ model Journal {
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  issues   Issue[]
-  articles Article[]
-  followedBy FollowedJournal[]
+  category               Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  issues                 Issue[]
+  articles               Article[]
+  followedBy             FollowedJournal[]
+  memberships            JournalMembership[]
+  membershipApplications MembershipApplication[]
 
   @@index([slug])
   @@index([status])
@@ -99,50 +101,50 @@ model Issue {
 }
 
 model Article {
-  id                BigInt    @id
-  legacyId          BigInt?   @unique @map("legacy_id")
-  slug              String
-  slugTr            String?   @map("slug_tr")
-  slugEn            String?   @map("slug_en")
-  hasEnContent      Boolean   @default(false) @map("has_en_content")
-  legacyJournalSlug String    @map("legacy_journal_slug")
-  legacyJournalSlugEn String? @map("legacy_journal_slug_en")
-  journalId         BigInt    @map("journal_id")
-  issueId           BigInt?   @map("issue_id")
-  titleTr           String?   @map("title_tr")
-  titleEn           String?   @map("title_en")
-  authorsRaw        String?   @map("authors_raw")
-  authorsCitation   String?   @map("authors_citation")
-  legacyAuthorIds   String?   @map("legacy_author_ids")
-  institutionRaw    String?   @map("institution_raw")
-  abstractTr        String?   @map("abstract_tr")
-  abstractEn        String?   @map("abstract_en")
-  keywordsTr        String?   @map("keywords_tr")
-  keywordsEn        String?   @map("keywords_en")
-  referencesRaw     String?   @map("references_raw")
-  citationFormat    String?   @map("citation_format")
-  pageStart         Int?      @map("page_start")
-  pageEnd           Int?      @map("page_end")
-  publishedAt       DateTime? @map("published_at") @db.Date
-  publishedYear     Int?      @map("published_year")
-  submissionDates   String?   @map("submission_dates")
-  language          String?
-  documentLanguage  String?   @map("document_language")
-  documentType      String?   @map("document_type")
-  articleType       String?   @map("article_type")
-  accessType        String?   @default("open") @map("access_type")
-  section           String?
-  subjectArea       String?   @map("subject_area")
-  doi               String?
-  dergiparkIssueId  BigInt?   @map("dergipark_issue_id")
-  hitCount          Int       @default(0) @map("hit_count")
-  downloadCount     Int       @default(0) @map("download_count")
-  status            String    @default("published")
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                  BigInt    @id
+  legacyId            BigInt?   @unique @map("legacy_id")
+  slug                String
+  slugTr              String?   @map("slug_tr")
+  slugEn              String?   @map("slug_en")
+  hasEnContent        Boolean   @default(false) @map("has_en_content")
+  legacyJournalSlug   String    @map("legacy_journal_slug")
+  legacyJournalSlugEn String?   @map("legacy_journal_slug_en")
+  journalId           BigInt    @map("journal_id")
+  issueId             BigInt?   @map("issue_id")
+  titleTr             String?   @map("title_tr")
+  titleEn             String?   @map("title_en")
+  authorsRaw          String?   @map("authors_raw")
+  authorsCitation     String?   @map("authors_citation")
+  legacyAuthorIds     String?   @map("legacy_author_ids")
+  institutionRaw      String?   @map("institution_raw")
+  abstractTr          String?   @map("abstract_tr")
+  abstractEn          String?   @map("abstract_en")
+  keywordsTr          String?   @map("keywords_tr")
+  keywordsEn          String?   @map("keywords_en")
+  referencesRaw       String?   @map("references_raw")
+  citationFormat      String?   @map("citation_format")
+  pageStart           Int?      @map("page_start")
+  pageEnd             Int?      @map("page_end")
+  publishedAt         DateTime? @map("published_at") @db.Date
+  publishedYear       Int?      @map("published_year")
+  submissionDates     String?   @map("submission_dates")
+  language            String?
+  documentLanguage    String?   @map("document_language")
+  documentType        String?   @map("document_type")
+  articleType         String?   @map("article_type")
+  accessType          String?   @default("open") @map("access_type")
+  section             String?
+  subjectArea         String?   @map("subject_area")
+  doi                 String?
+  dergiparkIssueId    BigInt?   @map("dergipark_issue_id")
+  hitCount            Int       @default(0) @map("hit_count")
+  downloadCount       Int       @default(0) @map("download_count")
+  status              String    @default("published")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  journal        Journal         @relation(fields: [journalId], references: [id], onDelete: Restrict)
-  issue          Issue?          @relation(fields: [issueId], references: [id], onDelete: SetNull)
+  journal        Journal           @relation(fields: [journalId], references: [id], onDelete: Restrict)
+  issue          Issue?            @relation(fields: [issueId], references: [id], onDelete: SetNull)
   pdfFile        PdfFile?
   articleAuthors ArticleAuthor[]
   savedBy        SavedArticle[]
@@ -265,6 +267,186 @@ model UrlAlias {
   @@map("url_aliases")
 }
 
+// ─── RBAC: dergi / kurum üyelikleri ve admin permissions (Faz 1–2) ───
+
+enum MembershipStatus {
+  pending
+  approved
+  rejected
+  suspended
+  revoked
+
+  @@map("membership_status")
+}
+
+enum JournalMembershipRole {
+  journal_owner
+  journal_editor
+
+  @@map("journal_membership_role")
+}
+
+enum InstitutionMembershipRole {
+  institution_manager
+  institution_viewer
+
+  @@map("institution_membership_role")
+}
+
+enum MembershipApplicationType {
+  journal_editor
+  institution_manager
+
+  @@map("membership_application_type")
+}
+
+enum ApplicationStatus {
+  pending
+  approved
+  rejected
+  cancelled
+
+  @@map("application_status")
+}
+
+enum ChangeRequestStatus {
+  pending
+  approved
+  rejected
+  cancelled
+
+  @@map("change_request_status")
+}
+
+model JournalMembership {
+  id          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String                @map("user_id") @db.Uuid
+  journalId   BigInt                @map("journal_id")
+  role        JournalMembershipRole
+  status      MembershipStatus      @default(pending)
+  invitedBy   String?               @map("invited_by") @db.Uuid
+  approvedBy  String?               @map("approved_by") @db.Uuid
+  approvedAt  DateTime?             @map("approved_at") @db.Timestamptz(6)
+  suspendedAt DateTime?             @map("suspended_at") @db.Timestamptz(6)
+  revokedAt   DateTime?             @map("revoked_at") @db.Timestamptz(6)
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  journal Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, journalId])
+  @@index([journalId, status])
+  @@index([userId, status])
+  @@map("journal_memberships")
+}
+
+model Institution {
+  id          BigInt    @id @default(autoincrement())
+  slug        String    @unique
+  nameTr      String    @map("name_tr")
+  nameEn      String?   @map("name_en")
+  emailDomain String?   @map("email_domain")
+  website     String?
+  logoUrl     String?   @map("logo_url")
+  isActive    Boolean   @default(true) @map("is_active")
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships  InstitutionMembership[]
+  applications MembershipApplication[]
+
+  @@index([isActive])
+  @@map("institutions")
+}
+
+model InstitutionMembership {
+  id            String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String                    @map("user_id") @db.Uuid
+  institutionId BigInt                    @map("institution_id")
+  role          InstitutionMembershipRole
+  status        MembershipStatus          @default(pending)
+  invitedBy     String?                   @map("invited_by") @db.Uuid
+  approvedBy    String?                   @map("approved_by") @db.Uuid
+  approvedAt    DateTime?                 @map("approved_at") @db.Timestamptz(6)
+  suspendedAt   DateTime?                 @map("suspended_at") @db.Timestamptz(6)
+  revokedAt     DateTime?                 @map("revoked_at") @db.Timestamptz(6)
+  createdAt     DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, institutionId])
+  @@index([institutionId, status])
+  @@index([userId, status])
+  @@map("institution_memberships")
+}
+
+model AdminPermission {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  permission String
+  grantedBy  String?   @map("granted_by") @db.Uuid
+  grantedAt  DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permission])
+  @@index([userId])
+  @@index([permission])
+  @@map("admin_permissions")
+}
+
+model MembershipApplication {
+  id            String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type          MembershipApplicationType
+  userId        String                    @map("user_id") @db.Uuid
+  journalId     BigInt?                   @map("journal_id")
+  institutionId BigInt?                   @map("institution_id")
+  payload       Json?
+  status        ApplicationStatus         @default(pending)
+  reviewedBy    String?                   @map("reviewed_by") @db.Uuid
+  reviewedAt    DateTime?                 @map("reviewed_at") @db.Timestamptz(6)
+  reviewNote    String?                   @map("review_note")
+  createdAt     DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  journal     Journal?     @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  institution Institution? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([journalId, status])
+  @@index([institutionId, status])
+  @@map("membership_applications")
+}
+
+model ChangeRequest {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entityType  String              @map("entity_type")
+  entityId    String              @map("entity_id")
+  requestedBy String              @map("requested_by") @db.Uuid
+  changeType  String              @map("change_type")
+  oldData     Json?               @map("old_data")
+  newData     Json?               @map("new_data")
+  status      ChangeRequestStatus @default(pending)
+  reviewedBy  String?             @map("reviewed_by") @db.Uuid
+  reviewedAt  DateTime?           @map("reviewed_at") @db.Timestamptz(6)
+  reviewNote  String?             @map("review_note")
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  requester User @relation("ChangeRequestRequester", fields: [requestedBy], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([requestedBy, status])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("change_requests")
+}
+
 // ─── Kimlik doğrulama (PostgreSQL-native; bibliyografik Author ile birleştirilmez) ───
 
 model User {
@@ -277,22 +459,27 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  credential            UserCredential?
-  sessions              Session[]
-  roles                 UserRole[]
-  auditLogs             AuditLog[]             @relation("AuditActor")
-  authorClaims          AuthorClaim[]
-  passwordResetTokens   PasswordResetToken[]
-  verificationTokens    VerificationToken[]
-  savedArticles         SavedArticle[]
-  readingLists          ReadingList[]
-  followedJournals      FollowedJournal[]
-  followedAuthors       FollowedAuthor[]
-  notificationPrefs     NotificationPreference?
-  profile               UserProfile?
-  recentViews           RecentView[]
-  legalAcceptances      UserLegalAcceptance[]
+  credential              UserCredential?
+  sessions                Session[]
+  roles                   UserRole[]
+  auditLogs               AuditLog[]               @relation("AuditActor")
+  authorClaims            AuthorClaim[]
+  passwordResetTokens     PasswordResetToken[]
+  verificationTokens      VerificationToken[]
+  savedArticles           SavedArticle[]
+  readingLists            ReadingList[]
+  followedJournals        FollowedJournal[]
+  followedAuthors         FollowedAuthor[]
+  notificationPrefs       NotificationPreference?
+  profile                 UserProfile?
+  recentViews             RecentView[]
+  legalAcceptances        UserLegalAcceptance[]
   accountDeletionRequests AccountDeletionRequest[]
+  journalMemberships      JournalMembership[]
+  institutionMemberships  InstitutionMembership[]
+  adminPermissions        AdminPermission[]
+  membershipApplications  MembershipApplication[]
+  changeRequests          ChangeRequest[]          @relation("ChangeRequestRequester")
 
   @@index([status])
   @@map("users")
@@ -309,13 +496,13 @@ model UserCredential {
 }
 
 model Session {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  tokenHash String   @unique @map("token_hash")
-  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  ipAddress String?  @map("ip_address")
-  userAgent String?  @map("user_agent")
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  ipAddress  String?   @map("ip_address")
+  userAgent  String?   @map("user_agent")
   lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -326,13 +513,13 @@ model Session {
 }
 
 model VerificationToken {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  tokenHash String   @unique @map("token_hash")
-  type      String   @default("email_verify")
-  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  type      String    @default("email_verify")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
   usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -355,8 +542,8 @@ model PasswordResetToken {
 }
 
 model Role {
-  id          String @id
-  name        String @unique
+  id          String  @id
+  name        String  @unique
   description String?
 
   users UserRole[]
@@ -385,12 +572,19 @@ model AuditLog {
   resourceId String?  @map("resource_id")
   metadata   Json?
   ipAddress  String?  @map("ip_address")
+  entityType String?  @map("entity_type")
+  entityId   String?  @map("entity_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  userAgent  String?  @map("user_agent")
+  requestId  String?  @map("request_id")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([actorId, createdAt(sort: Desc)])
   @@index([action, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
   @@map("audit_logs")
 }
 
@@ -470,7 +664,7 @@ model ReadingListItem {
 
 model FollowedJournal {
   userId    String   @map("user_id") @db.Uuid
-  journalId BigInt @map("journal_id")
+  journalId BigInt   @map("journal_id")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -495,13 +689,13 @@ model FollowedAuthor {
 }
 
 model NotificationPreference {
-  userId                    String   @id @map("user_id") @db.Uuid
-  followedJournalNewIssue   Boolean  @default(false) @map("followed_journal_new_issue")
-  followedAuthorNewArticle  Boolean  @default(false) @map("followed_author_new_article")
-  savedSearchAlert          Boolean  @default(false) @map("saved_search_alert")
-  weeklyDigest              Boolean  @default(false) @map("weekly_digest")
-  productAnnouncements      Boolean  @default(false) @map("product_announcements")
-  updatedAt                 DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  userId                   String   @id @map("user_id") @db.Uuid
+  followedJournalNewIssue  Boolean  @default(false) @map("followed_journal_new_issue")
+  followedAuthorNewArticle Boolean  @default(false) @map("followed_author_new_article")
+  savedSearchAlert         Boolean  @default(false) @map("saved_search_alert")
+  weeklyDigest             Boolean  @default(false) @map("weekly_digest")
+  productAnnouncements     Boolean  @default(false) @map("product_announcements")
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

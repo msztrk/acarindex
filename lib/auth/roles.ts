@@ -1,5 +1,8 @@
 /**
  * Uygulama rolleri — bibliyografik `authors` tablosundan ayrı.
+ *
+ * USER = normal üye (member). DB'de rename yapılmaz; arayüzde "Normal Üye".
+ * EDITOR = DEPRECATED global admin rolü; dergi editörlüğü journal_memberships ile verilir.
  */
 export const APP_ROLES = [
   'USER',
@@ -10,6 +13,9 @@ export const APP_ROLES = [
 ] as const
 
 export type AppRole = (typeof APP_ROLES)[number]
+
+/** @deprecated Global EDITOR dergi editörlüğü değildir; journal_memberships kullanın. */
+export const DEPRECATED_GLOBAL_EDITOR_ROLE: AppRole = 'EDITOR'
 
 export const ADMIN_PANEL_ROLES: AppRole[] = [
   'EDITOR',
@@ -61,7 +67,8 @@ export function canManageRole(actorRoles: AppRole[], roleId: AppRole): boolean {
 }
 
 /**
- * Yetki matrisi — server-side kontrol için referans.
+ * Legacy permission matrix — server-side kontrol için referans.
+ * Yeni admin_permissions + dual-read: @see lib/auth/authorization.hasAdminPermission
  * client-side gizleme yetkilendirme değildir.
  */
 export const PERMISSION_MATRIX: Record<string, AppRole[]> = {

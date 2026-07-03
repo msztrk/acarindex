@@ -3,9 +3,13 @@ import { notFound } from 'next/navigation'
 import {
   canAccessAdminPanel,
   canManageUsers,
-  hasPermission,
   type AppRole,
 } from '@/lib/auth/roles'
+import {
+  hasAdminPermission,
+  type AdminPermissionName,
+} from '@/lib/auth/authorization'
+import { LEGACY_MATRIX_TO_ADMIN_PERMISSION } from '@/lib/auth/admin-permissions'
 import { getServerSession, type SessionPayload } from '@/lib/auth/session'
 import { isAdminPanelEnabled, isUserAuthEnabled } from '@/lib/features/user-auth'
 
@@ -25,24 +29,46 @@ export async function requireAdminSession(): Promise<SessionPayload> {
     notFound()
   }
   const session = await requireUserAuth()
-  if (!canAccessAdminPanel(session.user.roles)) {
-    notFound()
+  const hasLegacy = canAccessAdminPanel(session.user.roles)
+  const hasDb =
+    (await hasAdminPermission(session.user.id, 'legacy_admin_access', session.user.roles)) ||
+    (await hasAdminPermission(session.user.id, 'manage_journals', session.user.roles))
+  if (!hasLegacy && !hasDb) {
+    redirect('/forbidden')
   }
   return session
 }
 
 export async function requirePermission(permission: string): Promise<SessionPayload> {
   const session = await requireAdminSession()
-  if (!hasPermission(session.user.roles, permission)) {
-    notFound()
+  const mapped = LEGACY_MATRIX_TO_ADMIN_PERMISSION[permission]
+  if (mapped?.length) {
+    for (const adminPerm of mapped) {
+      if (await hasAdminPermission(session.user.id, adminPerm, session.user.roles)) {
+        return session
+      }
+    }
+  }
+  redirect('/forbidden')
+}
+
+export async function requireAdminPermissionGuard(
+  permission: AdminPermissionName,
+): Promise<SessionPayload> {
+  const session = await requireAdminSession()
+  if (!(await hasAdminPermission(session.user.id, permission, session.user.roles))) {
+    redirect('/forbidden')
   }
   return session
 }
 
 export async function requireUserManagement(): Promise<SessionPayload> {
   const session = await requireAdminSession()
-  if (!canManageUsers(session.user.roles)) {
-    notFound()
+  const allowed =
+    canManageUsers(session.user.roles) ||
+    (await hasAdminPermission(session.user.id, 'manage_users', session.user.roles))
+  if (!allowed) {
+    redirect('/forbidden')
   }
   return session
 }
@@ -60,7 +86,6 @@ export function assertSuperAdminProtection(
     throw new Error('SUPER_ADMIN rolü yalnızca SUPER_ADMIN tarafından yönetilebilir.')
   }
 
-  // Son SUPER_ADMIN koruması — rol kaldırma işlemlerinde kullanılır
   if (targetIsSuper && superAdminCount > 0 && actor.user.id === targetUserId) {
     throw new Error('Son SUPER_ADMIN hesabının rolü kaldırılamaz.')
   }
