@@ -22,7 +22,6 @@ async function main() {
     excludedFallbackSlugUrls,
     duplicateEnSlugs,
     flagDrift,
-    enSetIncludesNonContent,
   ] = await Promise.all([
     prisma.article.count({ where: { status: 'published' } }),
     prisma.article.count({
