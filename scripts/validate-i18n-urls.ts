@@ -1,5 +1,8 @@
 /**
  * TR/EN slug, content availability, sitemap and hreflang validation.
+ *
+ * Content vs sitemap metrics are separate filter sets — see lib/i18n/validate-i18n-metrics.ts.
+ * Optional baselines for deltas: I18N_VALIDATE_PREVIOUS_COMPUTED_EN, I18N_VALIDATE_PREVIOUS_EN_SITEMAP.
  */
 import { prisma, disconnectPrisma } from '../lib/db/prisma'
 import { buildArticlePath } from '../lib/i18n/slugs'
@@ -25,6 +28,12 @@ import {
   computeEnSitemapPageCount,
   EN_SITEMAP_PAGE_SIZE,
 } from '../lib/i18n/sitemap-en'
+import {
+  buildValidateI18nContentMetrics,
+  classifyEnSitemapExclusion,
+  isArticleEligibleForEnSitemap,
+  parseOptionalIntEnv,
+} from '../lib/i18n/validate-i18n-metrics'
 
 const PAGE_SIZE = EN_SITEMAP_PAGE_SIZE
 const BASE = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
@@ -190,10 +199,57 @@ async function countComputedEnglishContent(): Promise<number> {
   return count
 }
 
+async function scanEnSitemapExclusionBreakdown() {
+  const breakdown = {
+    byArticleStatus: 0,
+    byMissingSlug: 0,
+    byMissingJournal: 0,
+    byJournalStatus: 0,
+  }
+  let cursor = 0n
+
+  while (true) {
+    const rows = await prisma.article.findMany({
+      where: { status: 'published', id: { gt: cursor } },
+      orderBy: { id: 'asc' },
+      take: 2000,
+      select: {
+        status: true,
+        hasEnContent: true,
+        slugEn: true,
+        titleEn: true,
+        titleTr: true,
+        abstractEn: true,
+        abstractTr: true,
+        language: true,
+        documentLanguage: true,
+        journal: { select: { status: true } },
+      },
+    })
+    if (!rows.length) break
+
+    for (const row of rows) {
+      if (!computeArticleHasEnglishContent(row)) continue
+
+      const exclusionRow = {
+        status: row.status,
+        hasEnContent: row.hasEnContent,
+        slugEn: row.slugEn,
+        journal: row.journal,
+      }
+      if (isArticleEligibleForEnSitemap(exclusionRow)) continue
+      breakdown[classifyEnSitemapExclusion(exclusionRow)]++
+    }
+
+    cursor = rows[rows.length - 1]!.id
+  }
+
+  return breakdown
+}
+
 async function main() {
-  const previousEnCount = await prisma.article.count({
-    where: { status: 'published', hasEnContent: true },
-  })
+  const previousComputedEnContent = parseOptionalIntEnv('I18N_VALIDATE_PREVIOUS_COMPUTED_EN')
+  const previousEnSitemapEligible = parseOptionalIntEnv('I18N_VALIDATE_PREVIOUS_EN_SITEMAP')
 
   const [
     articlesTotal,
@@ -205,6 +261,7 @@ async function main() {
     quality,
     flagDrift,
     liveChecks,
+    exclusionBreakdown,
   ] = await Promise.all([
     prisma.article.count({ where: { status: 'published' } }),
     prisma.article.count({ where: { status: 'published', slugEn: { not: null } } }),
@@ -242,6 +299,7 @@ async function main() {
     scanQualityMetrics(),
     countFlagDrift(),
     checkLiveRedirects(),
+    scanEnSitemapExclusionBreakdown(),
   ])
 
   const enPageCount = computeEnSitemapPageCount(englishSitemapEligible, PAGE_SIZE)
@@ -313,19 +371,21 @@ async function main() {
     },
   })
 
+  const contentMetrics = buildValidateI18nContentMetrics({
+    totalPublishedArticles: articlesTotal,
+    currentComputedEnContent: computedEnglishContent,
+    currentEnSitemapEligible: englishSitemapEligible,
+    exclusionBreakdown,
+    previousComputedEnContent,
+    previousEnSitemapEligible,
+  })
+
   const report = {
-    total_published_articles: articlesTotal,
+    ...contentMetrics,
     articles_with_slug_en: articlesWithSlugEn,
-    articles_with_real_english_content: computedEnglishContent,
-    articles_without_real_english_content: articlesTotal - computedEnglishContent,
-    english_indexable_urls: englishSitemapEligible,
-    english_sitemap_urls: englishSitemapEligible,
+    articles_with_slug_en_but_no_computed_en_content: articlesWithSlugEn - computedEnglishContent,
     english_sitemap_pages: enPageCount,
     english_hreflang_urls: englishSitemapEligible,
-    previous_en_indexable_count: previousEnCount,
-    en_indexable_delta: englishSitemapEligible - previousEnCount,
-    computed_en_content_delta: computedEnglishContent - previousEnCount,
-    excluded_fallback_slug_urls: articlesWithSlugEn - computedEnglishContent,
     normalized_english_language_count: normalizedEnglishLanguageCount,
     html_only_title_en_count: quality.htmlOnlyTitle,
     html_only_abstract_en_count: quality.htmlOnlyAbstract,
