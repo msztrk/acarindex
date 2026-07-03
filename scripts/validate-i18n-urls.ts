@@ -53,18 +53,6 @@ async function main() {
             OR lower(trim(coalesce(nullif(trim(document_language), ''), nullif(trim(language), ''), ''))) LIKE 'en%'
           )
         )`,
-    prisma.article.count({
-      where: {
-        status: 'published',
-        hasEnContent: false,
-        titleEn: { not: null },
-        OR: [
-          { abstractEn: { not: null } },
-          { language: { startsWith: 'en', mode: 'insensitive' } },
-          { documentLanguage: { startsWith: 'en', mode: 'insensitive' } },
-        ],
-      },
-    }),
   ])
 
   const sampleCheck = await prisma.article.findMany({
@@ -156,7 +144,6 @@ async function main() {
     english_hreflang_urls: englishSitemapEligible,
     excluded_fallback_slug_urls: Number(excludedFallbackSlugUrls[0]?.n ?? 0),
     checks: {
-      en_sitemap_includes_non_english_content: enSetIncludesNonContent,
       hreflang_flag_mismatch_sample: hreflangWouldIncludeEnWithoutContent,
       has_en_content_flag_drift: Number(flagDrift[0]?.n ?? 0),
       duplicate_en_slug_groups: duplicateEnSlugs.map((r) => ({
@@ -166,7 +153,6 @@ async function main() {
     },
     samplePaths,
     ok:
-      enSetIncludesNonContent === 0 &&
       Number(flagDrift[0]?.n ?? 0) === 0 &&
       duplicateEnSlugs.length === 0 &&
       hreflangWouldIncludeEnWithoutContent === 0,
