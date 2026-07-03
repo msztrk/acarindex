@@ -9,6 +9,7 @@ import {
   computeArticleHasEnglishContent,
   hasEnglishArticleContent,
 } from '../lib/i18n/content-availability'
+import { isEnglishDocumentLanguage } from '../lib/i18n/language'
 import {
   isPossibleEnglishFallback,
   sameNormalizedAbstractTrEn,
@@ -72,8 +73,15 @@ async function scanQualityMetrics() {
       if (sameTitleAndAbstractTrEn(row)) sameBoth++
       if (isPossibleEnglishFallback(row)) possibleFallback++
 
-      if (row.hasEnContent && row.titleEn?.trim() && !hasMeaningfulText(row.titleEn, 10)) htmlOnlyTitle++
-      if (row.hasEnContent && row.abstractEn?.trim() && !hasMeaningfulText(row.abstractEn, 20)) {
+      if (row.hasEnContent && row.titleEn?.trim() && !hasMeaningfulText(row.titleEn, 10)) {
+        htmlOnlyTitle++
+      }
+      if (
+        row.hasEnContent &&
+        row.abstractEn?.trim() &&
+        !hasMeaningfulText(row.abstractEn, 20) &&
+        !isEnglishDocumentLanguage(row.language, row.documentLanguage)
+      ) {
         htmlOnlyAbstract++
       }
     }
@@ -163,6 +171,25 @@ async function checkLiveRedirects() {
   return { invalid_en_redirect_count: invalid, redirect_loop_count: loops, skipped: false }
 }
 
+async function countComputedEnglishContent(): Promise<number> {
+  let count = 0
+  let cursor = 0n
+  while (true) {
+    const rows = await prisma.article.findMany({
+      where: { status: 'published', id: { gt: cursor } },
+      orderBy: { id: 'asc' },
+      take: 3000,
+      select: publishedEnglishArticleSelect,
+    })
+    if (!rows.length) break
+    for (const row of rows) {
+      if (computeArticleHasEnglishContent(row)) count++
+    }
+    cursor = rows[rows.length - 1]!.id
+  }
+  return count
+}
+
 async function main() {
   const previousEnCount = await prisma.article.count({
     where: { status: 'published', hasEnContent: true },
@@ -171,7 +198,7 @@ async function main() {
   const [
     articlesTotal,
     articlesWithSlugEn,
-    articlesWithRealEnglishContent,
+    computedEnglishContent,
     englishSitemapEligible,
     duplicateEnSlugs,
     journalMetrics,
@@ -181,7 +208,7 @@ async function main() {
   ] = await Promise.all([
     prisma.article.count({ where: { status: 'published' } }),
     prisma.article.count({ where: { status: 'published', slugEn: { not: null } } }),
-    prisma.article.count({ where: publishedEnglishArticleWhere }),
+    countComputedEnglishContent(),
     prisma.article.count({ where: publishedEnglishArticleWhere }),
     prisma.$queryRaw<{ slug_en: string; n: bigint }[]>`
       SELECT slug_en, COUNT(*) AS n FROM articles
@@ -289,15 +316,16 @@ async function main() {
   const report = {
     total_published_articles: articlesTotal,
     articles_with_slug_en: articlesWithSlugEn,
-    articles_with_real_english_content: articlesWithRealEnglishContent,
-    articles_without_real_english_content: articlesTotal - articlesWithRealEnglishContent,
+    articles_with_real_english_content: computedEnglishContent,
+    articles_without_real_english_content: articlesTotal - computedEnglishContent,
     english_indexable_urls: englishSitemapEligible,
     english_sitemap_urls: englishSitemapEligible,
     english_sitemap_pages: enPageCount,
     english_hreflang_urls: englishSitemapEligible,
     previous_en_indexable_count: previousEnCount,
     en_indexable_delta: englishSitemapEligible - previousEnCount,
-    excluded_fallback_slug_urls: articlesWithSlugEn - articlesWithRealEnglishContent,
+    computed_en_content_delta: computedEnglishContent - previousEnCount,
+    excluded_fallback_slug_urls: articlesWithSlugEn - computedEnglishContent,
     normalized_english_language_count: normalizedEnglishLanguageCount,
     html_only_title_en_count: quality.htmlOnlyTitle,
     html_only_abstract_en_count: quality.htmlOnlyAbstract,
