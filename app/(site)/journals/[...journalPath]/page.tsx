@@ -157,6 +157,7 @@ export async function generateMetadata({
     aimAndScope: journal.aim_and_scope,
     hasEnContent: journal.has_en_content,
   }
+  const canonicalPath = buildJournalCanonicalPath(resolved, journalPath)
   const hreflangAlternates = buildJournalMetadataAlternates(
     canonicalBase,
     journalRow,
@@ -178,7 +179,7 @@ export async function generateMetadata({
       openGraph: {
         title: pageTitle,
         description,
-        url: hreflangAlternates.canonical,
+        url: canonicalPath,
       },
     }
   }
@@ -194,7 +195,7 @@ export async function generateMetadata({
       openGraph: {
         title: archiveTitle,
         description: archiveDescription,
-        url: hreflangAlternates.canonical,
+        url: canonicalPath,
       },
     }
   }
