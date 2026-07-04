@@ -30,7 +30,7 @@ echo "BACKUP=$BACKUP"
 echo "COUNTS=$COUNTS_FILE"
 
 echo "=== BACKUP VERIFY ==="
-pg_restore --list "$BACKUP" >/dev/null || { echo "FAIL: pg_restore --list"; exit 1; }
+$COMPOSE exec -T postgres pg_restore --list < "$BACKUP" >/dev/null || { echo "FAIL: pg_restore --list"; exit 1; }
 BACKUP_SHA=$(sha256sum "$BACKUP" | awk '{print $1}')
 echo "BACKUP_SHA256=$BACKUP_SHA"
 echo "PG_RESTORE_LIST_OK"
