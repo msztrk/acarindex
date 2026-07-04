@@ -1030,6 +1030,8 @@ model JournalApplication {
   platformProfileUrl      String?               @map("platform_profile_url")
   publisherPageUrl        String?               @map("publisher_page_url")
   keywords                String[]              @default([])
+  duplicateFlags          Json?                 @map("duplicate_flags")
+  duplicateContinueReason String?               @map("duplicate_continue_reason")
   createdAt               DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
