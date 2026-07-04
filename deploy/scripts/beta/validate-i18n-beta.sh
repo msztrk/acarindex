@@ -7,8 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib-pilot-guard.sh"
 
 BASE_LOCAL="${ACAR_BETA_BASE:-http://127.0.0.1:3002}"
-# App is on host loopback; ETL container reaches it via host gateway (Linux Docker).
-LIVE_FROM_ETL="${ACAR_I18N_LIVE_BASE:-http://host.docker.internal:3002}"
+# Pilot app is reachable inside the compose network at app:3000 (not via host loopback).
+LIVE_FROM_ETL="${ACAR_I18N_LIVE_BASE:-http://app:3000}"
 LOG="${ACAR_I18N_VALIDATE_LOG:-/var/log/acarindex-validate-i18n-$(date +%Y%m%d_%H%M%S).json}"
 REPORT_TXT="${LOG%.json}.summary.txt"
 
@@ -21,6 +21,10 @@ cd "$ACAR_ROOT"
 
 echo "=== HEALTH ==="
 curl -sf "$BASE_LOCAL/api/health" || fail "health check"
+
+if ! $ACAR_COMPOSE --profile app ps --status running --services app 2>/dev/null | grep -qx app; then
+  fail "pilot app container not running (required for live redirect checks at $LIVE_FROM_ETL)"
+fi
 
 echo "=== BUILD ETL (latest validate script) ==="
 $ACAR_COMPOSE --profile tools build etl
