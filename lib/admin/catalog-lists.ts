@@ -3,14 +3,18 @@ import { parsePagination, paginationMeta } from '@/lib/admin/pagination'
 
 export async function loadPaginatedJournals(searchParams: Record<string, string | string[] | undefined>) {
   const { page, pageSize, skip } = parsePagination(searchParams)
+  const rawStatus = Array.isArray(searchParams.status) ? searchParams.status[0] : searchParams.status
+  const status = rawStatus?.trim()
+  const where = status ? { status } : {}
   const [rows, total] = await Promise.all([
     prisma.journal.findMany({
+      where,
       orderBy: { id: 'asc' },
       skip,
       take: pageSize,
       select: { id: true, slug: true, titleTr: true, status: true },
     }),
-    prisma.journal.count(),
+    prisma.journal.count({ where }),
   ])
   return {
     rows: rows.map((r) => ({ ...r, id: Number(r.id) })),

@@ -72,7 +72,18 @@ export default async function AdminJournalApplicationDetailPage({ params }: Page
             {detail.approvedJournal && (
               <FieldRow
                 label="Onaylanan dergi"
-                value={`#${detail.approvedJournal.id} · ${detail.approvedJournal.titleTr} (${detail.approvedJournal.status})`}
+                value={
+                  <>
+                    #{detail.approvedJournal.id} · {detail.approvedJournal.titleTr} (
+                    {detail.approvedJournal.status}){' '}
+                    <Link
+                      href={`/admin/journals/${detail.approvedJournal.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      Dergi yönetimi
+                    </Link>
+                  </>
+                }
               />
             )}
           </dl>
