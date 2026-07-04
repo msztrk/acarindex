@@ -44,31 +44,41 @@ echo "=== APPLY JOURNAL ID MIGRATION ==="
 $ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -f - < "$MIGRATION_SQL"
 
 echo "=== TEST INSERTS ==="
-AUTO_ID=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -tAc \
-  "INSERT INTO journals (slug, status) VALUES ('journal-id-rehearsal-auto', 'draft') RETURNING id;" | tr -d ' \r\n')
+AUTO_ID=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -qAt -c \
+  "INSERT INTO journals (slug, status) VALUES ('journal-id-rehearsal-auto', 'draft') RETURNING id;" | head -1 | tr -d '\r\n')
 LEGACY_ID=$((PRE_MAX + 600000))
-EXPLICIT_ID=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -tAc \
-  "INSERT INTO journals (id, slug, status) VALUES ($LEGACY_ID, 'journal-id-rehearsal-legacy', 'draft') RETURNING id;" | tr -d ' \r\n')
+EXPLICIT_ID=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -qAt -c \
+  "INSERT INTO journals (id, slug, status) VALUES ($LEGACY_ID, 'journal-id-rehearsal-legacy', 'draft') RETURNING id;" | head -1 | tr -d '\r\n')
 echo "AUTO_ID=$AUTO_ID EXPLICIT_ID=$EXPLICIT_ID"
+
+legacy_max() {
+  $ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -qAt -c \
+    "SELECT COALESCE(MAX(id), 0) FROM journals WHERE slug NOT LIKE 'journal-id-rehearsal-%';" | head -1 | tr -d '\r\n'
+}
 
 echo "=== ROLLBACK ==="
 $ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -f - < "$ROLLBACK_SQL"
 
 POST_IDS=$(sample_ids)
-POST_MAX=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -tAc "SELECT MAX(id) FROM journals;" | tr -d ' \r\n')
-echo "POST_SAMPLE_IDS=$POST_IDS POST_MAX=$POST_MAX"
+POST_LEGACY_MAX=$(legacy_max)
+echo "POST_SAMPLE_IDS=$POST_IDS POST_LEGACY_MAX=$POST_LEGACY_MAX"
 [[ "$PRE_IDS" == "$POST_IDS" ]] || { echo "FAIL: sample journal ids changed after rollback"; exit 1; }
-[[ "$PRE_MAX" == "$POST_MAX" ]] || { echo "FAIL: max journal id changed after rollback"; exit 1; }
+[[ "$PRE_MAX" == "$POST_LEGACY_MAX" ]] || { echo "FAIL: legacy catalog max id changed after rollback"; exit 1; }
 
-REMAINING=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -tAc \
-  "SELECT count(*) FROM journals WHERE slug LIKE 'journal-id-rehearsal-%';" | tr -d ' \r\n')
-[[ "$REMAINING" == "2" ]] && echo "ROLLBACK_KEPT_TEST_ROWS_OK" || echo "NOTE: rehearsal rows remain count=$REMAINING (ids preserved)"
+AUTO_AFTER=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -qAt -c \
+  "SELECT id::text FROM journals WHERE slug = 'journal-id-rehearsal-auto';" | head -1 | tr -d '\r\n')
+EXPLICIT_AFTER=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -qAt -c \
+  "SELECT id::text FROM journals WHERE slug = 'journal-id-rehearsal-legacy';" | head -1 | tr -d '\r\n')
+[[ "$AUTO_AFTER" == "$AUTO_ID" && "$EXPLICIT_AFTER" == "$EXPLICIT_ID" ]] || {
+  echo "FAIL: rehearsal row ids changed after rollback auto=$AUTO_AFTER explicit=$EXPLICIT_AFTER"
+  exit 1
+}
 
 echo "=== RE-APPLY MIGRATION ==="
 $ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -f - < "$MIGRATION_SQL"
 
-REINSERT=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -tAc \
-  "INSERT INTO journals (slug, status) VALUES ('journal-id-rehearsal-reapply', 'draft') RETURNING id;" | tr -d ' \r\n')
+REINSERT=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -qAt -c \
+  "INSERT INTO journals (slug, status) VALUES ('journal-id-rehearsal-reapply', 'draft') RETURNING id;" | head -1 | tr -d '\r\n')
 [[ -n "$REINSERT" ]] && echo "REAPPLY_INSERT_OK id=$REINSERT" || { echo "FAIL: insert without id after reapply"; exit 1; }
 
 $ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d postgres -c "DROP DATABASE IF EXISTS \"$REHEARSAL_DB\" WITH (FORCE);"
