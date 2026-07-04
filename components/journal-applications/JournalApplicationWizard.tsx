@@ -26,6 +26,15 @@ import {
 
 type CategoryOption = { id: number; name_tr: string | null; name_en: string | null }
 
+type AttachmentItem = {
+  id: string
+  kind: string
+  originalName: string
+  mimeType: string
+  sizeBytes: number
+  uploadStatus: string
+}
+
 type LoadedData = {
   contentApplication: {
     id: string
@@ -34,6 +43,7 @@ type LoadedData = {
   }
   journalApplication: SerializedJournalApplication
   privateContact: PrivateContactDraft
+  attachments?: AttachmentItem[]
 }
 
 type Props = {
@@ -126,6 +136,11 @@ export function JournalApplicationWizard({ contentApplicationId, initialData, ca
   const [institutionResults, setInstitutionResults] = useState<
     Array<{ id: string; nameTr: string; nameEn: string | null }>
   >([])
+  const [attachments, setAttachments] = useState<AttachmentItem[]>(
+    () => initialData.attachments ?? [],
+  )
+  const [uploadState, setUploadState] = useState<'idle' | 'uploading'>('idle')
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   const expectedMonths = form.publicationFrequency
     ? FREQUENCY_EXPECTED_ISSUES_PER_YEAR[form.publicationFrequency]
@@ -254,6 +269,62 @@ export function JournalApplicationWizard({ contentApplicationId, initialData, ca
       return false
     }
   }, [buildPayload, contentApplicationId, getCsrf, router])
+
+  const uploadFile = useCallback(
+    async (kind: 'cover_image' | 'proof_document', file: File) => {
+      setUploadState('uploading')
+      setUploadError(null)
+      try {
+        const csrfToken = await getCsrf()
+        const formData = new FormData()
+        formData.set('kind', kind)
+        formData.set('file', file)
+        const res = await fetch(`/api/applications/${contentApplicationId}/attachments`, {
+          method: 'POST',
+          headers: { 'x-csrf-token': csrfToken },
+          body: formData,
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          setUploadError(data.error ?? 'Dosya yüklenemedi.')
+          return
+        }
+        const attachment = data.attachment as AttachmentItem
+        setAttachments((prev) => {
+          const withoutSameKind =
+            kind === 'cover_image' ? prev.filter((a) => a.kind !== kind) : prev
+          return [...withoutSameKind, attachment]
+        })
+      } catch {
+        setUploadError('Bağlantı hatası.')
+      } finally {
+        setUploadState('idle')
+      }
+    },
+    [contentApplicationId, getCsrf],
+  )
+
+  const removeAttachment = useCallback(
+    async (attachmentId: string) => {
+      setUploadError(null)
+      try {
+        const csrfToken = await getCsrf()
+        const res = await fetch(
+          `/api/applications/${contentApplicationId}/attachments/${attachmentId}`,
+          { method: 'DELETE', headers: { 'x-csrf-token': csrfToken } },
+        )
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          setUploadError(data.error ?? 'Dosya silinemedi.')
+          return
+        }
+        setAttachments((prev) => prev.filter((a) => a.id !== attachmentId))
+      } catch {
+        setUploadError('Bağlantı hatası.')
+      }
+    },
+    [contentApplicationId, getCsrf],
+  )
 
   const runPrecheck = useCallback(async () => {
     try {
@@ -830,16 +901,71 @@ export function JournalApplicationWizard({ contentApplicationId, initialData, ca
       )}
 
       {step === 9 && (
-        <section className="rounded-md border border-dashed p-6 text-sm text-muted-foreground space-y-2">
-          <p className="font-medium text-foreground">Kapak ve belgeler (Faz B4)</p>
-          <p>
-            Dosya yükleme altyapısı bir sonraki fazda devreye girecek. Bu adımda kapak görseli ve
-            destekleyici belgeler yüklenemez; başvuruyu taslak olarak kaydedip B4 sonrası
-            tamamlayabilirsiniz.
+        <section className="space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Kapak görseli zorunludur (JPEG, PNG veya WebP, en fazla 2 MB). Destekleyici belge
+            isteğe bağlıdır (PDF, en fazla 10 MB).
           </p>
-          <div className="rounded-md bg-muted/50 border p-8 text-center opacity-60">
-            Yükleme alanı devre dışı
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Kapak görseli *</label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+              disabled={uploadState === 'uploading'}
+              className="block w-full text-sm"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void uploadFile('cover_image', file)
+                e.target.value = ''
+              }}
+            />
           </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Destekleyici belge (PDF)</label>
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              disabled={uploadState === 'uploading'}
+              className="block w-full text-sm"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void uploadFile('proof_document', file)
+                e.target.value = ''
+              }}
+            />
+          </div>
+
+          {uploadState === 'uploading' && (
+            <p className="text-sm text-muted-foreground">Yükleniyor…</p>
+          )}
+          {uploadError && <p className="text-sm text-destructive">{uploadError}</p>}
+
+          {attachments.length > 0 && (
+            <ul className="space-y-2 text-sm">
+              {attachments.map((att) => (
+                <li
+                  key={att.id}
+                  className="flex items-center justify-between rounded-md border px-3 py-2"
+                >
+                  <span>
+                    {att.kind === 'cover_image' ? 'Kapak' : 'Belge'}: {att.originalName}{' '}
+                    <span className="text-muted-foreground">
+                      ({Math.round(att.sizeBytes / 1024)} KB)
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    className="text-destructive text-xs"
+                    onClick={() => void removeAttachment(att.id)}
+                  >
+                    Sil
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 
@@ -865,6 +991,12 @@ export function JournalApplicationWizard({ contentApplicationId, initialData, ca
                 : '—'}
             </p>
             <p>Anahtar kelimeler: {form.keywords.join(', ') || '—'}</p>
+            <p>
+              Dosyalar:{' '}
+              {attachments.length > 0
+                ? attachments.map((a) => a.originalName).join(', ')
+                : '—'}
+            </p>
           </div>
 
           <div>

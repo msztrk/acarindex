@@ -19,6 +19,11 @@ import type { JournalApplicationDraftInput } from '@/lib/journal-applications/ty
 import { validateJournalApplicationForSubmit } from '@/lib/journal-applications/validate-for-submit'
 import { runJournalDuplicatePrecheck } from '@/lib/journal-applications/run-duplicate-precheck'
 import { recordApplicationEvent } from '@/lib/applications/events'
+import {
+  commitAttachments,
+  hasCommittedCoverImage,
+  type ApplicationAttachmentSummary,
+} from '@/lib/applications/attachments'
 
 export type SaveJournalApplicationDraftInput = {
   contentApplicationId: string
@@ -95,9 +100,23 @@ export async function getJournalApplicationForUser(contentApplicationId: string,
     include: {
       journalApplication: { include: journalInclude },
       privateContact: true,
+      attachments: {
+        where: { uploadStatus: { in: ['pending', 'committed'] } },
+        orderBy: { createdAt: 'asc' },
+      },
     },
   })
   if (!content?.journalApplication) throw new ForbiddenError()
+
+  const attachments: ApplicationAttachmentSummary[] = content.attachments.map((a) => ({
+    id: a.id,
+    kind: a.kind,
+    originalName: a.originalName,
+    mimeType: a.mimeType,
+    sizeBytes: a.sizeBytes,
+    uploadStatus: a.uploadStatus,
+    createdAt: a.createdAt.toISOString(),
+  }))
 
   return {
     contentApplication: {
@@ -109,6 +128,7 @@ export async function getJournalApplicationForUser(contentApplicationId: string,
     },
     journalApplication: serializeJournalApplication(content.journalApplication),
     privateContact: serializePrivateContact(content.privateContact),
+    attachments,
   }
 }
 
@@ -291,6 +311,34 @@ export async function submitJournalApplication(contentApplicationId: string, use
 
   if (!validation.ok) {
     return { ok: false as const, errors: validation.errors }
+  }
+
+  const hasCover = await hasCommittedCoverImage(contentApplicationId)
+  if (!hasCover) {
+    const pendingCover = await prisma.applicationAttachment.findFirst({
+      where: {
+        applicationId: contentApplicationId,
+        kind: 'cover_image',
+        uploadStatus: 'pending',
+      },
+      select: { id: true },
+    })
+    if (!pendingCover) {
+      return {
+        ok: false as const,
+        errors: [{ field: 'cover_image', error: 'Kapak görseli zorunludur.' }],
+      }
+    }
+  }
+
+  await commitAttachments(contentApplicationId)
+
+  const coverAfterCommit = await hasCommittedCoverImage(contentApplicationId)
+  if (!coverAfterCommit) {
+    return {
+      ok: false as const,
+      errors: [{ field: 'cover_image', error: 'Kapak görseli zorunludur.' }],
+    }
   }
 
   const normalized = validation.normalized

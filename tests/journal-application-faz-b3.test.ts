@@ -222,6 +222,7 @@ describe('journal-application faz b3 service submit integration', () => {
         publisherInstitution: null,
       },
       privateContact: null,
+      attachments: [],
     } as never)
 
     const result = await submitJournalApplication('ca-1', 'user-1')
