@@ -1,6 +1,7 @@
 import { requireAdminPermissionGuard } from '@/lib/auth/guards'
 import { listAdminContentApplicationQueue } from '@/lib/applications/service'
 import { CONTENT_KIND_LABELS } from '@/lib/applications/types'
+import { CONTENT_STATUS_LABELS } from '@/lib/journal-applications/admin-service'
 import { Card } from '@/components/ui/card'
 import Link from 'next/link'
 
@@ -14,7 +15,7 @@ export default async function AdminApplicationsPage() {
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">İçerik başvuruları</h1>
       <p className="text-sm text-muted-foreground">
-        Faz A: birleşik kuyruk iskeleti. Onay executor’ları Faz B–E ile eklenecek.
+        Yeni dergi başvuruları için detay inceleme sayfasına gidin.
       </p>
       <div className="flex gap-4 text-sm">
         <Link href="/admin/membership-applications" className="text-primary hover:underline">
@@ -36,6 +37,7 @@ export default async function AdminApplicationsPage() {
                 <th className="px-3 py-2 font-medium">Başvuran</th>
                 <th className="px-3 py-2 font-medium">Durum</th>
                 <th className="px-3 py-2 font-medium">Gönderim</th>
+                <th className="px-3 py-2 font-medium">Detay</th>
               </tr>
             </thead>
             <tbody>
@@ -44,9 +46,23 @@ export default async function AdminApplicationsPage() {
                   <td className="px-3 py-2">{CONTENT_KIND_LABELS[r.kind]}</td>
                   <td className="px-3 py-2">{r.title}</td>
                   <td className="px-3 py-2">{r.user.email}</td>
-                  <td className="px-3 py-2">{r.status}</td>
+                  <td className="px-3 py-2">
+                    {CONTENT_STATUS_LABELS[r.status as keyof typeof CONTENT_STATUS_LABELS] ?? r.status}
+                  </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {r.submittedAt?.toLocaleString('tr-TR') ?? '—'}
+                  </td>
+                  <td className="px-3 py-2">
+                    {r.kind === 'new_journal' ? (
+                      <Link
+                        href={`/admin/applications/journal/${r.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        İncele
+                      </Link>
+                    ) : (
+                      '—'
+                    )}
                   </td>
                 </tr>
               ))}

@@ -1081,3 +1081,33 @@ model ApplicationDeclarationAcceptance {
 
   @@map("application_declaration_acceptances")
 }
+
+// ─── Bildirim outbox (Faz B5) ───
+
+enum NotificationOutboxStatus {
+  pending
+  processing
+  sent
+  failed
+  cancelled
+
+  @@map("notification_outbox_status")
+}
+
+model NotificationOutbox {
+  id            String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type          String
+  recipient     String
+  payload       Json
+  status        NotificationOutboxStatus @default(pending)
+  attemptCount  Int                      @default(0) @map("attempt_count")
+  nextAttemptAt DateTime?                @map("next_attempt_at") @db.Timestamptz(6)
+  sentAt        DateTime?                @map("sent_at") @db.Timestamptz(6)
+  lastError     String?                  @map("last_error")
+  createdAt     DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, nextAttemptAt])
+  @@index([createdAt(sort: Desc)])
+  @@map("notification_outbox")
+}
