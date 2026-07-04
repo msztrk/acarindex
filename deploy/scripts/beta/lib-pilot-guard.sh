@@ -45,4 +45,19 @@ acar_beta_require_pilot() {
   fi
 }
 
+# Valid ISSN with check digit from unix timestamp (unique per gate run).
+acar_beta_generate_test_issn() {
+  local ts="${1:-$(date +%s)}"
+  local body sum=0 i c weight check
+  body=$(printf '%07d' $((ts % 10000000)))
+  for i in 0 1 2 3 4 5 6; do
+    c=${body:$i:1}
+    weight=$((8 - i))
+    sum=$((sum + c * weight))
+  done
+  check=$(( (11 - (sum % 11)) % 11 ))
+  [[ "$check" -eq 10 ]] && check=0
+  printf '%s-%s%d' "${body:0:4}" "${body:4:3}" "$check"
+}
+
 acar_beta_trim() { tr -d '\r\n' | xargs; }

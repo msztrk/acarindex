@@ -51,6 +51,7 @@ PASSWD=$(grep '^pass=' "$CRED" | cut -d= -f2- | tr -d '\r')
 TEST_EMAIL=$(grep '^ACAR_BETA_MAIL_TEST_EMAIL=' /etc/acarindex/pilot.env | cut -d= -f2- | tr -d '\r' | sed 's/^"//;s/"$//')
 UNIQUE_TITLE="Faz B E2E $(date +%s)"
 UNIQUE_SLUG="faz-b-e2e-$(date +%s)"
+TEST_ISSN=$(acar_beta_generate_test_issn)
 
 NGX_USER="fazb_e2e_$(date +%s)"
 NGX_PASS=$(openssl rand -base64 12 | tr -d '/+=' | head -c 12)
@@ -79,14 +80,15 @@ curl -sS -b "$CJ" -c "$CJ" -X PATCH "$BASE/api/applications/journal/$APP_ID" \
   -d "{
     \"journal\": {
       \"nameTr\": \"$UNIQUE_TITLE\",
-      \"pIssn\": \"2148-6797\",
+      \"proposedInstitutionName\": \"Faz B E2E Yayıncı\",
+      \"pIssn\": \"$TEST_ISSN\",
       \"firstPublicationYear\": 2021,
       \"publicationFrequency\": \"quarterly\",
       \"publicationMonths\": [1,4,7,10],
       \"editorName\": \"E2E Editör\",
       \"editorEmail\": \"${TEST_EMAIL:-$EMAIL}\",
       \"websiteUrl\": \"https://example.com/$UNIQUE_SLUG\",
-      \"keywords\": [\"e2e\",\"fazb\"]
+      \"keywords\": [\"e2e\",\"fazb\",\"beta\"]
     },
     \"subjectAreas\": [{\"categoryId\": $CAT_ID, \"level\": \"primary\"}],
     \"declarationAcceptance\": {

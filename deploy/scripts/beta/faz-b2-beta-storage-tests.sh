@@ -63,14 +63,14 @@ CJ="$TMPDIR/owner.cj"
 OTHER_CJ="$TMPDIR/other.cj"
 
 EMAIL=$(grep '^email=' "$CRED" | cut -d= -f2- | tr -d '\r')
-PASS=$(grep '^pass=' "$CRED" | cut -d= -f2- | tr -d '\r')
-[[ -n "$EMAIL" && -n "$PASS" ]] || { fail "credentials"; exit 1; }
+PASSWD=$(grep '^pass=' "$CRED" | cut -d= -f2- | tr -d '\r')
+[[ -n "$EMAIL" && -n "$PASSWD" ]] || { fail "credentials"; exit 1; }
 
 PROVIDER=$(grep '^APPLICATION_STORAGE_PROVIDER=' "$PILOT_ENV" | cut -d= -f2- | tr -d '\r')
 echo "STORAGE_PROVIDER=$PROVIDER"
 
 echo "=== TEST 1 create journal application ==="
-login_user "$CJ" "$EMAIL" "$PASS" && pass "login" || fail "login"
+login_user "$CJ" "$EMAIL" "$PASSWD" && pass "login" || fail "login"
 csrf=$(fetch_csrf "$CJ")
 create_json=$(curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/applications/journal" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf")
@@ -112,7 +112,7 @@ ins AS (
 INSERT INTO user_credentials (user_id, password_hash)
 SELECT ins.id, admin_cred.password_hash FROM ins, admin_cred;
 EOSQL
-login_user "$OTHER_CJ" "$OTHER_EMAIL" "$PASS" && pass "other login" || fail "other login"
+login_user "$OTHER_CJ" "$OTHER_EMAIL" "$PASSWD" && pass "other login" || fail "other login"
 code=$(curl -sS -b "$OTHER_CJ" -o /dev/null -w '%{http_code}' "$BASE/api/applications/$APP_ID/attachments")
 [[ "$code" == "403" ]] && pass "other user list 403" || fail "other user list $code"
 

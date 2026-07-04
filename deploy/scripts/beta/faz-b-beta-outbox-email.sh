@@ -59,18 +59,20 @@ TEST_APP=$(echo "$create_json" | sed -n 's/.*"contentApplicationId":"\([^"]*\)".
 [[ -n "$TEST_APP" ]] && pass "test app $TEST_APP" || fail "test app create"
 
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+TEST_ISSN=$(acar_beta_generate_test_issn)
 cat > /tmp/fazb-journal-draft.json <<EOF
 {
   "journal": {
-    "nameTr": "Faz B Outbox Test Dergi",
-    "pIssn": "1234-5678",
+    "nameTr": "Faz B Outbox Test Dergi $(date +%s)",
+    "pIssn": "$TEST_ISSN",
     "firstPublicationYear": 2020,
     "publicationFrequency": "quarterly",
     "publicationMonths": [1,4,7,10],
+    "proposedInstitutionName": "Faz B Test Yayıncı",
     "editorName": "Test Editör",
     "editorEmail": "$TEST_EMAIL",
     "websiteUrl": "https://example.com/fazb-outbox",
-    "keywords": ["test","fazb"]
+    "keywords": ["test","fazb","outbox"]
   },
   "subjectAreas": [{"categoryId": 1, "level": "primary"}],
   "declarationAcceptance": {

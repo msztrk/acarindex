@@ -55,7 +55,7 @@ BACKUP=$(grep '^BACKUP=' /tmp/faz_b_gate_backup.log | tail -1 | cut -d= -f2-)
 SHA=$(grep '^BACKUP_SHA256=' /tmp/faz_b_gate_backup.log | tail -1 | cut -d= -f2-)
 [[ -z "$SHA" && -n "$BACKUP" ]] && SHA=$(sha256sum "$BACKUP" | awk '{print $1}')
 echo "BACKUP=$BACKUP SHA256=$SHA"
-$ACAR_COMPOSE exec -T postgres pg_restore --list < "$BACKUP" 2>&1 | head -10
+$ACAR_COMPOSE exec -T postgres pg_restore --list < "$BACKUP" 2>&1 | head -10 || true
 $ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -c \
   "SELECT count(*) AS total FROM application_attachments;
    SELECT upload_status, count(*) FROM application_attachments GROUP BY upload_status;

@@ -77,15 +77,15 @@ export async function createJournalApplicationDraft(userId: string) {
       data: { contentApplicationId: content.id },
     })
 
-    await recordApplicationEvent({
-      applicationId: content.id,
-      eventType: 'draft_created',
-      actorId: userId,
-      toStatus: 'draft',
-      metadata: { kind: 'new_journal', journalApplicationId: journal.id },
-    })
-
     return { content, journal }
+  })
+
+  await recordApplicationEvent({
+    applicationId: row.content.id,
+    eventType: 'draft_created',
+    actorId: userId,
+    toStatus: 'draft',
+    metadata: { kind: 'new_journal', journalApplicationId: row.journal.id },
   })
 
   return {
