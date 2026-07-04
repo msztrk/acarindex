@@ -22,7 +22,8 @@ model Category {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  journals Journal[]
+  journals                       Journal[]
+  journalApplicationSubjectAreas JournalApplicationSubjectArea[]
 
   @@map("categories")
 }
@@ -67,12 +68,13 @@ model Journal {
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  category               Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  issues                 Issue[]
-  articles               Article[]
-  followedBy             FollowedJournal[]
-  memberships            JournalMembership[]
-  membershipApplications MembershipApplication[]
+  category                 Category?               @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  issues                   Issue[]
+  articles                 Article[]
+  followedBy               FollowedJournal[]
+  memberships              JournalMembership[]
+  membershipApplications   MembershipApplication[]
+  approvedFromApplications ContentApplication[]    @relation("ApprovedJournal")
 
   @@index([slug])
   @@index([status])
@@ -354,8 +356,9 @@ model Institution {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  memberships  InstitutionMembership[]
-  applications MembershipApplication[]
+  memberships                    InstitutionMembership[]
+  applications                   MembershipApplication[]
+  journalApplicationsAsPublisher JournalApplication[]
 
   @@index([isActive])
   @@map("institutions")
@@ -868,21 +871,25 @@ model ContentApplication {
   assignedTo         String?                  @map("assigned_to") @db.Uuid
   reviewedRevisionId String?                  @unique @map("reviewed_revision_id") @db.Uuid
   approvedAt         DateTime?                @map("approved_at") @db.Timestamptz(6)
+  approvedJournalId  BigInt?                  @map("approved_journal_id")
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user             User                       @relation("ContentApplicationOwner", fields: [userId], references: [id], onDelete: Cascade)
-  assignee         User?                      @relation("ContentApplicationAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
-  reviewedRevision ApplicationRevision?       @relation("ReviewedRevision", fields: [reviewedRevisionId], references: [id], onDelete: SetNull)
-  revisions        ApplicationRevision[]      @relation("ApplicationRevisions")
-  events           ApplicationEvent[]
-  reviews          ApplicationReview[]
-  attachments      ApplicationAttachment[]
-  privateContact   ApplicationPrivateContact?
+  user               User                       @relation("ContentApplicationOwner", fields: [userId], references: [id], onDelete: Cascade)
+  assignee           User?                      @relation("ContentApplicationAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+  reviewedRevision   ApplicationRevision?       @relation("ReviewedRevision", fields: [reviewedRevisionId], references: [id], onDelete: SetNull)
+  approvedJournal    Journal?                   @relation("ApprovedJournal", fields: [approvedJournalId], references: [id], onDelete: SetNull)
+  revisions          ApplicationRevision[]      @relation("ApplicationRevisions")
+  events             ApplicationEvent[]
+  reviews            ApplicationReview[]
+  attachments        ApplicationAttachment[]
+  privateContact     ApplicationPrivateContact?
+  journalApplication JournalApplication?
 
   @@index([userId, status])
   @@index([status, createdAt(sort: Desc)])
   @@index([assignedTo, status])
+  @@index([approvedJournalId])
   @@map("content_applications")
 }
 
@@ -969,4 +976,106 @@ model ApplicationPrivateContact {
   application ContentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@map("application_private_contacts")
+}
+
+// ─── Yeni Dergi Başvurusu (Faz B1 — domain foundation) ───
+
+enum JournalApplicationSubjectLevel {
+  primary
+  secondary
+
+  @@map("journal_application_subject_level")
+}
+
+enum PublicationFrequency {
+  monthly
+  bimonthly
+  quarterly
+  four_monthly
+  semiannual
+  annual
+  continuous
+  irregular
+
+  @@map("publication_frequency")
+}
+
+model JournalApplication {
+  id                      String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentApplicationId    String                @unique @map("content_application_id") @db.Uuid
+  nameTr                  String?               @map("name_tr")
+  nameEn                  String?               @map("name_en")
+  abbreviation            String?
+  publisherInstitutionId  BigInt?               @map("publisher_institution_id")
+  proposedInstitutionName String?               @map("proposed_institution_name")
+  journalType             String?               @map("journal_type")
+  publishingPlatform      String?               @map("publishing_platform")
+  websiteUrl              String?               @map("website_url")
+  pIssn                   String?               @map("p_issn")
+  eIssn                   String?               @map("e_issn")
+  pIssnNormalized         String?               @map("p_issn_normalized")
+  eIssnNormalized         String?               @map("e_issn_normalized")
+  firstPublicationYear    Int?                  @map("first_publication_year")
+  publicationFrequency    PublicationFrequency? @map("publication_frequency")
+  publicationMonths       Int[]                 @default([]) @map("publication_months")
+  correspondenceAddress   String?               @map("correspondence_address") @db.Text
+  editorName              String?               @map("editor_name")
+  editorTitle             String?               @map("editor_title")
+  editorEmail             String?               @map("editor_email")
+  editorOrcid             String?               @map("editor_orcid")
+  editorProfileUrl        String?               @map("editor_profile_url")
+  officialJournalUrl      String?               @map("official_journal_url")
+  editorialBoardUrl       String?               @map("editorial_board_url")
+  latestIssueUrl          String?               @map("latest_issue_url")
+  platformProfileUrl      String?               @map("platform_profile_url")
+  publisherPageUrl        String?               @map("publisher_page_url")
+  keywords                String[]              @default([])
+  createdAt               DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  contentApplication    ContentApplication                @relation(fields: [contentApplicationId], references: [id], onDelete: Cascade)
+  publisherInstitution  Institution?                      @relation(fields: [publisherInstitutionId], references: [id], onDelete: SetNull)
+  subjectAreas          JournalApplicationSubjectArea[]
+  declarationAcceptance ApplicationDeclarationAcceptance?
+
+  @@index([publisherInstitutionId])
+  @@index([pIssnNormalized])
+  @@index([eIssnNormalized])
+  @@map("journal_applications")
+}
+
+model JournalApplicationSubjectArea {
+  id                   String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  journalApplicationId String                         @map("journal_application_id") @db.Uuid
+  categoryId           BigInt                         @map("category_id")
+  level                JournalApplicationSubjectLevel
+  createdAt            DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  journalApplication JournalApplication @relation(fields: [journalApplicationId], references: [id], onDelete: Cascade)
+  category           Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@unique([journalApplicationId, categoryId])
+  @@index([journalApplicationId])
+  @@index([categoryId])
+  @@map("journal_application_subject_areas")
+}
+
+model ApplicationDeclarationAcceptance {
+  journalApplicationId           String    @id @map("journal_application_id") @db.Uuid
+  criteriaVersion                String?   @map("criteria_version")
+  criteriaAcceptedAt             DateTime? @map("criteria_accepted_at") @db.Timestamptz(6)
+  standardsVersion               String?   @map("standards_version")
+  standardsAcceptedAt            DateTime? @map("standards_accepted_at") @db.Timestamptz(6)
+  privacyNoticeVersion           String?   @map("privacy_notice_version")
+  privacyNoticeAcceptedAt        DateTime? @map("privacy_notice_accepted_at") @db.Timestamptz(6)
+  imageRightsVersion             String?   @map("image_rights_version")
+  imageRightsAcceptedAt          DateTime? @map("image_rights_accepted_at") @db.Timestamptz(6)
+  informationAccuracyVersion     String?   @map("information_accuracy_version")
+  informationAccuracyConfirmedAt DateTime? @map("information_accuracy_confirmed_at") @db.Timestamptz(6)
+  createdAt                      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  journalApplication JournalApplication @relation(fields: [journalApplicationId], references: [id], onDelete: Cascade)
+
+  @@map("application_declaration_acceptances")
 }
