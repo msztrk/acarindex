@@ -53,6 +53,7 @@ export async function proxy(req: NextRequest) {
     rewriteUrl.pathname = stripped
     const requestHeaders = new Headers(req.headers)
     requestHeaders.set('x-site-locale', 'en')
+    requestHeaders.set('x-original-pathname', pathname)
     const rewritten = NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } })
     return applyIndexingHeaders(rewritten, host)
   }

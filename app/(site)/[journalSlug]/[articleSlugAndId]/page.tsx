@@ -115,7 +115,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!articleId) return {}
 
   const article = await getArticle(articleId)
-  if (!article) return { title: 'Makale bulunamadı' }
+  if (!article) notFound()
 
   const locale = await getRequestLocale()
   const title = pickLocalizedTitle(article.title_tr, article.title_en, locale) || 'Makale'

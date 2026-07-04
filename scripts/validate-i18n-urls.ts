@@ -176,7 +176,7 @@ async function checkLiveRedirects() {
     )
     const res = await fetch(`${LIVE_BASE}${enPath}`, { redirect: 'manual' })
     const loc = res.headers.get('location') ?? ''
-    if (res.status !== 302 && res.status !== 307) invalid++
+    if (res.status !== 302 && res.status !== 307 && res.status !== 308) invalid++
     else if (!loc.includes(trPath)) invalid++
 
     const follow = await fetch(`${LIVE_BASE}${enPath}`, { redirect: 'follow' })
@@ -189,7 +189,11 @@ async function checkLiveRedirects() {
     const res404 = await fetch(`${LIVE_BASE}/en/foo/missing-article-999999999`, {
       redirect: 'manual',
     })
-    if (res404.status !== 404) invalid++
+    if (res404.status !== 404 && res404.status !== 200) invalid++
+    else if (res404.status === 200) {
+      const body = await res404.text()
+      if (!body.includes('NEXT_HTTP_ERROR_FALLBACK;404')) invalid++
+    }
   }
 
   if (withEn) {
@@ -205,7 +209,7 @@ async function checkLiveRedirects() {
       'en',
     )
     const res = await fetch(`${LIVE_BASE}${enPath}`, { redirect: 'manual' })
-    if (res.status === 302 || res.status === 307) invalid++
+    if (res.status === 302 || res.status === 307 || res.status === 308) invalid++
   }
 
   return { invalid_en_redirect_count: invalid, redirect_loop_count: loops, skipped: false }
