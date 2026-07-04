@@ -1,52 +1,76 @@
 # AcarIndex Database Integrity Review
 
 **Audit date:** 2026-07-05  
-**Database:** Beta PostgreSQL (read-only queries via `acarindex-beta`)  
-**ORM:** Prisma 6.19
-
-This document summarizes catalog scale, journal publication status, orphan checks, application data, and migration state observed during the read-only audit.
+**Database:** Beta PostgreSQL (`acarindex_pilot` / user `acarindex_pilot`) — read-only queries  
+**ORM:** Prisma 6.19 · **49 models** in `prisma/schema.prisma`  
+**Helper:** `scripts/audit/beta-db-integrity.sql` (pipe to beta postgres container)
 
 ---
 
-## Migration State
+## §9 Migration State
 
 | Metric | Value |
 |--------|-------|
-| Applied migrations | 15 |
+| Applied migrations | **15** |
 | Pending migrations | **0** |
 | Latest migration | `20260714100000_notification_outbox_faz_b5` |
 | Faz coverage | Through **Faz B5** (notification outbox) |
 
-All Prisma migrations are current on beta pilot. No schema drift was detected during the audit window.
+Recent migrations (beta `_prisma_migrations`):
 
----
+| Migration | Applied (UTC) |
+|-----------|---------------|
+| `20260714100000_notification_outbox_faz_b5` | 2026-07-04 19:00:42 |
+| `20260713100000_journal_application_faz_b2` | 2026-07-04 15:59:28 |
+| `20260712100000_journal_application_faz_b1` | 2026-07-04 15:16:41 |
+| `20260711100000_journal_id_sequence` | 2026-07-04 14:14:53 |
+| `20260710100000_application_center_faz_a` | 2026-07-04 00:09:45 |
 
-## Journal Publication Status
-
-| Status | Count | Notes |
-|--------|-------|-------|
-| `published` | **3,054** | Served on public routes |
-| `draft` | **736** | Admin/E2E smoke artifacts; not in public sitemap |
-
-### Draft Journal Details
-
-- All 736 draft journals have slugs assigned.
-- Drafts are **not exposed** on public routes — loaders in `lib/data/journals.ts`, search, sitemaps, and stats all filter `status: 'published'`.
-- Residual drafts are tracked as **AUD-008 (P1)** — run `faz6b2-cleanup-smoke-artifacts.sh` after E2E cycles.
+No schema drift detected between local Prisma schema and beta applied migrations.
 
 ---
 
 ## Catalog Scale (Beta)
 
-Counts from closure backup pre-check:
+| Entity | Count |
+|--------|------:|
+| Journals | 3,790 |
+| Issues | 96,309 |
+| Articles | 543,060 |
+| Authors | 16,663 |
 
-| Entity | Approximate count |
-|--------|-------------------|
-| Journals | ~3,790 |
-| Issues | ~96,309 |
-| Articles | ~543,060 |
+---
 
-These figures include both published and draft journals. Public-facing aggregates use published filters only.
+## §9 Journal Publication Status
+
+| Status | Count | Notes |
+|--------|------:|-------|
+| `published` | **3,054** | Served on public routes |
+| `draft` | **736** | E2E/smoke artifacts; slugs assigned |
+
+### Draft Journal Details
+
+- All 736 drafts have non-empty slugs (`draft_with_slug = 736`).
+- Public routes **do not serve** drafts — loaders filter `status: 'published'`.
+- Cleanup tracked as **AUD-008 (P1)**.
+
+---
+
+## §9 Duplicate Slugs (New Finding)
+
+| Metric | Value |
+|--------|------:|
+| Slug groups with count > 1 | **49** |
+
+Sample duplicates (published + draft mix possible):
+
+| Slug | Count |
+|------|------:|
+| `akdeniz-iibf-dergisi` | 3 |
+| `acta-oncologica-turcica` | 2 |
+| (47 additional groups) | 2 each (typical) |
+
+**Issue:** AUD-009 (P1) — investigate ETL slug assignment; may affect URL routing for affected journals.
 
 ---
 
@@ -57,54 +81,79 @@ These figures include both published and draft journals. Public-facing aggregate
 | Orphan application attachments | **0** |
 | Draft journals with slug | 736 (expected admin/E2E residue) |
 | Public sitemap draft leakage | **None** (published filter enforced) |
-
-No orphan attachment rows were found. The zero attachment count aligns with memory storage provider behavior (see application center section below).
+| Application FK integrity | **Pass** — attachments reference valid `content_applications` |
 
 ---
 
 ## Application Center Data
 
-| Table | Row count | Status distribution |
-|-------|-----------|---------------------|
-| `content_applications` | 12 | All `submitted` |
-| `application_attachments` | **0** | Expected with `APPLICATION_STORAGE_PROVIDER=memory` and container restarts |
+| Table / metric | Count | Distribution |
+|----------------|------:|--------------|
+| `content_applications` | 4 | 3 `draft`, 1 `revision_requested` |
+| By kind | — | All 4 are `new_journal` |
+| `journal_applications` | 4 | 1:1 with content apps |
+| `application_attachments` | 4 | 3 `pending`, 1 `committed` |
+| `notification_outbox` | 8 | All `sent` |
 
-**AUD-024 (P3):** Zero attachments despite 12 submitted applications is consistent with in-memory storage being wiped on restart. Re-verify after B2 storage is configured.
+**AUD-028 (P3):** Attachments exist but 3 remain `pending` upload status; with memory storage, blob data is not durable across container restart.
+
+No `announcement` or `data_correction` application rows on beta (kinds supported in code only).
 
 ---
 
-## Public Query Audit (Journal Status)
+## §10 Journal Status Public Visibility Audit
 
-Script `faz-b-journal-status-audit.sh` verifies published-only filters in:
+Verified in code (and closure gate journal status audit step):
 
-- `lib/data/journals.ts`
-- `lib/data/catalog.ts`
-- `lib/data/search.ts`
-- `lib/data/stats.ts`
-- `lib/data/platform.ts`
-- `lib/data/alternate-url.ts`
-- Sitemap generators
-- `/api/search-suggest`
+| Layer | Filter |
+|-------|--------|
+| `lib/data/journals.ts` | `status: 'published'` |
+| `lib/data/catalog.ts` | `status: 'published'` |
+| `lib/data/search.ts` | `status: 'published'` |
+| `lib/data/stats.ts` | `status: 'published'` |
+| `lib/data/platform.ts` | `status: 'published'` |
+| Sitemap generators | Published only |
+| `/api/search-suggest` | Published only |
+| Journal detail page | `getPublishedJournalById` |
 
-**Result:** All public-facing data loaders use `status: 'published'`.
-
-### Unfiltered Queries (Expected — Internal Only)
+### Unfiltered Queries (Expected — Internal)
 
 - Admin `catalog-lists.ts`
 - Editor panel loaders
 - Admin publish workflow
 - Seed and ETL scripts
 
-### Minor UX Concern
+**Result:** No draft journal public leak detected in code or beta data paths.
 
-Editor panel links to `/journals/{slug}` for draft journals. The public page correctly returns 404, but the link is confusing (**AUD-017, P3**).
+---
+
+## Prisma Model Inventory (49 models)
+
+Core catalog: `Category`, `Journal`, `Issue`, `Article`, `Author`, `ArticleAuthor`, `PdfFile`, `Institution`, …
+
+Auth: `User`, `Session`, `AdminPermission`, …
+
+User panel: `ReadingList`, `SavedArticle`, `FollowedJournal`, `FollowedAuthor`, `RecentView`, …
+
+Applications: `ContentApplication`, `JournalApplication`, `ApplicationAttachment`, `NotificationOutbox`, …
+
+Full list: `prisma/schema.prisma`
 
 ---
 
 ## Legacy Schema Notes
 
-- `types/database.ts` is a manual placeholder pending full ETL consolidation (**AUD-022, P3**).
-- Supabase-era references remain in ETL scripts and type definitions (**AUD-021, P3**).
+- `types/database.ts` — manual placeholder (**AUD-026, P3**)
+- Supabase-era migration comments in baseline SQL (**AUD-025, P3**)
+
+---
+
+## Read-Only Query Reproduction
+
+```powershell
+Get-Content D:\acarindex-web\scripts\audit\beta-db-integrity.sql |
+  ssh acarindex-beta "docker exec -i acarindex_pilot_pg psql -U acarindex_pilot -d acarindex_pilot"
+```
 
 ---
 
@@ -112,5 +161,4 @@ Editor panel links to `/journals/{slug}` for draft journals. The public page cor
 
 - [Current state audit](./current-state-audit.md)
 - [Functional inventory](./functional-inventory.md)
-- [Security review](./security-review.md)
 - [Issue register](./issue-register.csv)

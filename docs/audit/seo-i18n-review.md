@@ -1,122 +1,106 @@
 # AcarIndex SEO and i18n Review
 
 **Audit date:** 2026-07-05  
-**Scope:** Local codebase and beta pilot configuration
+**Scope:** Local codebase @ `f3d0965` and beta pilot configuration
 
 ---
 
-## Locale Model
+## §11 Locale Model
 
 | Setting | Value |
 |---------|-------|
 | Default locale | Turkish (`tr`) |
 | Secondary locale | English (`en`) |
 | English URL prefix | `/en/` |
-| Implementation | `lib/i18n/locale.ts` |
+| Implementation | `lib/i18n/locale.ts`, middleware in `proxy.ts` |
 
-The application uses a path-prefix model for English content while Turkish remains the default without a prefix.
+Path-prefix model: Turkish unprefixed; English under `/en/`.
 
 ---
 
 ## Beta Indexing Controls
 
-Beta external access is protected and excluded from search indexing:
-
 | Control | Mechanism |
 |---------|-----------|
-| HTTP basic auth | 401 on external access |
+| HTTP basic auth | 401 on external beta URL |
 | Robots header | `X-Robots-Tag: noindex` on beta responses |
-| Non-canonical hosts | Middleware (`proxy.ts`) adds `noindex` for non-canonical hostnames |
+| Non-canonical hosts | Middleware adds `noindex` |
 
-**Result:** Beta content is not intended to appear in search engine indexes.
+Beta content is intentionally excluded from search indexes.
 
 ---
 
-## hreflang and Alternate URLs
+## §11 hreflang and Alternate URLs
 
 | Component | Status |
 |-----------|--------|
-| `/api/locale/alternate` | Functional — returns alternate locale URLs for hreflang |
+| `/api/locale/alternate` | Functional — alternate locale URLs |
 | Sitemaps | Published entities only |
-| JSON-LD | Present on public pages |
-
-hreflang alternates are generated for TR/EN page pairs where translations exist.
-
----
-
-## Journal Public Query Audit
-
-Script `deploy/scripts/beta/faz-b-journal-status-audit.sh` (referenced in closure gate) verifies published-only filters across:
-
-| File / Route | Filter |
-|--------------|--------|
-| `lib/data/journals.ts` | `status: 'published'` |
-| `lib/data/catalog.ts` | `status: 'published'` |
-| `lib/data/search.ts` | `status: 'published'` |
-| `lib/data/stats.ts` | `status: 'published'` |
-| `lib/data/platform.ts` | `status: 'published'` |
-| `lib/data/alternate-url.ts` | `status: 'published'` |
-| Sitemap generators | Published only |
-| `/api/search-suggest` | Published only |
-| Journal detail page | `getPublishedJournalById` |
-
-### Audit Result
-
-**No draft journal public leak detected.** 736 draft journals exist in the database (E2E/smoke artifacts) but all public routes filter correctly.
-
-### Internal Unfiltered Queries (Expected)
-
-- Admin catalog lists
-- Editor panel
-- Admin publish workflow
-- Seed and ETL scripts
-
-### Minor UX Issue (P3)
-
-Editor panel links to `/journals/{slug}` for draft journals. Public page returns 404 (safe) but link is confusing (**AUD-017**).
+| JSON-LD | Public pages (`jsonld.test.ts`, `issue-jsonld.test.ts`) |
+| Slug policy | TR/EN slugs (`i18n-slugs.test.ts`, `article-slug-policy.test.ts`) |
 
 ---
 
-## i18n Validation History
+## §10 Journal Public Visibility (SEO-related)
+
+All public SEO surfaces filter `status: 'published'`:
+
+- Sitemap index and entity sitemaps
+- JSON-LD on journal/article pages
+- hreflang alternates via `lib/data/alternate-url.ts`
+- Search and stats aggregations
+
+736 draft journals excluded from sitemaps. **No draft leak.**
+
+---
+
+## §11 i18n Validation
 
 | Event | Timestamp | Result |
 |-------|-----------|--------|
-| Last `validate-i18n-beta.sh` | **Jul 4, 2026 14:40** | Passed |
-| Log location | `/var/log/acarindex-validate-i18n-20260704_143730.*` | |
-| Latest Faz B closure attempt | Jul 4, 2026 ~21:37 | **Did not re-run i18n validate** |
+| Last standalone validate | Jul 4, 2026 ~14:40 | Passed |
+| Closure gate re-run | Jul 4, 2026 **22:24 UTC** | **PASS** |
+| Log | `/var/log/acarindex-validate-i18n-20260704_222428.json` | 0 mismatches reported |
 
-**AUD-014 (P2):** Include `validate-i18n-beta.sh` in the next successful closure gate run.
+Metrics from closure run (excerpt):
 
----
+- `hreflang_head_sitemap_mismatch`: 0
+- `empty_en_sitemap_pages`: 0
+- `has_en_content_flag_drift`: 0
 
-## SEO Module Status
+**Local validation:** `npm run validate:i18n-urls` not run against beta DB this audit (beta script used in closure). Safe to re-run via `deploy/scripts/beta/validate-i18n-beta.sh` after next deploy.
 
-From the 25-module matrix:
-
-| Module | Status | Notes |
-|--------|--------|-------|
-| SEO / sitemaps / JSON-LD | **Functional** | Beta noindex enforced |
-| i18n (TR/EN, hreflang) | **Functional** | Last validate Jul 4; pending re-validation post-closure |
+**Tests:** `validate-i18n-metrics.test.ts`, `i18n-content-hardening.test.ts`, `seo-url-contracts.test.ts` — all pass locally (517 suite).
 
 ---
 
 ## Sitemap Coverage
 
-Public sitemaps include:
+| Sitemap | Content filter |
+|---------|----------------|
+| Root index | Points to entity sitemaps |
+| Journal sitemaps | `status: 'published'` |
+| Article sitemaps | Published articles only |
 
-- Root sitemap index
-- Journal sitemaps
-- Article sitemaps
+Duplicate slugs (49 groups, AUD-009) may affect canonical URL uniqueness for affected journals — SEO risk if both duplicates are published.
 
-All sitemap queries restrict to `status: 'published'`. Draft journals (736) are excluded.
+---
+
+## §11 Module Status (from 25-module matrix)
+
+| Module | Status | Notes |
+|--------|--------|-------|
+| SEO / sitemaps / JSON-LD | **Functional** | Beta noindex |
+| i18n TR/EN hreflang | **Functional** | Validated in latest closure attempt |
 
 ---
 
 ## Recommendations
 
-1. Re-run `validate-i18n-beta.sh` as part of completed Faz B closure gate.
-2. After production cutover, verify canonical host middleware and remove beta-only noindex where appropriate.
-3. Monitor draft journal count; run cleanup script after E2E cycles to keep sitemap generation efficient.
+1. Re-run `validate-i18n-beta.sh` after deploying `f3d0965` to beta.
+2. Resolve duplicate slug groups before production cutover (canonical URL integrity).
+3. After production: remove beta noindex; verify canonical host middleware on production domain.
+4. Run `validate:i18n-urls` locally against staging/rehearsal before cutover.
 
 ---
 

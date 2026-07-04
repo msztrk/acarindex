@@ -1,20 +1,21 @@
 # AcarIndex Operations Review
 
 **Audit date:** 2026-07-05  
-**Scope:** Beta pilot infrastructure (`acarindex-beta`, `/opt/acarindex`) and deploy scripts in repository
+**Scope:** Beta pilot (`acarindex-beta`, `/opt/acarindex`, `/etc/acarindex/pilot.env`)
 
 ---
 
-## Infrastructure Overview
+## §20 Infrastructure Overview
 
 | Component | Beta state |
 |-----------|------------|
-| App container | `acarindex-web:pilot` — Up, healthy, port `3002→3000` |
-| Postgres | `postgres:16-alpine` — healthy |
-| MariaDB (ETL source) | `mariadb:10.11` — healthy |
-| Compose file | `docker-compose.pilot.yml` |
-| Environment | `/etc/acarindex/pilot.env` |
-| Disk `/` | **80–82% used** (57–59G / 75G) |
+| App | `acarindex_pilot_app` — Up, healthy, `:3002→3000` |
+| Postgres | `acarindex_pilot_pg` — `postgres:16-alpine`, healthy |
+| MariaDB (ETL) | `acarindex_pilot_mysql` — `mariadb:10.11`, healthy |
+| Prod (same host) | `acarindex_prod_app`, `acarindex_prod_pg` — **not in audit scope** |
+| Compose | `docker-compose.pilot.yml` + `/etc/acarindex/pilot.env` |
+| Disk `/` | **86%** (62G / 75G) |
+| Volumes | `acarindex-pilot_pilot_pg_data`, `acarindex-pilot_pilot_mysql_data` |
 
 ---
 
@@ -22,90 +23,66 @@
 
 | Metric | Value |
 |--------|-------|
-| Script count | **87 files** under `deploy/scripts/` |
-| Categories | Beta gates, backup, cutover, Faz 6/6C, RBAC smoke, closure gates |
-
-Key operational scripts referenced in the audit:
-
-- `deploy/scripts/beta/faz-b-operational-closure-gate.sh` — 12-step closure gate
-- `deploy/scripts/beta/configure-pilot-b2-storage.sh` — B2 application storage setup
-- `deploy/scripts/faz6a1-beta-role-tests.sh` — RBAC smoke
-- `deploy/scripts/beta/validate-i18n-beta.sh` — i18n validation
-- `deploy/scripts/beta/faz6b2-cleanup-smoke-artifacts.sh` — draft journal cleanup
+| Script count | **87** under `deploy/scripts/` |
+| Key gates | `faz-b-operational-closure-gate.sh`, `faz-b2-beta-storage-tests.sh`, `validate-i18n-beta.sh` |
 
 ---
 
-## Backup and Retention
+## §20 Backup and Retention
 
 | Item | Detail |
 |------|--------|
-| Backup directory | `/var/backups/acarindex-pilot` |
-| Current size | ≈ **3.0 GB** (2 × ~1.5 GB milestone dumps) |
-| Pre-closure backup | `pilot_pg_pre_faz_b_operational_closure_20260704_212344.dump` |
-| Retention policy | `pilot-backup-retention` keeps recent milestone dumps |
-| Off-site B2 backup | **BLOCKED** — no `B2_BACKUP_KEY_ID` configured (**AUD-016**) |
+| Directory | `/var/backups/acarindex-pilot` |
+| Size | **≈ 7.5 GB** (grown from ~3 GB since prior audit) |
+| Pre-closure dump | `pilot_pg_pre_faz_b_operational_closure_20260704_222009.dump` |
+| Retention | `pilot-backup-retention` policy in deploy scripts |
+| Off-site B2 | **BLOCKED** — AUD-018 |
 
-Disk pressure (80–82%) combined with 3 GB local backups on the same volume is tracked as **AUD-004 (P1)**.
+**AUD-004 (P1):** 86% disk + large local backups on same volume.
 
 ---
 
-## Cron Jobs
+## §20 Cron Jobs
 
 | Job | Schedule | Status |
 |-----|----------|--------|
-| Notification outbox processor | Every 5 minutes | **Installed** on beta |
+| Notification outbox | `*/5 * * * *` | **Installed** |
 
-Outbox cron is active. Real email delivery through Resend was **not proven** in the latest closure attempt (gate aborted before email validation steps).
+Crontab entry runs `docker compose … run --rm etl scripts/process-notification-outbox.ts` logging to `/var/log/acarindex-outbox.log`.
+
+Real email delivery: **not verified** — closure gate outbox email step FAIL (AUD-016).
 
 ---
 
 ## Logrotate
 
-| Item | Status |
+Outbox logrotate script exists in repository; closure gate installs if missing. Not independently verified this audit.
+
+---
+
+## §20 Faz B Operational Closure Gate
+
+### Status: **`CLOSURE=HAYIR`**
+
+Latest complete run: `/var/log/acarindex-faz-b-closure-20260704_222004.log` (Jul 4 22:27 UTC, 247 lines).
+
+| Step | Result |
 |------|--------|
-| Outbox logrotate script | Exists in repository |
-| Closure gate behavior | Installs logrotate config if missing |
+| Pre-check | OK |
+| Pre-work backup | OK |
+| B2 application storage | **BLOCKED** |
+| Storage tests (18) | **FAIL** |
+| Outbox real email | **FAIL** |
+| E2E journal + publish | **FAIL** |
+| Journal status audit | Executed |
+| Off-site B2 backup | **BLOCKED** |
+| i18n validate | **PASS** |
+| Regression (beta) | **PASS** |
+| Final | **`CLOSURE=HAYIR`** |
 
-Log rotation for outbox logs is provisioned but was not independently verified during the truncated closure run.
+Prior aborted run (`213743.log`, 86 lines, host `pg_restore` failure) superseded — beta now at `95152ba` with container `pg_restore` fix.
 
----
-
-## Faz B Operational Closure Gate
-
-### Current Status: **INCOMPLETE (`CLOSURE=HAYIR`)**
-
-| Field | Value |
-|-------|-------|
-| Latest log | `/var/log/acarindex-faz-b-closure-20260704_213743.log` |
-| Log lines | 86 (truncated) |
-| Failure point | Step 2 — `pg_restore: command not found` on host |
-| Fix commit | `95152ba` — uses container `pg_restore` |
-| Beta deployed fix | **No** — beta still at `dd471eb` |
-| Final verdict | Not reached; default `CLOSURE=HAYIR`, `RESULT_*=FAIL` |
-
-### Gate Steps Not Completed (Latest Run)
-
-Steps 3–12 were never executed, including:
-
-- Storage integration tests (18 tests)
-- Outbox email verification
-- E2E journal application flow
-- i18n validation re-run
-- Regression smoke
-- Final `CLOSURE=EVET` / `CLOSURE=HAYIR` report
-
----
-
-## B2 Storage — Blocked
-
-| Check | Result |
-|-------|--------|
-| `APPLICATION_STORAGE_PROVIDER` | `memory` |
-| `B2_APPLICATION_KEYS` | **0** (absent from pilot.env) |
-| Off-site backup B2 | **BLOCKED** at closure gate step 8 |
-| Application attachments in DB | **0 rows** (consistent with memory + restarts) |
-
-B2 configuration is a **P0/P1 blocker** for durable beta operations and off-site backup.
+Blocker note: B2 browser credential setup blocked by unavailable Cursor IDE Browser MCP during automated setup workflow.
 
 ---
 
@@ -113,27 +90,26 @@ B2 configuration is a **P0/P1 blocker** for durable beta operations and off-site
 
 ```
 APPLICATION_STORAGE_PROVIDER=memory
+NODE_ENV=production
 ```
 
-Attachments are stored in a process-local `Map` (`lib/applications/storage/index.ts`). Container restarts wipe all uploaded files. This is **AUD-001 (P0)**.
+In-memory `Map` store — **AUD-001 (P0)**. Attachments non-durable.
 
 ---
 
 ## Migrations
 
-| Metric | Value |
-|--------|-------|
+| Metric | Beta value |
+|--------|------------|
 | Applied | 15 |
 | Pending | 0 |
 | Latest | `20260714100000_notification_outbox_faz_b5` |
-
-Schema is current through Faz B5 on beta.
 
 ---
 
 ## Docker Compose Warnings
 
-**AUD-023 (P3):** `docker compose ps` emits `POSTGRES_USER` warnings when env-file is not passed consistently to compose CLI invocations.
+**AUD-027 (P3):** `POSTGRES_USER` warnings when compose invoked without `--env-file /etc/acarindex/pilot.env`.
 
 ---
 
@@ -141,27 +117,27 @@ Schema is current through Faz B5 on beta.
 
 | Environment | SHA |
 |-------------|-----|
-| Local / GitHub | `95152ba` |
-| Beta | `dd471eb` (1 commit behind) |
+| Local / GitHub | `f3d0965` |
+| Beta | `95152ba` (1 commit behind) |
 
-Deploy latest `redesign-v2` to beta before re-running closure gate.
+Deploy `f3d0965` before next closure run (includes closure hotfixes + unique test ISSN generation).
 
 ---
 
-## Operational Recommendations
+## §20 Operational Recommendations
 
 ### Immediate (Phase 0)
 
-1. Deploy `95152ba` to beta pilot.
-2. Configure B2 application storage credentials (or document explicit memory-only beta scope with cleanup policy).
-3. Re-run `faz-b-operational-closure-gate.sh` to completion.
-4. Verify storage tests, outbox email, E2E flow, i18n validate, regression smoke.
+1. Deploy `f3d0965` to beta.
+2. Configure B2 application storage (manual Backblaze setup if MCP unavailable).
+3. Re-run `faz-b-operational-closure-gate.sh` to `CLOSURE=EVET`.
+4. Verify storage tests, outbox email, E2E flow.
 
-### Short-Term (Phase 1)
+### Short-term (Phase 1)
 
-5. Run backup retention / disk hygiene.
-6. Configure B2 off-site backup credentials.
-7. Clean draft journal smoke artifacts.
+5. Backup retention — reduce 7.5G footprint.
+6. Configure B2 off-site backup.
+7. Clean draft journal smoke artifacts (`faz6b2-cleanup-smoke-artifacts.sh`).
 
 ---
 
@@ -170,4 +146,3 @@ Deploy latest `redesign-v2` to beta before re-running closure gate.
 - [Current state audit](./current-state-audit.md)
 - [Security review](./security-review.md)
 - [Recommended roadmap](./recommended-roadmap.md)
-- [Issue register](./issue-register.csv)

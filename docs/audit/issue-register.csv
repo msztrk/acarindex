@@ -1,25 +1,29 @@
 id,severity,area,title,status,evidence,recommendation
-AUD-001,P0,storage,APPLICATION_STORAGE_PROVIDER=memory on beta,open,Container env + pilot.env,Configure B2 creds; run configure-pilot-b2-storage.sh; re-run storage tests
-AUD-002,P0,operations,Faz B operational closure incomplete,open,86-line gate log; no CLOSURE=EVET,Deploy 95152ba; re-run faz-b-operational-closure-gate.sh to completion
-AUD-003,P1,deploy,Beta SHA lags GitHub by 1 commit,open,dd471eb vs 95152ba,Deploy latest redesign-v2 to beta pilot
-AUD-004,P1,infra,Beta disk 80-82% used,open,df -h; 3GB backups,Run backup retention; monitor; expand volume or off-site B2 backup
-AUD-005,P1,infra,B2 credentials absent for app storage and off-site backup,open,B2_APPLICATION_KEYS=0 in closure log,Complete Backblaze browser setup; configure pilot B2
-AUD-006,P1,security,Admin data-quality page lacks permission guard,open,app/admin/data-quality/page.tsx,Add requirePermission('data_quality.read') or requireAdminPermissionGuard
-AUD-007,P1,security,Admin ETL page lacks permission guard,open,app/admin/etl/page.tsx,Add requirePermission('etl.read')
-AUD-008,P1,data,736 draft journals in pilot DB,open,SQL status counts,Run faz6b2-cleanup-smoke-artifacts.sh after E2E
-AUD-009,P2,security,LEGACY_DUAL_READ authorization dual path,open,admin-permissions.ts,Migrate all admin routes to admin_permissions; disable dual-read
-AUD-010,P2,performance,Home page ~2s response on beta,open,curl timing,Profile SSR; cache warm; investigate catalog queries
-AUD-011,P2,security,Unauthenticated institutions search API,open,app/api/institutions/search/route.ts,Require session or rate-limit
-AUD-012,P2,security,npm audit 2 moderate (postcss via next),open,npm audit,Track Next.js patch for postcss dependency
-AUD-013,P2,operations,Closure gate host pg_restore failure,open,faz-b-operational-closure-gate.sh:58,Fixed in 95152ba — deploy and re-run
-AUD-014,P2,i18n,i18n validate not run in latest closure attempt,open,Last validate 14:40 Jul 4,Include validate-i18n-beta.sh in successful closure run
-AUD-015,P2,security,PDF proxy no application rate limit,open,pdf-proxy route comments,Add edge rate limit before production
-AUD-016,P2,operations,B2 off-site backup BLOCKED,open,closure gate step 8,Configure B2_BACKUP_KEY_ID
-AUD-017,P3,ux,Editor links to public journal page for drafts,open,editor/[journalId]/page.tsx,Hide link or warn when journal not published
-AUD-018,P3,product,Editor panel direct edit placeholder,open,yakında section,Plan Faz C or post-closure editor features
-AUD-019,P3,product,Institution panel management placeholder,open,kurum/[institutionId]/page.tsx,Same
-AUD-020,P3,tech-debt,Deprecated global EDITOR role confusion,open,lib/auth/roles.ts,Document; migrate to journal_memberships only
-AUD-021,P3,tech-debt,Supabase/ETL legacy references,open,grep Supabase across lib/scripts,Continue PG-native consolidation
-AUD-022,P3,tech-debt,types/database.ts manual placeholder,open,types/database.ts,Generate from Prisma when stable
-AUD-023,P3,infra,docker compose POSTGRES_USER warnings,open,docker compose ps warnings,Pass env-file consistently to compose CLI
-AUD-024,P3,data,0 application_attachments despite 12 submitted apps,open,beta SQL,Expected with memory provider restarts; verify after B2
+AUD-001,P0,storage,APPLICATION_STORAGE_PROVIDER=memory on beta,open,Container env memory; 3 attachments pending; Map store in lib/applications/storage,Configure B2 creds; run configure-pilot-b2-storage.sh; verify persistence across restart
+AUD-002,P0,operations,Faz B operational closure CLOSURE=HAYIR,open,Gate log 20260704_222004; B2/storage/E2E/email FAIL; regression PASS,Configure B2; re-run faz-b-operational-closure-gate.sh to CLOSURE=EVET
+AUD-003,P1,deploy,Beta SHA lags local by 1 commit,open,95152ba vs f3d0965,Deploy f3d0965 redesign-v2 to beta pilot
+AUD-004,P1,infra,Beta disk 86% used backups 7.5G,open,df -h; du /var/backups/acarindex-pilot,Run backup retention; monitor; expand volume or off-site B2 backup
+AUD-005,P1,infra,B2 credentials absent for app storage and off-site backup,open,Closure steps B2 application storage and off-site BLOCKED,Complete Backblaze setup; configure-pilot-b2-storage.sh and configure-pilot-b2-backup.sh
+AUD-006,P1,security,Admin data-quality page lacks permission guard,open,app/admin/data-quality/page.tsx layout-only guard,Add requirePermission data_quality.read or requireAdminPermissionGuard
+AUD-007,P1,security,Admin ETL page lacks permission guard,open,app/admin/etl/page.tsx layout-only guard,Add requirePermission etl.read
+AUD-008,P1,data,736 draft journals in pilot DB,open,SQL status counts 736 draft 3054 published,Run faz6b2-cleanup-smoke-artifacts.sh after E2E cycles
+AUD-009,P1,data,49 duplicate journal slug groups in catalog,open,SQL duplicate_slug_groups=49; sample slugs with cnt 2-3,Investigate ETL slug collision policy; dedupe or disambiguate published slugs
+AUD-010,P2,security,LEGACY_DUAL_READ authorization dual path,open,admin-permissions.ts LEGACY_DUAL_READ_ENABLED true,Migrate all admin routes to admin_permissions; disable dual-read
+AUD-011,P2,performance,Search page ~2.6s response on beta,open,curl localhost:3002/search?q=test,Profile search queries; add caching or index tuning
+AUD-012,P2,performance,Home page was ~2s cold now ~0.5s warm,open,curl timing variance,Establish warm baseline; monitor catalog SSR under load
+AUD-013,P2,security,Unauthenticated institutions search API,open,app/api/institutions/search/route.ts,Require session or rate-limit
+AUD-014,P2,security,npm audit 2 moderate postcss via next,open,npm audit GHSA-qx2v-qp2m-jg93,Track Next.js patch for postcss dependency
+AUD-015,P2,operations,Storage integration tests 18 FAIL on beta,open,Closure gate step storage tests FAIL,Fix B2 storage then re-run faz-b2-beta-storage-tests.sh
+AUD-016,P2,operations,Outbox real email FAIL in closure gate,open,Closure gate step outbox real email FAIL,Verify Resend env; re-run faz-b-beta-outbox-email.sh
+AUD-017,P2,operations,E2E journal application flow FAIL in closure,open,Closure gate E2E journal publish FAIL,Debug faz-b-beta-e2e-journal-flow.sh after B2 fix
+AUD-018,P2,operations,B2 off-site backup BLOCKED,open,Closure gate step 8 BLOCKED,Configure B2_BACKUP_KEY_ID via configure-pilot-b2-backup.sh
+AUD-019,P2,security,PDF proxy no application rate limit,open,pdf-proxy route comments,Add edge rate limit before production
+AUD-020,P3,ux,Editor links to public journal page for drafts,open,editor/[journalId]/page.tsx,Hide link or warn when journal not published
+AUD-021,P3,product,Editor panel direct edit placeholder,open,yakında section,Plan post-closure editor features
+AUD-022,P3,product,Institution panel management placeholder,open,kurum/[institutionId]/page.tsx,Plan post-closure institution features
+AUD-023,P3,product,Announcement and data_correction application flows unbuilt,open,API accepts kinds; no dedicated wizard beyond generic yeni page,Implement admin review and user wizards for duyuru/veri düzeltme
+AUD-024,P3,tech-debt,Deprecated global EDITOR role confusion,open,lib/auth/roles.ts,Document; migrate to journal_memberships only
+AUD-025,P3,tech-debt,Supabase/ETL legacy references,open,grep Supabase across lib/scripts,Continue PG-native consolidation
+AUD-026,P3,tech-debt,types/database.ts manual placeholder,open,types/database.ts,Generate from Prisma when stable
+AUD-027,P3,infra,docker compose POSTGRES_USER warnings,open,docker compose ps warnings,Pass env-file consistently to compose CLI
+AUD-028,P3,data,4 application attachments 3 pending with memory storage,open,beta SQL upload_status pending=3 committed=1,After B2 verify committed status and download integrity

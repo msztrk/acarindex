@@ -1,125 +1,120 @@
 # AcarIndex Recommended Roadmap
 
 **Audit date:** 2026-07-05  
-**Based on:** Read-only audit findings (24 issues: P0=2, P1=6, P2=9, P3=7)
+**Based on:** Expanded read-only audit — 28 issues (P0=2, P1=7, P2=10, P3=9)  
+**Closure gate:** **`CLOSURE=HAYIR`** (Jul 4 22:27 UTC full run)
 
 ---
 
-## Guiding Principle
+## §22 Guiding Principle
 
-**Complete Faz B operational closure first.** Do not start Faz C or major new feature development until the closure gate reports `CLOSURE=EVET` and P0/P1 security and storage blockers are resolved.
+**Complete Faz B operational closure first.** Do not start Faz C or major feature work until the gate reports `CLOSURE=EVET` and P0/P1 blockers are resolved.
 
-Current closure status: **`CLOSURE=HAYIR`** — gate aborted at step 2 on Jul 4, 2026.
+B2 credential setup is the primary external blocker (automated browser setup failed in closure environment).
 
 ---
 
-## Phase 0 — Unblock Faz B Closure (1–2 Days)
+## Phase 0 — Unblock Faz B Closure (1–3 Days)
 
-**Goal:** Achieve `CLOSURE=EVET` on beta pilot with all gate steps passing.
+**Goal:** `CLOSURE=EVET` on beta with all gate steps passing.
 
-| Step | Action | Issues addressed |
-|------|--------|------------------|
-| 1 | Deploy `95152ba` to beta pilot (`redesign-v2`) | AUD-003, AUD-013 |
-| 2 | Configure B2 application storage — run `configure-pilot-b2-storage.sh` after Backblaze credential setup | AUD-001, AUD-005, AUD-024 |
-| 3 | Re-run `deploy/scripts/beta/faz-b-operational-closure-gate.sh` to completion | AUD-002 |
-| 4 | Verify closure gate outputs: | |
-| | — Storage integration tests (18 tests) | AUD-001 |
-| | — Outbox email delivery | AUD-002 |
-| | — E2E journal application flow | AUD-002 |
-| | — `validate-i18n-beta.sh` | AUD-014 |
-| | — Regression smoke | AUD-002 |
-| | — Final report with `CLOSURE=EVET` | AUD-002 |
+| Step | Action | Issues |
+|------|--------|--------|
+| 1 | Deploy `f3d0965` to beta (`redesign-v2`) | AUD-003 |
+| 2 | Configure B2 application storage — `configure-pilot-b2-storage.sh` | AUD-001, AUD-005, AUD-015, AUD-028 |
+| 3 | Re-run `deploy/scripts/beta/faz-b-operational-closure-gate.sh` | AUD-002 |
+| 4 | Verify gate outputs: | |
+| | — 18 storage integration tests PASS | AUD-015 |
+| | — Outbox real email PASS | AUD-016 |
+| | — E2E journal application + publish PASS | AUD-017 |
+| | — i18n validate PASS (already passed Jul 4) | — |
+| | — Regression smoke PASS | — |
+| | — Final `CLOSURE=EVET` | AUD-002 |
 
-**Exit criteria:** Closure gate log shows all 12 steps passed; `CLOSURE=EVET`; attachments persist across container restart.
+**Exit criteria:** Attachments survive container restart; gate log shows `CLOSURE=EVET`; `Faz C başlatılabilir: EVET`.
 
-**Explicitly out of scope:** Faz C features, editor/institution panel implementation.
+**Out of scope:** Faz C features, editor/institution implementation, announcement/data_correction wizards.
 
 ---
 
 ## Phase 1 — P1 Hardening (3–5 Days)
 
-**Goal:** Close high-priority security, infrastructure, and data hygiene gaps.
+| Step | Action | Issues |
+|------|--------|--------|
+| 5 | Add guards: `data-quality/page.tsx`, `etl/page.tsx` | AUD-006, AUD-007 |
+| 6 | Disk/backup hygiene — retention on 7.5G backups; monitor 86% volume | AUD-004 |
+| 7 | Configure B2 off-site backup | AUD-018 |
+| 8 | Clean draft journals — `faz6b2-cleanup-smoke-artifacts.sh` | AUD-008 |
+| 9 | Investigate duplicate slug groups (49) — ETL or merge policy | AUD-009 |
+| 10 | Rate-limit or auth-gate `/api/institutions/search` | AUD-013 |
 
-| Step | Action | Issues addressed |
-|------|--------|------------------|
-| 5 | Add page guards to `app/admin/data-quality/page.tsx` | AUD-006 |
-| 6 | Add page guards to `app/admin/etl/page.tsx` | AUD-007 |
-| 7 | Disk and backup hygiene — run retention, monitor volume, configure B2 off-site backup | AUD-004, AUD-016 |
-| 8 | Clean draft journal smoke artifacts — `faz6b2-cleanup-smoke-artifacts.sh` | AUD-008 |
-| 9 | Rate-limit or auth-gate `/api/institutions/search` | AUD-011 |
-
-**Exit criteria:** All P1 issues closed or accepted with documented exception; disk below 75%; admin sensitive pages require explicit permissions.
+**Exit criteria:** All P1 closed or documented exception; disk trending below 80%; admin DQ/ETL require explicit permissions.
 
 ---
 
 ## Phase 2 — P2 Technical Debt (1–2 Weeks)
 
-**Goal:** Reduce authorization complexity, improve performance, and close medium-severity security gaps.
+| Step | Action | Issues |
+|------|--------|--------|
+| 11 | Disable `LEGACY_DUAL_READ`; migrate admin routes to `admin_permissions` | AUD-010 |
+| 12 | Search performance — profile `/search` (~2.6s beta) | AUD-011 |
+| 13 | Track Next.js/postcss patch | AUD-014 |
+| 14 | PDF proxy rate limiting | AUD-019 |
+| 15 | Establish performance baselines (home warm/cold) | AUD-012 |
 
-| Step | Action | Issues addressed |
-|------|--------|------------------|
-| 10 | Migrate all admin routes to `admin_permissions`; disable `LEGACY_DUAL_READ` | AUD-009 |
-| 11 | Performance pass on home page SSR (~2s TTFB on beta) | AUD-010 |
-| 12 | Track and apply Next.js/postcss security patch | AUD-012 |
-| 13 | Add rate limiting to PDF proxy route | AUD-015 |
-
-**Exit criteria:** Single authorization path active; home TTFB under 1s on warm beta; npm audit clean or accepted with documented risk.
+**Exit criteria:** Single authorization path; search TTFB < 1s warm on beta; npm audit tracked.
 
 ---
 
-## Phase 3 — Product (After Closure `EVET` Only)
+## Phase 3 — Product (After `CLOSURE=EVET` Only)
 
-**Goal:** Deliver deferred product features and address P3 items.
-
-| Step | Action | Issues addressed |
-|------|--------|------------------|
-| 14 | Editor panel direct edit (replace "yakında" placeholder) | AUD-018 |
-| 15 | Institution panel management (replace "yakında" placeholder) | AUD-019 |
-| 16 | Fix editor draft journal public link UX | AUD-017 |
-| 17 | Deprecate global EDITOR role; document migration to journal_memberships | AUD-020 |
-| 18 | Continue PG-native consolidation; remove Supabase legacy references | AUD-021 |
-| 19 | Generate `types/database.ts` from Prisma when schema stable | AUD-022 |
-| 20 | Fix docker compose env-file warnings | AUD-023 |
+| Step | Action | Issues |
+|------|--------|--------|
+| 16 | Editor panel direct edit | AUD-021 |
+| 17 | Institution panel management | AUD-022 |
+| 18 | Announcement + data_correction application flows | AUD-023 |
+| 19 | Editor draft journal link UX | AUD-020 |
+| 20 | Deprecate global EDITOR role | AUD-024 |
+| 21 | PG-native consolidation; reduce Supabase references | AUD-025 |
+| 22 | Generate `types/database.ts` from Prisma | AUD-026 |
+| 23 | Fix docker compose env-file warnings | AUD-027 |
 
 ### Faz C — Do Not Start Now
 
-Faz C (responsive testing suite, extended editor features) infrastructure exists (`playwright.beta-responsive.config.ts`, `faz6c-beta-c-responsive.sh`) but **must not begin** until:
+Infrastructure exists (`playwright.beta-responsive.config.ts`, `faz6c-beta-c-responsive.sh`) but requires:
 
-1. Phase 0 closure gate passes with `CLOSURE=EVET`
-2. P0 and P1 issues are resolved
-3. B2 durable storage is verified on beta
-
----
-
-## Issue Priority Summary
-
-| Priority | Count | Phase |
-|----------|-------|-------|
-| P0 | 2 | Phase 0 (blockers) |
-| P1 | 6 | Phase 0–1 |
-| P2 | 9 | Phase 1–2 |
-| P3 | 7 | Phase 3 |
+1. Phase 0 `CLOSURE=EVET`
+2. P0/P1 resolved
+3. B2 durable storage verified
 
 ---
 
-## Success Metrics
+## §22 Success Metrics
 
 | Metric | Current | Target |
 |--------|---------|--------|
 | Closure gate | `CLOSURE=HAYIR` | `CLOSURE=EVET` |
-| Beta SHA | `dd471eb` | `95152ba` or later |
-| Storage provider | `memory` | `b2` with verified persistence |
-| Application attachments | 0 rows | >0 after test upload + restart |
+| Local SHA | `f3d0965` | Deployed to beta |
+| Beta SHA | `95152ba` | `f3d0965` |
+| Storage provider | `memory` | `b2` + restart test |
+| Application attachments | 4 (3 pending) | Committed + downloadable post-restart |
 | Draft journals | 736 | <50 post-cleanup |
-| Admin page guard gaps | 2 critical (DQ, ETL) | 0 |
-| Vitest | 517 passed | Maintain or increase |
+| Duplicate slug groups | 49 | 0 for published |
+| Admin DQ/ETL guards | Missing | Required permissions |
+| Vitest | 517 passed | Maintain/increase |
 | npm audit moderate | 2 | 0 or tracked exception |
+| Beta disk | 86% | <80% |
+
+---
+
+## Verdict
+
+**P0–P1 first** — not an architectural rewrite. Core catalog, auth, and application code are production-grade; beta operational validation and storage durability are the gating items.
 
 ---
 
 ## Related Deliverables
 
 - [Issue register](./issue-register.csv)
-- [Security review](./security-review.md)
-- [Operations review](./operations-review.md)
 - [Current state audit](./current-state-audit.md)
+- [Operations review](./operations-review.md)

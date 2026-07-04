@@ -1,128 +1,155 @@
 # AcarIndex Authorization Matrix
 
 **Audit date:** 2026-07-05  
-**Repository:** `D:\acarindex-web`, branch `redesign-v2`
+**Repository:** `D:\acarindex-web`, branch `redesign-v2` @ `f3d0965`
 
-This document describes the role-based access control (RBAC) model, dual-read authorization behavior, role capability matrix, and identified page guard gaps.
+This document describes RBAC profiles, dual-read behavior, page/API guards, and beta verification status.
 
 ---
 
-## RBAC Architecture
+## §4 RBAC Architecture
 
-### Dual-Read Mode (Active)
+### Global Roles (`lib/auth/roles.ts`)
+
+| Role | Admin panel | Typical use |
+|------|:-----------:|-------------|
+| USER | ✗ | Registered catalog user |
+| EDITOR (legacy global) | ✓ via `legacy_admin_access` | **Deprecated** — causes guard gaps |
+| MODERATOR | ✓ | Content moderation |
+| ADMIN | ✓ | Full admin except super-admin assignment |
+| SUPER_ADMIN | ✓ | All permissions including role assignment |
+
+### Scoped Roles (non-global)
+
+| Role | Panel | Scope |
+|------|-------|-------|
+| `journal_owner`, `journal_editor` | Editor | `journal_memberships` per journal |
+| `institution_manager` | Institution | Institution membership |
+
+### Dual-Read Mode (Active — P2 AUD-010)
 
 `LEGACY_DUAL_READ_ENABLED = true` in `lib/auth/admin-permissions.ts`.
 
-Authorization checks succeed if **either**:
+Authorization succeeds if **either**:
 
-1. The user's `admin_permissions` row grants the required permission, **or**
-2. The legacy `PERMISSION_MATRIX` maps the user's global role to the permission.
-
-This dual path increases maintenance risk and is tracked as **AUD-009 (P2)**.
-
-### Permission Sources
-
-| Source | Location | Status |
-|--------|----------|--------|
-| Database permissions | `admin_permissions` table | Primary target model |
-| Legacy role matrix | `PERMISSION_MATRIX` in `lib/auth/admin-permissions.ts` | Deprecated path, still active |
-| Journal memberships | `journal_memberships` | Editor panel scoping |
-| Institution memberships | Institution manager roles | Institution panel scoping |
+1. `admin_permissions` row grants the permission, **or**
+2. Legacy `PERMISSION_MATRIX` maps global role → permission via `LEGACY_MATRIX_TO_ADMIN_PERMISSION`.
 
 ---
 
-## Role Capability Matrix
+## Admin Permission Names
 
-| Role | Admin panel | User mgmt | Data quality | ETL | Content apps | Change requests |
-|------|:-----------:|:---------:|:------------:|:---:|:------------:|:---------------:|
-| USER | ✗ | ✗ | ✗ | ✗ | ✗ (own apps only) | ✗ |
-| EDITOR (legacy global) | ✓ | ✗ | **✓ page gap** | **✓ page gap** | ✗ API | ✗ |
-| MODERATOR | ✓ | ✗ | ✓ | ✓ | via permission | ✓ |
-| ADMIN | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| SUPER_ADMIN | ✓ | ✓ (+ assign SA) | ✓ | ✓ | ✓ | ✓ |
-| journal_owner / journal_editor | Editor panel only | — | — | — | — | own CRs |
-| institution_manager | Institution panel | — | — | — | — | — |
+From `ADMIN_PERMISSIONS`:
 
-**Legend:** ✓ = intended access; ✗ = denied; **page gap** = page reachable via layout-only guard without explicit permission check.
+`manage_users`, `manage_roles`, `manage_journals`, `manage_institutions`, `manage_articles`, `manage_pdfs`, `review_change_requests`, `review_content_applications`, `view_audit_logs`, `manage_system_settings`, `legacy_admin_access`
+
+Legacy matrix maps `data_quality.read` → `review_change_requests` + `view_audit_logs`; `etl.read` → `manage_system_settings`.
+
+---
+
+## §4 Role Capability Matrix
+
+| Capability | USER | EDITOR (legacy) | MODERATOR | ADMIN | SUPER_ADMIN | journal_editor | institution_mgr |
+|------------|:----:|:---------------:|:---------:|:-----:|:-----------:|:--------------:|:---------------:|
+| Admin panel layout | ✗ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| User management pages | ✗ | ✗ | ✗ | ✓ | ✓ | ✗ | ✗ |
+| Data quality page | ✗ | **✓ gap** | ✓ | ✓ | ✓ | ✗ | ✗ |
+| ETL page | ✗ | **✓ gap** | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Catalog lists (issues/articles) | ✗ | ✓ layout | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Content app review | ✗ | ✗* | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Change request review | ✗ | ✗ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Journal publish API | ✗ | ✗ | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Editor panel | ✗ | ✓** | ✗ | ✗ | ✗ | ✓ | ✗ |
+| Institution panel | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| Own applications | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Own change requests | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+\* Legacy EDITOR has `legacy_admin_access` but not `review_content_applications` unless dual-read maps it.  
+\*\* Legacy global EDITOR ≠ journal-scoped editor membership.
+
+---
+
+## Layout Guard
+
+All `/admin/*` pages inherit:
+
+```typescript
+// app/admin/layout.tsx
+await requireAdminSession()
+```
+
+`requireAdminSession` allows any user with admin panel access (including legacy EDITOR with `legacy_admin_access`). **Page-level permission guards are required for sensitive operations.**
+
+---
+
+## Admin Page Guards (19 pages)
+
+### Explicit permission guards ✓
+
+| Page | Guard |
+|------|-------|
+| `users` | `requireUserManagement()` |
+| `audit` | `requireUserManagement()` |
+| `journals`, `journals/[id]` | `requireAdminPermissionGuard('manage_journals')` |
+| `applications`, `applications/journal/[id]` | `requireAdminPermissionGuard('review_content_applications')` |
+| `change-requests` | `requireAdminPermissionGuard('review_change_requests')` |
+| `membership-applications` | `requireAdminPermissionGuard('manage_journals')` |
+
+### Layout-only (gaps)
+
+| Page | Risk | Issue |
+|------|------|-------|
+| `data-quality`, `data-quality/[category]` | Legacy EDITOR can view | AUD-006 P1 |
+| `etl` | Legacy EDITOR can view ETL status | AUD-007 P1 |
+| `issues`, `articles`, `authors`, `pdfs` | Catalog read without granular permission | Lower — read-only |
+| `url-aliases`, `site-content`, `health`, dashboard | Admin read | Lower — operational |
 
 ---
 
 ## API Authorization Guards
 
-### Public / Unauthenticated
+### Public / special
 
-See [functional inventory](./functional-inventory.md) — includes `/api/institutions/search` (P2).
+| Route pattern | Guard |
+|---------------|-------|
+| `/api/health`, `/api/search-suggest`, `/api/features`, `/api/locale/alternate` | None |
+| `/api/institutions/search` | **None** (P2) |
+| `/api/pdf-proxy/[id]` | Published article + allowlist |
+| `/api/auth/*` mutating | CSRF + rate limits |
+| `/api/webhooks/resend` | Svix signature |
+| `/api/internal/revalidate-i18n` | Bearer secret |
 
-### User Session (`getApiActiveUserSession`)
+### User session (`getApiActiveUserSession`)
 
-All `/api/user/*`, `/api/applications/*`, `/api/change-requests`, `/api/membership-applications`, `/api/editor/journals`, `/api/institution/memberships`.
+`/api/user/*`, `/api/applications/*`, `/api/change-requests`, `/api/membership-applications`, `/api/editor/journals`, `/api/institution/memberships`
 
-### Admin Session Variants
+Ownership enforced in handlers (application ID must belong to session user).
 
-| Guard | Purpose | Example routes |
-|-------|---------|----------------|
-| `getApiAdminSession` | General admin | Site content, verify-email |
-| `getApiUserManagementSession` | User administration | Roles, status |
-| `getApiAdminPermissionSession('manage_journals')` | Journal operations | Publish, membership applications |
-| `getApiAdminPermissionSession('review_content_applications')` | Application review | Journal application admin |
-| `getApiAdminPermissionSession('review_change_requests')` | Change request review | Admin change requests |
+### Admin API
 
----
+| Guard | Routes |
+|-------|--------|
+| `getApiAdminSession` | `admin/site-content/home-hero`, `admin/users/[userId]/verify-email` |
+| `getApiUserManagementSession` | `admin/users/[userId]/roles`, `admin/users/[userId]/status` |
+| `getApiAdminPermissionSession('manage_journals')` | `admin/journals/[id]/publish`, `admin/membership-applications` |
+| `getApiAdminPermissionSession('review_content_applications')` | `admin/applications/journal/[id]` |
+| `getApiAdminPermissionSession('review_change_requests')` | `admin/change-requests` |
 
-## Admin Page Guards
+**IDOR posture:** User APIs scope by session user ID; admin APIs require permission session. Application attachment download routes verify application ownership.
 
-### Pages With Explicit Permission Guards
-
-These pages call `requireAdminPermissionGuard`, `requireUserManagement`, or `requirePermission`:
-
-- `users`
-- `audit`
-- `journals`
-- `applications`
-- `change-requests`
-- `membership-applications`
-
-### Pages With Layout-Only Guard (Gaps)
-
-These pages rely on `requireAdminSession` at the layout level **without** page-specific permission checks:
-
-| Page | Risk | Issue ID |
-|------|------|----------|
-| `data-quality` | EDITOR role can view via layout guard | AUD-006 |
-| `etl` | EDITOR role can view via layout guard | AUD-007 |
-| `issues` | Catalog read without granular permission | — |
-| `articles` | Catalog read without granular permission | — |
-| `authors` | Catalog read without granular permission | — |
-| `pdfs` | Catalog read without granular permission | — |
-| `url-aliases` | Admin read without granular permission | — |
-| `site-content` | Admin read without granular permission | — |
-| `health` | Admin read without granular permission | — |
-| Dashboard (index) | Admin read without granular permission | — |
-
-**Impact:** A user with the legacy global `EDITOR` role can access admin layout-protected pages including data-quality and ETL, which should require explicit permissions such as `data_quality.read` and `etl.read`.
-
-### Recommended Fixes
-
-1. Add `requirePermission('data_quality.read')` or `requireAdminPermissionGuard` to `app/admin/data-quality/page.tsx`.
-2. Add `requirePermission('etl.read')` to `app/admin/etl/page.tsx`.
-3. Audit remaining catalog/operations pages for consistent permission enforcement.
+**CSRF:** Auth mutating endpoints protected; user JSON APIs rely on session cookie + SameSite; admin mutations use session from admin layout context.
 
 ---
 
-## Beta Verification Scripts
+## Beta Verification (§4 direct URL tests)
 
-Smoke and role tests exist for beta validation:
+| Script | Status this audit |
+|--------|-------------------|
+| `deploy/scripts/faz6a1-beta-role-tests.sh` | Not re-run (read-only) |
+| `deploy/scripts/beta/rbac-beta-smoke.sh` | Not re-run |
+| Closure gate regression | **PASS** (Jul 4 22:27) |
 
-- `deploy/scripts/faz6a1-beta-role-tests.sh`
-- `deploy/scripts/rbac-beta-smoke.sh`
-
-These were not re-run to completion during the aborted Faz B closure gate.
-
----
-
-## Deprecated Role Notes
-
-The global `EDITOR` role in `lib/auth/roles.ts` overlaps with journal-scoped memberships and causes authorization confusion (**AUD-020, P3**). Long-term direction: migrate to `journal_memberships` only and disable `LEGACY_DUAL_READ`.
+**Recommendation:** Re-run RBAC smoke after deploying `f3d0965` and fixing admin page guards.
 
 ---
 
