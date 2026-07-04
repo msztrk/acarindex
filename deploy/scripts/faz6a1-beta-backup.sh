@@ -28,3 +28,10 @@ ls -lh "$BACKUP"
 sha256sum "$BACKUP"
 echo "BACKUP=$BACKUP"
 echo "COUNTS=$COUNTS_FILE"
+
+if [[ "${PILOT_BACKUP_RETENTION:-1}" == "1" ]]; then
+  RETENTION_SCRIPT="$(dirname "$0")/beta/pilot-backup-retention.sh"
+  if [[ -x "$RETENTION_SCRIPT" ]]; then
+    bash "$RETENTION_SCRIPT" "$BACKUP"
+  fi
+fi
