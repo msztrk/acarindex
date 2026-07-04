@@ -112,7 +112,7 @@ async function captureRoute(
   change: string,
   statusBefore: string,
   statusAfter: string,
-  viewport = OVERFLOW_VIEWPORTS[2],
+  viewport: (typeof OVERFLOW_VIEWPORTS)[number] = OVERFLOW_VIEWPORTS[2],
 ) {
   await page.setViewportSize({ width: viewport.width, height: viewport.height })
   const res = await page.goto(route, { waitUntil: 'domcontentloaded' })

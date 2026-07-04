@@ -204,7 +204,7 @@ describe('unified list', () => {
         id: 'm1',
         type: 'journal_editor',
         status: 'pending',
-        journalId: 1n,
+        journalId: BigInt(1),
         institutionId: null,
         journal: { titleTr: 'J', slug: 'j' },
         institution: null,

@@ -28,7 +28,7 @@ model Category {
 }
 
 model Journal {
-  id                BigInt   @id
+  id                BigInt   @id @default(dbgenerated("nextval('journals_id_seq'::regclass)"))
   legacyId          BigInt?  @unique @map("legacy_id")
   slug              String
   slugTr            String?  @map("slug_tr")
@@ -871,10 +871,10 @@ model ContentApplication {
   createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user             User                    @relation("ContentApplicationOwner", fields: [userId], references: [id], onDelete: Cascade)
-  assignee         User?                   @relation("ContentApplicationAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
-  reviewedRevision ApplicationRevision?    @relation("ReviewedRevision", fields: [reviewedRevisionId], references: [id], onDelete: SetNull)
-  revisions        ApplicationRevision[]   @relation("ApplicationRevisions")
+  user             User                       @relation("ContentApplicationOwner", fields: [userId], references: [id], onDelete: Cascade)
+  assignee         User?                      @relation("ContentApplicationAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+  reviewedRevision ApplicationRevision?       @relation("ReviewedRevision", fields: [reviewedRevisionId], references: [id], onDelete: SetNull)
+  revisions        ApplicationRevision[]      @relation("ApplicationRevisions")
   events           ApplicationEvent[]
   reviews          ApplicationReview[]
   attachments      ApplicationAttachment[]
@@ -895,8 +895,8 @@ model ApplicationRevision {
   submissionType ApplicationRevisionSubmissionType @map("submission_type")
   createdAt      DateTime                          @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  application        ContentApplication  @relation("ApplicationRevisions", fields: [applicationId], references: [id], onDelete: Cascade)
-  creator            User                @relation("ApplicationRevisionCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  application            ContentApplication  @relation("ApplicationRevisions", fields: [applicationId], references: [id], onDelete: Cascade)
+  creator                User                @relation("ApplicationRevisionCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   reviewedForApplication ContentApplication? @relation("ReviewedRevision")
 
   @@unique([applicationId, revisionNumber])

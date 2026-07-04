@@ -120,7 +120,7 @@ describe('membership application service', () => {
     const row = await submitMembershipApplication({
       userId: 'user-1',
       type: 'journal_editor',
-      journalId: 42n,
+      journalId: BigInt(42),
     })
     expect(row.id).toBe('app-1')
   })
@@ -131,7 +131,7 @@ describe('membership application service', () => {
       submitMembershipApplication({
         userId: 'user-1',
         type: 'journal_editor',
-        journalId: 42n,
+        journalId: BigInt(42),
       }),
     ).rejects.toThrow(/pending application/)
   })
@@ -157,7 +157,7 @@ describe('membership application service', () => {
       status: 'pending',
       type: 'journal_editor',
       userId: 'user-1',
-      journalId: 42n,
+      journalId: BigInt(42),
       institutionId: null,
     })
     mockPrisma.$transaction.mockImplementation(async (fn) =>

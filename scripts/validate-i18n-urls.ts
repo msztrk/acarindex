@@ -35,6 +35,12 @@ import {
   parseOptionalIntEnv,
   type EnSitemapExclusionBreakdown,
 } from '../lib/i18n/validate-i18n-metrics'
+import {
+  validateHttpRedirectToTr,
+  validateSoft404,
+  validateSoftRedirectToTr,
+  parseSoftRedirect,
+} from '../lib/i18n/validate-live-response'
 
 const PAGE_SIZE = EN_SITEMAP_PAGE_SIZE
 const BASE = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
@@ -131,21 +137,39 @@ async function scanQualityMetrics() {
   return { sameTitle, sameAbstract, sameBoth, possibleFallback, htmlOnlyTitle, htmlOnlyAbstract }
 }
 
-function isHttpRedirect(status: number): boolean {
-  return status === 302 || status === 307 || status === 308
+const DOCUMENT_HEADERS: Record<string, string> = {
+  Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+  'User-Agent': 'acarindex-i18n-validate/1.0 (document)',
 }
 
-function bodyRedirectsTo(body: string, path: string): boolean {
-  return body.includes('NEXT_REDIRECT') && body.includes(path)
+function pathnameFromUrl(url: string): string {
+  try {
+    return new URL(url).pathname
+  } catch {
+    return url
+  }
 }
 
-function bodyIsSoft404(body: string): boolean {
-  return body.includes('NEXT_HTTP_ERROR_FALLBACK;404')
+function enRedirectAcceptable(
+  status: number,
+  body: string,
+  location: string | null,
+  enPath: string,
+  trPath: string,
+): boolean {
+  const httpOk = validateHttpRedirectToTr(status, location, trPath, enPath)
+  const softOk = validateSoftRedirectToTr(body, enPath, trPath)
+  return httpOk || softOk
 }
 
 async function checkLiveRedirects() {
   if (!LIVE_BASE) {
-    return { invalid_en_redirect_count: 0, redirect_loop_count: 0, skipped: true }
+    return {
+      invalid_en_redirect_count: 0,
+      redirect_loop_count: 0,
+      document_checks: null,
+      skipped: true,
+    }
   }
 
   const noEn = await prisma.article.findFirst({
@@ -156,78 +180,94 @@ async function checkLiveRedirects() {
     where: publishedEnglishArticleWhere,
     select: publishedEnglishArticleSelect,
   })
-  const missing = await prisma.article.findFirst({
-    where: { id: 999999999n },
-  })
 
   let invalid = 0
   let loops = 0
+  const documentChecks: Record<string, boolean> = {
+    no_en_article_reaches_tr: false,
+    unknown_en_article_is_404: false,
+    real_en_article_serves_en: false,
+    no_redirect_loop: true,
+  }
+
+  const articleRow = (a: typeof noEn) => ({
+    id: Number(a!.id),
+    slug: a!.slug,
+    slugTr: a!.slugTr,
+    slugEn: a!.slugEn,
+    legacyJournalSlug: a!.legacyJournalSlug,
+    legacyJournalSlugEn: a!.legacyJournalSlugEn,
+  })
 
   if (noEn) {
-    const enPath = buildArticlePath(
-      {
-        id: Number(noEn.id),
-        slug: noEn.slug,
-        slugTr: noEn.slugTr,
-        slugEn: noEn.slugEn,
-        legacyJournalSlug: noEn.legacyJournalSlug,
-        legacyJournalSlugEn: noEn.legacyJournalSlugEn,
-      },
-      'en',
-    )
-    const trPath = buildArticlePath(
-      {
-        id: Number(noEn.id),
-        slug: noEn.slug,
-        slugTr: noEn.slugTr,
-        slugEn: noEn.slugEn,
-        legacyJournalSlug: noEn.legacyJournalSlug,
-        legacyJournalSlugEn: noEn.legacyJournalSlugEn,
-      },
-      'tr',
-    )
+    const enPath = buildArticlePath(articleRow(noEn), 'en')
+    const trPath = buildArticlePath(articleRow(noEn), 'tr')
+
     const res = await fetch(`${LIVE_BASE}${enPath}`, { redirect: 'manual' })
     const body = await res.text()
-    const loc = res.headers.get('location') ?? ''
-    const httpOk = isHttpRedirect(res.status) && loc.includes(trPath)
-    const softOk = bodyRedirectsTo(body, trPath)
-    if (!httpOk && !softOk) invalid++
+    const loc = res.headers.get('location')
+    if (!enRedirectAcceptable(res.status, body, loc, enPath, trPath)) invalid++
 
-    if (!httpOk && !softOk) {
-      const follow = await fetch(`${LIVE_BASE}${enPath}`, { redirect: 'follow' })
-      if (follow.url.includes('/en/') && !hasEnglishArticleContent(noEn)) loops++
+    const parsed = parseSoftRedirect(body)
+    if (parsed && parsed.targetPath === enPath) invalid++
+
+    const follow = await fetch(`${LIVE_BASE}${enPath}`, {
+      redirect: 'follow',
+      headers: DOCUMENT_HEADERS,
+    })
+    const finalPath = pathnameFromUrl(follow.url)
+    documentChecks.no_en_article_reaches_tr =
+      !finalPath.includes('/en/') && finalPath === trPath
+    if (finalPath.includes('/en/') && !hasEnglishArticleContent(noEn)) {
+      loops++
+      documentChecks.no_redirect_loop = false
     }
   }
 
-  if (missing) invalid++
-
-  if (!missing) {
-    const res404 = await fetch(`${LIVE_BASE}/en/foo/missing-article-999999999`, {
-      redirect: 'manual',
-    })
-    const body404 = await res404.text()
-    if (res404.status !== 404 && res404.status !== 200) invalid++
-    else if (res404.status === 200 && !bodyIsSoft404(body404)) invalid++
-  }
+  const unknownPath = '/en/foo/missing-article-999999999'
+  const res404 = await fetch(`${LIVE_BASE}${unknownPath}`, {
+    redirect: 'manual',
+    headers: DOCUMENT_HEADERS,
+  })
+  const body404 = await res404.text()
+  const unknownOk = res404.status === 404 || validateSoft404(body404)
+  if (!unknownOk) invalid++
+  documentChecks.unknown_en_article_is_404 = unknownOk
 
   if (withEn) {
-    const enPath = buildArticlePath(
-      {
-        id: Number(withEn.id),
-        slug: withEn.slug,
-        slugTr: withEn.slugTr,
-        slugEn: withEn.slugEn,
-        legacyJournalSlug: withEn.legacyJournalSlug,
-        legacyJournalSlugEn: withEn.legacyJournalSlugEn,
-      },
-      'en',
-    )
+    const enPath = buildArticlePath(articleRow(withEn), 'en')
+    const trPath = buildArticlePath(articleRow(withEn), 'tr')
+
     const res = await fetch(`${LIVE_BASE}${enPath}`, { redirect: 'manual' })
     const body = await res.text()
-    if (isHttpRedirect(res.status) || body.includes('NEXT_REDIRECT')) invalid++
+    const loc = res.headers.get('location')
+    const wronglyRedirects =
+      enRedirectAcceptable(res.status, body, loc, enPath, trPath) ||
+      validateSoft404(body)
+    if (wronglyRedirects) invalid++
+
+    const docRes = await fetch(`${LIVE_BASE}${enPath}`, {
+      redirect: 'manual',
+      headers: DOCUMENT_HEADERS,
+    })
+    const docBody = await docRes.text()
+    documentChecks.real_en_article_serves_en =
+      docRes.status === 200 &&
+      !validateSoft404(docBody) &&
+      !enRedirectAcceptable(docRes.status, docBody, docRes.headers.get('location'), enPath, trPath)
   }
 
-  return { invalid_en_redirect_count: invalid, redirect_loop_count: loops, skipped: false }
+  if (noEn && !documentChecks.no_en_article_reaches_tr) invalid++
+  if (!documentChecks.unknown_en_article_is_404) invalid++
+  if (withEn && !documentChecks.real_en_article_serves_en) invalid++
+  if (!documentChecks.no_redirect_loop) invalid++
+
+  return {
+    invalid_en_redirect_count: invalid,
+    redirect_loop_count: loops,
+    document_checks: documentChecks,
+    skipped: false,
+  }
 }
 
 async function scanComputedEnContentAndExclusions(): Promise<{
@@ -451,6 +491,7 @@ async function main() {
         count: Number(r.n),
       })),
       live_checks_skipped: liveChecks.skipped === true,
+      document_html_checks: liveChecks.document_checks,
       fast_mode: FAST_MODE,
     },
     ok:

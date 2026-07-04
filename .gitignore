@@ -83,6 +83,20 @@ screenshots/journal-page-v2/
 screenshots/issue-page-v2/
 test-results/
 
+# Local soak / validation artifacts (not source)
+faz6c-beta-final-soak-report.txt
+faz6c-beta-soak-report.txt
+layout-revision-report.txt
+soak-wait-log.txt
+soak-hourly-monitor.ps1
+soak_wait_and_check.ps1
+soak_final_check.sh
+soak_final_check_readonly.sh
+soak_maintenance.sh
+tmp-rehearsal.sh
+tmp-rehearsal2.sh
+tmp-rehearsal3.sh
+
 # Laragon / local DB
 acarinde_yeniacarindex*
 
