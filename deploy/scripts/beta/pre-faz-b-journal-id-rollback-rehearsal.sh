@@ -8,10 +8,11 @@ source "$SCRIPT_DIR/lib-pilot-guard.sh"
 
 BACKUP="${1:-}"
 REHEARSAL_DB="${ACAR_JOURNAL_ID_REHEARSAL_DB:-acarindex_journal_id_rehearsal}"
-MIGRATION_SQL="$ACAR_ROOT/prisma/migrations/20260711100000_journal_id_sequence/migration.sql"
-ROLLBACK_SQL="$ACAR_ROOT/prisma/migrations/20260711100000_journal_id_sequence/rollback.sql"
 
 acar_beta_require_pilot
+
+MIGRATION_SQL="$ACAR_ROOT/prisma/migrations/20260711100000_journal_id_sequence/migration.sql"
+ROLLBACK_SQL="$ACAR_ROOT/prisma/migrations/20260711100000_journal_id_sequence/rollback.sql"
 
 if [[ -z "$BACKUP" ]]; then
   BACKUP=$(ls -t /var/backups/acarindex-pilot/pilot_pg_pre_faz_b_journal_id_*.dump 2>/dev/null | head -1)
