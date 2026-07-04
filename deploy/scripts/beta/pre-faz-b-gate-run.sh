@@ -45,8 +45,9 @@ $ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -c \
 echo "=== STEP 5 INTEGRATION TESTS ==="
 $ACAR_COMPOSE --profile tools build etl
 $ACAR_COMPOSE --profile tools run --rm \
+  --entrypoint sh \
   -e JOURNAL_ID_SEQUENCE_INTEGRATION=1 \
-  etl npm run test -- tests/journal-id-sequence.test.ts
+  etl -c "npm run test -- tests/journal-id-sequence.test.ts"
 
 echo "=== STEP 6 ROLLBACK REHEARSAL ==="
 bash "$SCRIPT_DIR/pre-faz-b-journal-id-rollback-rehearsal.sh" "$BACKUP"

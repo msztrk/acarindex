@@ -29,8 +29,9 @@ $ACAR_COMPOSE --profile tools run --rm etl scripts/db/sync-journal-id-sequence.t
 
 echo "=== INTEGRATION TESTS ==="
 $ACAR_COMPOSE --profile tools run --rm \
+  --entrypoint sh \
   -e JOURNAL_ID_SEQUENCE_INTEGRATION=1 \
-  etl npm run test -- tests/journal-id-sequence.test.ts
+  etl -c "npm run test -- tests/journal-id-sequence.test.ts"
 
 echo "=== ROLLBACK REHEARSAL (sequence only) ==="
 $ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -f - <<'SQL'
