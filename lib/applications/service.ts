@@ -1,4 +1,4 @@
-import type { ContentApplicationKind, Prisma } from '@prisma/client'
+import { Prisma, type ContentApplicationKind } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { ForbiddenError } from '@/lib/auth/forbidden'
 import { EDITABLE_CONTENT_STATUSES } from '@/lib/applications/types'
@@ -105,7 +105,7 @@ export async function submitContentApplication(input: {
       data: {
         status: 'submitted',
         submittedAt: new Date(),
-        draftPayload: null,
+        draftPayload: Prisma.DbNull,
       },
     })
 
