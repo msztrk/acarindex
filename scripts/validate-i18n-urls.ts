@@ -39,6 +39,18 @@ import {
 const PAGE_SIZE = EN_SITEMAP_PAGE_SIZE
 const BASE = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
 const LIVE_BASE = process.env.I18N_VALIDATE_BASE_URL ?? ''
+const LOG_PROGRESS = process.env.I18N_VALIDATE_PROGRESS === '1'
+const FAST_MODE = process.env.I18N_VALIDATE_FAST === '1'
+
+function batchSize(defaultSize: number): number {
+  const fromEnv = parseOptionalIntEnv('I18N_VALIDATE_BATCH')
+  if (fromEnv && fromEnv > 0) return fromEnv
+  return FAST_MODE ? 10000 : defaultSize
+}
+
+function progress(message: string): void {
+  if (LOG_PROGRESS) console.error(`[validate-i18n] ${message}`)
+}
 
 async function countFlagDrift(): Promise<number> {
   let drift = 0
@@ -47,10 +59,12 @@ async function countFlagDrift(): Promise<number> {
     const rows = await prisma.article.findMany({
       where: { status: 'published', id: { gt: cursor } },
       orderBy: { id: 'asc' },
-      take: 2000,
+      take: batchSize(2000),
       select: publishedEnglishArticleSelect,
     })
     if (!rows.length) break
+
+    progress(`countFlagDrift cursor=${cursor} batch=${rows.length}`)
     for (const row of rows) {
       if (computeArticleHasEnglishContent(row) !== row.hasEnContent) drift++
     }
@@ -72,12 +86,28 @@ async function scanQualityMetrics() {
     const rows = await prisma.article.findMany({
       where: { status: 'published', id: { gt: cursor } },
       orderBy: { id: 'asc' },
-      take: 3000,
+      take: batchSize(3000),
       select: publishedEnglishArticleSelect,
     })
     if (!rows.length) break
 
+    progress(`scanQuality cursor=${cursor} batch=${rows.length}`)
     for (const row of rows) {
+      if (FAST_MODE) {
+        if (row.hasEnContent && row.titleEn?.trim() && !hasMeaningfulText(row.titleEn, 10)) {
+          htmlOnlyTitle++
+        }
+        if (
+          row.hasEnContent &&
+          row.abstractEn?.trim() &&
+          !hasMeaningfulText(row.abstractEn, 20) &&
+          !isEnglishDocumentLanguage(row.language, row.documentLanguage)
+        ) {
+          htmlOnlyAbstract++
+        }
+        continue
+      }
+
       if (sameNormalizedTitleTrEn(row)) sameTitle++
       if (sameNormalizedAbstractTrEn(row)) sameAbstract++
       if (sameTitleAndAbstractTrEn(row)) sameBoth++
@@ -198,7 +228,7 @@ async function scanComputedEnContentAndExclusions(): Promise<{
     const rows = await prisma.article.findMany({
       where: { status: 'published', id: { gt: cursor } },
       orderBy: { id: 'asc' },
-      take: 2000,
+      take: batchSize(2000),
       select: {
         status: true,
         hasEnContent: true,
@@ -214,6 +244,7 @@ async function scanComputedEnContentAndExclusions(): Promise<{
     })
     if (!rows.length) break
 
+    progress(`scanComputedEn cursor=${cursor} batch=${rows.length}`)
     for (const row of rows) {
       if (!computeArticleHasEnglishContent(row)) continue
       computedCount++
@@ -400,6 +431,7 @@ async function main() {
         count: Number(r.n),
       })),
       live_checks_skipped: liveChecks.skipped === true,
+      fast_mode: FAST_MODE,
     },
     ok:
       quality.htmlOnlyTitle === 0 &&

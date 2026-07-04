@@ -29,11 +29,13 @@ fi
 echo "=== BUILD ETL (latest validate script) ==="
 $ACAR_COMPOSE --profile tools build etl
 
-echo "=== RUN validate-i18n-urls (live base=$LIVE_FROM_ETL) ==="
+echo "=== RUN validate-i18n-urls (live base=$LIVE_FROM_ETL, fast=${ACAR_I18N_VALIDATE_FAST:-1}) ==="
 set +e
 $ACAR_COMPOSE --profile tools run --rm \
   -e "I18N_VALIDATE_BASE_URL=$LIVE_FROM_ETL" \
-  etl scripts/validate-i18n-urls.ts | tee "$LOG"
+  -e "I18N_VALIDATE_FAST=${ACAR_I18N_VALIDATE_FAST:-1}" \
+  -e "I18N_VALIDATE_PROGRESS=${ACAR_I18N_VALIDATE_PROGRESS:-1}" \
+  etl scripts/validate-i18n-urls.ts 2>&1 | tee "$LOG"
 EXIT=$?
 set -e
 
