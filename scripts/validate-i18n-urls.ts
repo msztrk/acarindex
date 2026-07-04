@@ -211,14 +211,29 @@ async function checkLiveRedirects() {
     const parsed = parseSoftRedirect(body)
     if (parsed && parsed.targetPath === enPath) invalid++
 
-    const follow = await fetch(`${LIVE_BASE}${enPath}`, {
-      redirect: 'follow',
+    const docRes = await fetch(`${LIVE_BASE}${enPath}`, {
+      redirect: 'manual',
       headers: DOCUMENT_HEADERS,
     })
-    const finalPath = pathnameFromUrl(follow.url)
-    documentChecks.no_en_article_reaches_tr =
-      !finalPath.includes('/en/') && finalPath === trPath
-    if (finalPath.includes('/en/') && !hasEnglishArticleContent(noEn)) {
+    const docBody = await docRes.text()
+    const docLoc = docRes.headers.get('location')
+    documentChecks.no_en_article_reaches_tr = enRedirectAcceptable(
+      docRes.status,
+      docBody,
+      docLoc,
+      enPath,
+      trPath,
+    )
+    if (!documentChecks.no_en_article_reaches_tr) {
+      const follow = await fetch(`${LIVE_BASE}${enPath}`, {
+        redirect: 'follow',
+        headers: DOCUMENT_HEADERS,
+      })
+      const finalPath = pathnameFromUrl(follow.url)
+      documentChecks.no_en_article_reaches_tr =
+        !finalPath.includes('/en/') && finalPath === trPath
+    }
+    if (!documentChecks.no_en_article_reaches_tr && !hasEnglishArticleContent(noEn)) {
       loops++
       documentChecks.no_redirect_loop = false
     }
