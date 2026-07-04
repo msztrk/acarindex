@@ -1,4 +1,14 @@
--- Rollback Faz A application center (isolated rehearsal only)
+-- Rollback Faz A application center (isolated rehearsal only — NOT for production pilot DB)
+--
+-- LIMITATIONS (read before use):
+-- - Drops all Faz A tables and permanently deletes every row in:
+--   content_applications, application_revisions, application_events,
+--   application_reviews, application_attachments, application_private_contacts.
+-- - Does NOT restore approved, published, or in-flight content that lived only in
+--   those tables; rollback is schema teardown, not content undo.
+-- - Does NOT touch auth/RBAC core tables (users, sessions, user_roles, etc.).
+-- - Re-applying migration.sql recreates empty Faz A schema; prior application data
+--   is gone unless restored from a pre-migration pg_dump backup.
 
 DROP TABLE IF EXISTS application_private_contacts CASCADE;
 DROP TABLE IF EXISTS application_attachments CASCADE;

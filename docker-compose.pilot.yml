@@ -70,6 +70,8 @@ services:
       context: .
       dockerfile: Dockerfile.etl
     image: acarindex-etl:pilot
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - /etc/acarindex/pilot.env
     depends_on:

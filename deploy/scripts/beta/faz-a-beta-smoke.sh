@@ -17,7 +17,7 @@ cleanup() {
   if [[ -n "$NGX_USER" ]]; then
     htpasswd -D /etc/nginx/.htpasswd-acarindex-beta "$NGX_USER" 2>/dev/null || true
   fi
-  rm -f "$CJ"
+  rm -f "$CJ" "$OTHER_CJ"
 }
 trap cleanup EXIT
 
@@ -36,7 +36,8 @@ htpasswd -bB /etc/nginx/.htpasswd-acarindex-beta "$NGX_USER" "$NGX_PASS" 2>/dev/
 AUTH_NGX="-u ${NGX_USER}:${NGX_PASS}"
 
 CJ="/tmp/faza-cookies-$$.txt"
-rm -f "$CJ"
+OTHER_CJ="/tmp/faza-other-$$.txt"
+rm -f "$CJ" "$OTHER_CJ"
 
 echo "=== BASIC AUTH + NOINDEX ==="
 code=$(curl -sS -o /dev/null -w '%{http_code}' "https://beta.acarindex.com/")
@@ -52,7 +53,8 @@ code=$(curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/auth/login" \
 grep -q acarindex_session "$CJ" && pass "login ok" || fail "login cookie"
 [[ "$code" == "200" ]] && pass "login 200" || fail "login code $code"
 
-code=$(curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/auth/login" \
+csrf=$(curl -sS -b "$OTHER_CJ" -c "$OTHER_CJ" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
+code=$(curl -sS -b "$OTHER_CJ" -c "$OTHER_CJ" -X POST "$BASE/api/auth/login" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf" \
   -d "{\"email\":\"$EMAIL\",\"password\":\"wrong-password-faza\"}" -o /dev/null -w '%{http_code}')
 [[ "$code" == "401" ]] && pass "wrong password 401" || fail "wrong password $code"
@@ -117,10 +119,32 @@ code=$(curl -sS -b "$CJ" -c "$CJ" -X PATCH "$BASE/api/applications/$APP_ID" \
 [[ "$code" == "409" || "$code" == "403" ]] && pass "submitted not editable" || fail "submitted edit $code"
 
 echo "=== OWNERSHIP 403 ==="
-OTHER_CJ="/tmp/faza-other-$$.txt"
-rm -f "$OTHER_CJ"
-# Use nginx auth only — without session should 401; with wrong user we need second account.
-# Admin cred is only user — test GET without ownership via invalid session path: unauthenticated 401
+OTHER_EMAIL="faza_other_$(date +%s)@beta.local"
+OTHER_PASS="$PASS"
+$ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -v ON_ERROR_STOP=1 <<EOSQL
+WITH admin_cred AS (
+  SELECT password_hash FROM user_credentials uc
+  JOIN users u ON u.id = uc.user_id WHERE u.email = '$EMAIL' LIMIT 1
+),
+ins AS (
+  INSERT INTO users (email, email_verified, status)
+  VALUES ('$OTHER_EMAIL', NOW(), 'active')
+  RETURNING id
+)
+INSERT INTO user_credentials (user_id, password_hash)
+SELECT ins.id, admin_cred.password_hash FROM ins, admin_cred;
+EOSQL
+csrf=$(curl -sS -b "$OTHER_CJ" -c "$OTHER_CJ" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p')
+curl -sS -b "$OTHER_CJ" -c "$OTHER_CJ" -X POST "$BASE/api/auth/login" \
+  -H "Content-Type: application/json" -H "x-csrf-token: $csrf" \
+  -d "{\"email\":\"$OTHER_EMAIL\",\"password\":\"$OTHER_PASS\"}" -o /dev/null
+code=$(curl -sS $AUTH_NGX -b "$OTHER_CJ" -o /dev/null -w '%{http_code}' "$BASE/api/applications/$APP_ID")
+[[ "$code" == "403" ]] && pass "cross-user application 403" || fail "cross-user $code"
+code=$(curl -sS $AUTH_NGX -b "$OTHER_CJ" -o /dev/null -w '%{http_code}' "$BASE/api/applications/$APP_ID/private-contact")
+[[ "$code" == "403" ]] && pass "cross-user private contact 403" || fail "cross-user private $code"
+$ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -c \
+  "DELETE FROM users WHERE email = '$OTHER_EMAIL';" >/dev/null 2>&1 || true
+# Unauthenticated access
 code=$(curl -sS -o /dev/null -w '%{http_code}' "$BASE/api/applications/$APP_ID")
 [[ "$code" == "401" ]] && pass "unauth application 401" || fail "unauth $code"
 

@@ -28,7 +28,6 @@ $ACAR_COMPOSE --profile tools build etl
 echo "=== RUN validate-i18n-urls (live base=$LIVE_FROM_ETL) ==="
 set +e
 $ACAR_COMPOSE --profile tools run --rm \
-  --add-host=host.docker.internal:host-gateway \
   -e "I18N_VALIDATE_BASE_URL=$LIVE_FROM_ETL" \
   etl scripts/validate-i18n-urls.ts | tee "$LOG"
 EXIT=$?
