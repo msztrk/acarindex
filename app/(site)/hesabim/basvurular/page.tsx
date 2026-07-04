@@ -40,12 +40,20 @@ export default async function BasvurularPage() {
             Yeni dergi, duyuru, veri düzeltme ve yetki başvurularınız.
           </p>
         </div>
+        <div className="flex flex-wrap gap-3">
         <Link
           href="/hesabim/basvurular/yeni"
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
         >
           Yeni başvuru
         </Link>
+        <Link
+          href="/hesabim/basvurular/yeni-dergi"
+          className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted/50"
+        >
+          Yeni dergi başvurusu
+        </Link>
+      </div>
       </div>
 
       <div className="flex flex-wrap gap-3 text-sm">

@@ -34,6 +34,7 @@ const mockPrisma = vi.hoisted(() => ({
     upsert: vi.fn(),
   },
   membershipApplication: { findMany: vi.fn() },
+  journalApplication: { findUnique: vi.fn() },
   auditLog: { create: vi.fn() },
   $transaction: vi.fn(),
   $queryRaw: vi.fn(),
@@ -110,6 +111,8 @@ describe('content application draft workflow', () => {
       attachments: [],
       privateContact: null,
     })
+
+    mockPrisma.journalApplication.findUnique.mockResolvedValue(null)
 
     mockPrisma.$transaction.mockImplementation(async (fn) =>
       fn({

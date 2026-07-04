@@ -12,6 +12,19 @@ export const APPLICATION_DECLARATION_VERSIONS = {
 
 export type DeclarationKey = keyof typeof APPLICATION_DECLARATION_VERSIONS
 
+export const APPLICATION_DECLARATION_LABELS: Record<DeclarationKey, string> = {
+  criteria:
+    'Acarindex dergi kabul kriterlerini okudum ve dergimizin bu kriterleri karşıladığını beyan ederim.',
+  standards:
+    'Acarindex teknik ve içerik standartlarına uyacağımızı kabul ediyorum.',
+  privacyNotice:
+    'Kişisel verilerin işlenmesine ilişkin aydınlatma metnini okudum ve kabul ediyorum.',
+  imageRights:
+    'Kapak görseli ve ek belgeler için gerekli kullanım haklarına sahip olduğumuzu beyan ederim.',
+  informationAccuracy:
+    'Başvuruda verdiğim bilgilerin doğru ve güncel olduğunu onaylıyorum.',
+}
+
 export type DeclarationAcceptanceInput = {
   criteriaAcceptedAt?: Date | null
   standardsAcceptedAt?: Date | null

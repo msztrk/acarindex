@@ -1,11 +1,12 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { requireUserAuth } from '@/lib/auth/guards'
 import { getContentApplicationDetail } from '@/lib/applications/service'
 import { getPrivateContactForAuthorizedUser } from '@/lib/applications/list-unified'
-import { CONTENT_KIND_LABELS } from '@/lib/applications/types'
+import { CONTENT_KIND_LABELS, EDITABLE_CONTENT_STATUSES } from '@/lib/applications/types'
 import { mapContentStatusToDisplay } from '@/lib/applications/status-map'
 import { ApplicationDraftEditor } from '@/components/applications/ApplicationDraftEditor'
+import { JOURNAL_APPLICATION_ROUTE } from '@/lib/journal-applications/types'
 
 export const metadata = { title: 'Başvuru detayı | Hesabım' }
 
@@ -36,7 +37,11 @@ export default async function BasvuruDetailPage({
 
   const privateContact = await getPrivateContactForAuthorizedUser(id, session.user.id, false)
   const displayStatus = mapContentStatusToDisplay(app.status)
-  const editable = app.status === 'draft' || app.status === 'revision_requested'
+  const editable = EDITABLE_CONTENT_STATUSES.includes(app.status)
+
+  if (app.kind === 'new_journal' && editable) {
+    redirect(`${JOURNAL_APPLICATION_ROUTE}?applicationId=${app.id}`)
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">

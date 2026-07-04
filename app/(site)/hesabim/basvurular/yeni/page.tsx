@@ -4,13 +4,14 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { CONTENT_KIND_LABELS } from '@/lib/applications/types'
+import { JOURNAL_APPLICATION_ROUTE } from '@/lib/journal-applications/types'
 import type { ContentApplicationKind } from '@prisma/client'
 
 const KINDS: ContentApplicationKind[] = ['new_journal', 'announcement', 'data_correction']
 
 export default function YeniBasvuruPage() {
   const router = useRouter()
-  const [kind, setKind] = useState<ContentApplicationKind>('new_journal')
+  const [kind, setKind] = useState<ContentApplicationKind>('announcement')
   const [title, setTitle] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -18,6 +19,12 @@ export default function YeniBasvuruPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+
+    if (kind === 'new_journal') {
+      router.push(JOURNAL_APPLICATION_ROUTE)
+      return
+    }
+
     setLoading(true)
     try {
       const csrfRes = await fetch('/api/auth/csrf')
@@ -48,7 +55,8 @@ export default function YeniBasvuruPage() {
       </Link>
       <h2 className="text-lg font-semibold">Yeni içerik başvurusu</h2>
       <p className="text-sm text-muted-foreground">
-        Faz A: taslak oluşturma ve gönderim akışı. Detay formlar Faz B–E ile eklenecek.
+        Duyuru ve veri düzeltme başvuruları için taslak oluşturun. Yeni dergi başvurusu çok
+        adımlı form üzerinden yapılır.
       </p>
       <form onSubmit={handleCreate} className="space-y-4">
         <div>
@@ -68,26 +76,28 @@ export default function YeniBasvuruPage() {
             ))}
           </select>
         </div>
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium mb-1">
-            Başlık (isteğe bağlı)
-          </label>
-          <input
-            id="title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded-md border px-3 py-2 text-sm"
-            placeholder="Taslak başvuru başlığı"
-          />
-        </div>
+        {kind !== 'new_journal' && (
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium mb-1">
+              Başlık (isteğe bağlı)
+            </label>
+            <input
+              id="title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full rounded-md border px-3 py-2 text-sm"
+              placeholder="Taslak başvuru başlığı"
+            />
+          </div>
+        )}
         {error && <p className="text-sm text-destructive">{error}</p>}
         <button
           type="submit"
           disabled={loading}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
         >
-          {loading ? 'Oluşturuluyor…' : 'Taslak oluştur'}
+          {loading ? 'Oluşturuluyor…' : kind === 'new_journal' ? 'Dergi formuna git' : 'Taslak oluştur'}
         </button>
       </form>
     </div>
