@@ -1,5 +1,8 @@
 import { prisma } from '@/lib/db/prisma'
 import { writeAuditLog } from '@/lib/auth/audit'
+import { revalidateEnglishContentCache } from '@/lib/i18n/revalidate-english-content'
+import { revalidatePath, revalidateTag } from 'next/cache'
+import { I18N_SITEMAP_TAG } from '@/lib/i18n/cache-tags'
 
 const PUBLISHABLE_STATUSES = new Set(['draft', 'pending_publication'])
 
@@ -80,6 +83,12 @@ export async function publishDraftJournal(
     oldValues: { status: journal.status },
     newValues: { status: 'published', slug: updated.slug },
   })
+
+  revalidateTag(I18N_SITEMAP_TAG, 'max')
+  revalidatePath('/journals')
+  revalidatePath('/sitemap-journals')
+  revalidatePath(`/journals/${updated.slug}-${updated.id}`)
+  revalidateEnglishContentCache()
 
   return {
     journalId: updated.id.toString(),

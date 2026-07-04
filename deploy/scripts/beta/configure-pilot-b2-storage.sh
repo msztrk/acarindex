@@ -87,6 +87,21 @@ ensure_memory_fallback() {
   echo "B2_CONFIGURE_SKIPPED=memory (credentials absent — add B2_APPLICATION_* to pilot.env or export env vars)"
 }
 
+backup_pilot_env() {
+  [[ -f "$PILOT_ENV" ]] || return 0
+  local backup="${PILOT_ENV}.bak.$(date +%Y%m%d_%H%M%S)"
+  cp -a "$PILOT_ENV" "$backup"
+  chown root:root "$backup" 2>/dev/null || true
+  chmod 600 "$backup"
+  mapfile -t OLD_BACKUPS < <(ls -t "${PILOT_ENV}.bak."* 2>/dev/null || true)
+  if [[ ${#OLD_BACKUPS[@]} -gt 5 ]]; then
+    for ((i = 5; i < ${#OLD_BACKUPS[@]}; i++)); do
+      rm -f "${OLD_BACKUPS[$i]}"
+    done
+  fi
+  echo "PILOT_ENV_BACKUP=$backup"
+}
+
 [[ -f "$PILOT_ENV" ]] || { echo "FAIL: missing $PILOT_ENV" >&2; exit 1; }
 
 resolve_creds
@@ -95,6 +110,8 @@ if [[ -z "$B2_KEY_ID" || -z "$B2_KEY" || -z "$B2_BUCKET" ]]; then
   ensure_memory_fallback
   exit 0
 fi
+
+backup_pilot_env
 
 set_kv B2_APPLICATION_KEY_ID "$B2_KEY_ID"
 set_kv B2_APPLICATION_KEY "$B2_KEY"

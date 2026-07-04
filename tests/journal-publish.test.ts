@@ -19,6 +19,15 @@ vi.mock('@/lib/auth/audit', () => ({
   writeAuditLog: vi.fn(),
 }))
 
+vi.mock('next/cache', () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+}))
+
+vi.mock('@/lib/i18n/revalidate-english-content', () => ({
+  revalidateEnglishContentCache: vi.fn(),
+}))
+
 vi.mock('@/lib/auth/authorization', () => ({
   hasAdminPermission: vi.fn(),
 }))

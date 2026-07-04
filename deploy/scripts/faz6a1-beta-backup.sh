@@ -29,6 +29,17 @@ sha256sum "$BACKUP"
 echo "BACKUP=$BACKUP"
 echo "COUNTS=$COUNTS_FILE"
 
+echo "=== BACKUP VERIFY ==="
+pg_restore --list "$BACKUP" >/dev/null || { echo "FAIL: pg_restore --list"; exit 1; }
+BACKUP_SHA=$(sha256sum "$BACKUP" | awk '{print $1}')
+echo "BACKUP_SHA256=$BACKUP_SHA"
+echo "PG_RESTORE_LIST_OK"
+
+UPLOAD_SCRIPT="$(dirname "$0")/beta/upload-pilot-backup-to-b2.sh"
+if [[ -x "$UPLOAD_SCRIPT" ]]; then
+  bash "$UPLOAD_SCRIPT" "$BACKUP" "$BACKUP_SHA" || echo "WARN: B2 upload skipped or failed"
+fi
+
 if [[ "${PILOT_BACKUP_RETENTION:-1}" == "1" ]]; then
   RETENTION_SCRIPT="$(dirname "$0")/beta/pilot-backup-retention.sh"
   if [[ -x "$RETENTION_SCRIPT" ]]; then
