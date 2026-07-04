@@ -64,7 +64,7 @@ async function countFlagDrift(): Promise<number> {
     })
     if (!rows.length) break
 
-    progress(`countFlagDrift cursor=${cursor} batch=${rows.length}`)
+    progress(`countFlagDrift cursor=${String(cursor)} batch=${rows.length}`)
     for (const row of rows) {
       if (computeArticleHasEnglishContent(row) !== row.hasEnContent) drift++
     }
@@ -91,7 +91,7 @@ async function scanQualityMetrics() {
     })
     if (!rows.length) break
 
-    progress(`scanQuality cursor=${cursor} batch=${rows.length}`)
+    progress(`scanQuality cursor=${String(cursor)} batch=${rows.length}`)
     for (const row of rows) {
       if (FAST_MODE) {
         if (row.hasEnContent && row.titleEn?.trim() && !hasMeaningfulText(row.titleEn, 10)) {
@@ -230,6 +230,7 @@ async function scanComputedEnContentAndExclusions(): Promise<{
       orderBy: { id: 'asc' },
       take: batchSize(2000),
       select: {
+        id: true,
         status: true,
         hasEnContent: true,
         slugEn: true,
@@ -244,7 +245,7 @@ async function scanComputedEnContentAndExclusions(): Promise<{
     })
     if (!rows.length) break
 
-    progress(`scanComputedEn cursor=${cursor} batch=${rows.length}`)
+    progress(`scanComputedEn cursor=${String(cursor)} batch=${rows.length}`)
     for (const row of rows) {
       if (!computeArticleHasEnglishContent(row)) continue
       computedCount++
