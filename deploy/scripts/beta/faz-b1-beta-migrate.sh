@@ -21,8 +21,11 @@ bash "$ACAR_ROOT/deploy/scripts/faz6a1-beta-backup.sh" "$LABEL"
 
 echo "=== PRE STATE ==="
 $ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -c \
-  "SELECT CASE WHEN to_regclass('public.journal_applications') IS NULL THEN 'journal_applications=MISSING' ELSE 'journal_applications='||(SELECT count(*) FROM journal_applications)::text END;
-   SELECT column_name FROM information_schema.columns WHERE table_name='content_applications' AND column_name='approved_journal_id';"
+  "SELECT CASE WHEN to_regclass('public.journal_applications') IS NULL THEN 'journal_applications=MISSING' ELSE 'journal_applications=0' END;
+   SELECT CASE WHEN EXISTS (
+     SELECT 1 FROM information_schema.columns
+     WHERE table_name='content_applications' AND column_name='approved_journal_id'
+   ) THEN 'approved_journal_id=EXISTS' ELSE 'approved_journal_id=MISSING' END;"
 
 echo "=== MIGRATE ==="
 $ACAR_COMPOSE --profile tools build migrate
