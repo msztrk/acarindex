@@ -5,6 +5,7 @@ export type SiteLocale = 'tr' | 'en'
 
 export const DEFAULT_LOCALE: SiteLocale = 'tr'
 export const LOCALE_HEADER = 'x-site-locale'
+export const LOCALE_COOKIE = 'acarindex_site_locale'
 
 export function isSiteLocale(value: string | null | undefined): value is SiteLocale {
   return value === 'tr' || value === 'en'

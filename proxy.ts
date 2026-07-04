@@ -18,6 +18,7 @@ import {
   isAppReservedPath,
   resolveLegacyAuthRedirect,
 } from '@/lib/seo/legacy-auth-redirects'
+import { LOCALE_COOKIE } from '@/lib/i18n/locale'
 
 const CANONICAL_HOST = 'www.acarindex.com'
 
@@ -54,7 +55,9 @@ export async function proxy(req: NextRequest) {
     const requestHeaders = new Headers(req.headers)
     requestHeaders.set('x-site-locale', 'en')
     requestHeaders.set('x-original-pathname', pathname)
+    requestHeaders.set('x-pathname', pathname)
     const rewritten = NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } })
+    rewritten.cookies.set(LOCALE_COOKIE, 'en', { path: '/', sameSite: 'lax' })
     return applyIndexingHeaders(rewritten, host)
   }
 
@@ -68,6 +71,7 @@ export async function proxy(req: NextRequest) {
   }
 
   const res = NextResponse.next()
+  res.cookies.set(LOCALE_COOKIE, 'tr', { path: '/', sameSite: 'lax' })
   applyIndexingHeaders(res, host)
 
   // ─── Legacy dergi URL redirect ─────────────────────────────────────────────
