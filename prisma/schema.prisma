@@ -480,6 +480,10 @@ model User {
   adminPermissions        AdminPermission[]
   membershipApplications  MembershipApplication[]
   changeRequests          ChangeRequest[]          @relation("ChangeRequestRequester")
+  contentApplications     ContentApplication[]     @relation("ContentApplicationOwner")
+  assignedApplications    ContentApplication[]     @relation("ContentApplicationAssignee")
+  applicationRevisions    ApplicationRevision[]    @relation("ApplicationRevisionCreator")
+  applicationReviews      ApplicationReview[]      @relation("ApplicationReviewer")
 
   @@index([status])
   @@map("users")
@@ -801,4 +805,168 @@ model SiteSetting {
   updatedBy String?  @map("updated_by") @db.Uuid
 
   @@map("site_settings")
+}
+
+// ─── Başvuru ve Katkı Merkezi (Faz A — içerik başvuruları) ───
+// MembershipApplication ayrı kalır (editör/kurum yetkisi).
+
+enum ContentApplicationKind {
+  new_journal
+  announcement
+  data_correction
+
+  @@map("content_application_kind")
+}
+
+enum ContentApplicationStatus {
+  draft
+  submitted
+  precheck
+  under_review
+  revision_requested
+  approved
+  rejected
+  cancelled
+
+  @@map("content_application_status")
+}
+
+enum ApplicationRevisionSubmissionType {
+  initial_submit
+  resubmit
+  admin_snapshot
+
+  @@map("application_revision_submission_type")
+}
+
+enum ApplicationAttachmentKind {
+  proof_document
+  cover_image
+  announcement_image
+  evidence
+  other
+
+  @@map("application_attachment_kind")
+}
+
+enum ApplicationAttachmentUploadStatus {
+  pending
+  committed
+  orphaned
+
+  @@map("application_attachment_upload_status")
+}
+
+model ContentApplication {
+  id                 String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind               ContentApplicationKind
+  userId             String                   @map("user_id") @db.Uuid
+  title              String                   @default("Taslak başvuru")
+  status             ContentApplicationStatus @default(draft)
+  draftPayload       Json?                    @map("draft_payload")
+  submittedAt        DateTime?                @map("submitted_at") @db.Timestamptz(6)
+  assignedTo         String?                  @map("assigned_to") @db.Uuid
+  reviewedRevisionId String?                  @unique @map("reviewed_revision_id") @db.Uuid
+  approvedAt         DateTime?                @map("approved_at") @db.Timestamptz(6)
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user             User                    @relation("ContentApplicationOwner", fields: [userId], references: [id], onDelete: Cascade)
+  assignee         User?                   @relation("ContentApplicationAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+  reviewedRevision ApplicationRevision?    @relation("ReviewedRevision", fields: [reviewedRevisionId], references: [id], onDelete: SetNull)
+  revisions        ApplicationRevision[]   @relation("ApplicationRevisions")
+  events           ApplicationEvent[]
+  reviews          ApplicationReview[]
+  attachments      ApplicationAttachment[]
+  privateContact   ApplicationPrivateContact?
+
+  @@index([userId, status])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([assignedTo, status])
+  @@map("content_applications")
+}
+
+model ApplicationRevision {
+  id             String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId  String                            @map("application_id") @db.Uuid
+  revisionNumber Int                               @map("revision_number")
+  snapshotJson   Json                              @map("snapshot_json")
+  createdBy      String                            @map("created_by") @db.Uuid
+  submissionType ApplicationRevisionSubmissionType @map("submission_type")
+  createdAt      DateTime                          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  application        ContentApplication  @relation("ApplicationRevisions", fields: [applicationId], references: [id], onDelete: Cascade)
+  creator            User                @relation("ApplicationRevisionCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  reviewedForApplication ContentApplication? @relation("ReviewedRevision")
+
+  @@unique([applicationId, revisionNumber])
+  @@index([applicationId, createdAt(sort: Desc)])
+  @@map("application_revisions")
+}
+
+model ApplicationEvent {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId String   @map("application_id") @db.Uuid
+  eventType     String   @map("event_type")
+  actorId       String?  @map("actor_id") @db.Uuid
+  fromStatus    String?  @map("from_status")
+  toStatus      String?  @map("to_status")
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  application ContentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt(sort: Desc)])
+  @@map("application_events")
+}
+
+model ApplicationReview {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId String   @map("application_id") @db.Uuid
+  reviewerId    String   @map("reviewer_id") @db.Uuid
+  revisionId    String?  @map("revision_id") @db.Uuid
+  decision      String?
+  note          String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  application ContentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  reviewer    User               @relation("ApplicationReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt(sort: Desc)])
+  @@map("application_reviews")
+}
+
+model ApplicationAttachment {
+  id             String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId  String                            @map("application_id") @db.Uuid
+  kind           ApplicationAttachmentKind
+  storageKey     String                            @map("storage_key")
+  originalName   String                            @map("original_name")
+  mimeType       String                            @map("mime_type")
+  sizeBytes      Int                               @map("size_bytes")
+  checksumSha256 String?                           @map("checksum_sha256")
+  uploadStatus   ApplicationAttachmentUploadStatus @default(pending) @map("upload_status")
+  uploadedBy     String                            @map("uploaded_by") @db.Uuid
+  createdAt      DateTime                          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  application ContentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([uploadStatus, createdAt])
+  @@map("application_attachments")
+}
+
+model ApplicationPrivateContact {
+  applicationId String   @id @map("application_id") @db.Uuid
+  contactName   String?  @map("contact_name")
+  contactRole   String?  @map("contact_role")
+  contactEmail  String?  @map("contact_email")
+  workPhone     String?  @map("work_phone")
+  mobilePhone   String?  @map("mobile_phone")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  application ContentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@map("application_private_contacts")
 }

@@ -11,6 +11,7 @@ const TABS = [
   { href: '/hesabim/takip-dergiler', label: 'Takip Ettiğim Dergiler' },
   { href: '/hesabim/takip-yazarlar', label: 'Takip Ettiğim Yazarlar' },
   { href: '/hesabim/son-goruntulenen', label: 'Son Görüntülediklerim' },
+  { href: '/hesabim/basvurular', label: 'Başvuru Merkezi' },
   { href: '/hesabim/bildirimler', label: 'Bildirim Tercihleri' },
   { href: '/hesabim/security', label: 'Güvenlik' },
 ]

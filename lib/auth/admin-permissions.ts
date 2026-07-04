@@ -10,6 +10,7 @@ export const ADMIN_PERMISSIONS = [
   'manage_articles',
   'manage_pdfs',
   'review_change_requests',
+  'review_content_applications',
   'view_audit_logs',
   'manage_system_settings',
   'legacy_admin_access',
@@ -32,6 +33,7 @@ export const ROLE_ADMIN_PERMISSION_BACKFILL: Record<string, AdminPermissionName[
     'manage_articles',
     'manage_pdfs',
     'review_change_requests',
+    'review_content_applications',
     'view_audit_logs',
   ],
   MODERATOR: [
@@ -39,6 +41,7 @@ export const ROLE_ADMIN_PERMISSION_BACKFILL: Record<string, AdminPermissionName[
     'manage_articles',
     'manage_pdfs',
     'review_change_requests',
+    'review_content_applications',
     'view_audit_logs',
   ],
   EDITOR: ['legacy_admin_access'],
