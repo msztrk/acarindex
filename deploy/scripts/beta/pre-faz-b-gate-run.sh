@@ -9,6 +9,8 @@ source "$SCRIPT_DIR/lib-pilot-guard.sh"
 LOG="/var/log/acarindex-pre-faz-b-gate-$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee -a "$LOG") 2>&1
 
+acar_beta_require_pilot
+
 echo "=== PRE-FAZ-B GATE $(date -Is) ==="
 cd "$ACAR_ROOT"
 HEAD=$(git rev-parse HEAD)
