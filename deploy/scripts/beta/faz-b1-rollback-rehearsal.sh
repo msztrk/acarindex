@@ -37,7 +37,7 @@ echo "PRE_JA_TABLE=$PRE_JA"
 
 echo "=== SEED MINIMAL USER FOR REHEARSAL ==="
 $ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d "$REHEARSAL_DB" -c \
-  "INSERT INTO users (id, email, status, email_verified_at, created_at, updated_at)
+  "INSERT INTO users (id, email, status, email_verified, created_at, updated_at)
    VALUES ('00000000-0000-4000-8000-0000000000b1', 'faz-b1-rehearsal@example.com', 'active', now(), now(), now())
    ON CONFLICT (id) DO NOTHING;"
 
