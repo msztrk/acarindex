@@ -141,7 +141,7 @@ export function createB2ApplicationStorage(config: B2ApplicationStorageConfig): 
           'Content-Length': String(input.sizeBytes),
           'X-Bz-Content-Sha1': sha1,
         },
-        body: input.body,
+        body: new Uint8Array(input.body),
       })
       if (!uploadRes.ok) {
         throw new Error('B2 upload failed')

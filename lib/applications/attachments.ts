@@ -2,6 +2,7 @@ import type { ApplicationAttachmentKind } from '@prisma/client'
 import { prisma } from '@/lib/db/prisma'
 import { ForbiddenError } from '@/lib/auth/forbidden'
 import { hasAdminPermission } from '@/lib/auth/authorization'
+import type { AppRole } from '@/lib/auth/roles'
 import { EDITABLE_CONTENT_STATUSES } from '@/lib/applications/types'
 import { getApplicationStorage } from '@/lib/applications/storage'
 import {
@@ -170,7 +171,7 @@ export async function getAttachmentDownloadUrl(input: {
   applicationId: string
   attachmentId: string
   userId: string
-  userRoles?: string[]
+  userRoles?: AppRole[]
 }) {
   const attachment = await prisma.applicationAttachment.findFirst({
     where: { id: input.attachmentId, applicationId: input.applicationId },
