@@ -131,6 +131,18 @@ async function scanQualityMetrics() {
   return { sameTitle, sameAbstract, sameBoth, possibleFallback, htmlOnlyTitle, htmlOnlyAbstract }
 }
 
+function isHttpRedirect(status: number): boolean {
+  return status === 302 || status === 307 || status === 308
+}
+
+function bodyRedirectsTo(body: string, path: string): boolean {
+  return body.includes('NEXT_REDIRECT') && body.includes(path)
+}
+
+function bodyIsSoft404(body: string): boolean {
+  return body.includes('NEXT_HTTP_ERROR_FALLBACK;404')
+}
+
 async function checkLiveRedirects() {
   if (!LIVE_BASE) {
     return { invalid_en_redirect_count: 0, redirect_loop_count: 0, skipped: true }
@@ -175,12 +187,16 @@ async function checkLiveRedirects() {
       'tr',
     )
     const res = await fetch(`${LIVE_BASE}${enPath}`, { redirect: 'manual' })
+    const body = await res.text()
     const loc = res.headers.get('location') ?? ''
-    if (res.status !== 302 && res.status !== 307 && res.status !== 308) invalid++
-    else if (!loc.includes(trPath)) invalid++
+    const httpOk = isHttpRedirect(res.status) && loc.includes(trPath)
+    const softOk = bodyRedirectsTo(body, trPath)
+    if (!httpOk && !softOk) invalid++
 
-    const follow = await fetch(`${LIVE_BASE}${enPath}`, { redirect: 'follow' })
-    if (follow.url.includes('/en/') && !hasEnglishArticleContent(noEn)) loops++
+    if (!httpOk && !softOk) {
+      const follow = await fetch(`${LIVE_BASE}${enPath}`, { redirect: 'follow' })
+      if (follow.url.includes('/en/') && !hasEnglishArticleContent(noEn)) loops++
+    }
   }
 
   if (missing) invalid++
@@ -189,11 +205,9 @@ async function checkLiveRedirects() {
     const res404 = await fetch(`${LIVE_BASE}/en/foo/missing-article-999999999`, {
       redirect: 'manual',
     })
+    const body404 = await res404.text()
     if (res404.status !== 404 && res404.status !== 200) invalid++
-    else if (res404.status === 200) {
-      const body = await res404.text()
-      if (!body.includes('NEXT_HTTP_ERROR_FALLBACK;404')) invalid++
-    }
+    else if (res404.status === 200 && !bodyIsSoft404(body404)) invalid++
   }
 
   if (withEn) {
@@ -209,7 +223,8 @@ async function checkLiveRedirects() {
       'en',
     )
     const res = await fetch(`${LIVE_BASE}${enPath}`, { redirect: 'manual' })
-    if (res.status === 302 || res.status === 307 || res.status === 308) invalid++
+    const body = await res.text()
+    if (isHttpRedirect(res.status) || body.includes('NEXT_REDIRECT')) invalid++
   }
 
   return { invalid_en_redirect_count: invalid, redirect_loop_count: loops, skipped: false }
