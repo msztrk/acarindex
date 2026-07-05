@@ -477,7 +477,7 @@ export default async function ArticlePage({ params }: PageProps) {
           <article className="layout-reading-column min-w-0 rounded-xl border border-border/80 bg-surface p-5 sm:p-7 lg:p-8">
             <header className="mb-6 md:mb-8 space-y-4">
               <div className="space-y-2 min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-semibold leading-tight tracking-tight text-foreground max-w-5xl">
+                <h1 className="text-2xl sm:text-3xl font-semibold leading-tight tracking-tight text-foreground">
                   {title}
                 </h1>
                 {titleOther && (
