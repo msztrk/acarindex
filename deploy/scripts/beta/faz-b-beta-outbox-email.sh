@@ -25,6 +25,54 @@ fetch_csrf() {
   curl -sS -b "$CJ" -c "$CJ" "$BASE/api/auth/csrf" | sed -n 's/.*"csrfToken":"\([^"]*\)".*/\1/p'
 }
 
+write_fazb_journal_draft_json() {
+  local title="${1:-Faz B Outbox Test Dergi $(date +%s)}"
+  local slug="${2:-fazb-outbox-$(date +%s)}"
+  NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  TEST_ISSN=$(acar_beta_generate_test_issn)
+  cat > /tmp/fazb-journal-draft.json <<EOF
+{
+  "journal": {
+    "nameTr": "$title",
+    "pIssn": "$TEST_ISSN",
+    "firstPublicationYear": 2020,
+    "publicationFrequency": "quarterly",
+    "publicationMonths": [1,4,7,10],
+    "proposedInstitutionName": "Faz B Test Yayıncı",
+    "editorName": "Test Editör",
+    "editorEmail": "$TEST_EMAIL",
+    "websiteUrl": "https://example.com/$slug",
+    "keywords": ["test","fazb","outbox"]
+  },
+  "subjectAreas": [{"categoryId": 1, "level": "primary"}],
+  "declarationAcceptance": {
+    "criteriaAcceptedAt": "$NOW",
+    "standardsAcceptedAt": "$NOW",
+    "privacyNoticeAcceptedAt": "$NOW",
+    "imageRightsAcceptedAt": "$NOW",
+    "informationAccuracyConfirmedAt": "$NOW"
+  },
+  "privateContact": {"contactName": "Test", "contactEmail": "$TEST_EMAIL", "workPhone": "+905551112233"}
+}
+EOF
+}
+
+submit_journal_app_with_cover() {
+  local app_id="$1"
+  local csrf
+  csrf=$(fetch_csrf)
+  curl -sS -b "$CJ" -c "$CJ" -X PATCH "$BASE/api/applications/journal/$app_id" \
+    -H "Content-Type: application/json" -H "x-csrf-token: $csrf" \
+    -d @/tmp/fazb-journal-draft.json -o /dev/null
+  csrf=$(fetch_csrf)
+  curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/applications/$app_id/attachments" \
+    -H "x-csrf-token: $csrf" \
+    -F "kind=cover_image" -F "file=@/tmp/fazb-cover.png;type=image/png" -o /dev/null
+  csrf=$(fetch_csrf)
+  curl -sS -b "$CJ" -c "$CJ" -o "/tmp/fazb-submit-$app_id.json" -w '%{http_code}' \
+    -X POST "$BASE/api/applications/journal/$app_id/submit" -H "x-csrf-token: $csrf"
+}
+
 acar_beta_require_pilot
 CJ="/tmp/fazb-outbox-$$.cj"
 
@@ -58,33 +106,7 @@ create_json=$(curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/applications/journal
 TEST_APP=$(echo "$create_json" | sed -n 's/.*"contentApplicationId":"\([^"]*\)".*/\1/p')
 [[ -n "$TEST_APP" ]] && pass "test app $TEST_APP" || fail "test app create"
 
-NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-TEST_ISSN=$(acar_beta_generate_test_issn)
-cat > /tmp/fazb-journal-draft.json <<EOF
-{
-  "journal": {
-    "nameTr": "Faz B Outbox Test Dergi $(date +%s)",
-    "pIssn": "$TEST_ISSN",
-    "firstPublicationYear": 2020,
-    "publicationFrequency": "quarterly",
-    "publicationMonths": [1,4,7,10],
-    "proposedInstitutionName": "Faz B Test Yayıncı",
-    "editorName": "Test Editör",
-    "editorEmail": "$TEST_EMAIL",
-    "websiteUrl": "https://example.com/fazb-outbox",
-    "keywords": ["test","fazb","outbox"]
-  },
-  "subjectAreas": [{"categoryId": 1, "level": "primary"}],
-  "declarationAcceptance": {
-    "criteriaAcceptedAt": "$NOW",
-    "standardsAcceptedAt": "$NOW",
-    "privacyNoticeAcceptedAt": "$NOW",
-    "imageRightsAcceptedAt": "$NOW",
-    "informationAccuracyConfirmedAt": "$NOW"
-  },
-  "privateContact": {"contactName": "Test", "contactEmail": "$TEST_EMAIL", "workPhone": "+905551112233"}
-}
-EOF
+write_fazb_journal_draft_json "Faz B Outbox Test Dergi $(date +%s)" "fazb-outbox-$(date +%s)"
 
 csrf=$(fetch_csrf)
 curl -sS -b "$CJ" -c "$CJ" -X PATCH "$BASE/api/applications/journal/$TEST_APP" \
@@ -102,17 +124,17 @@ submit_code=$(curl -sS -b "$CJ" -c "$CJ" -o /tmp/fazb-submit.json -w '%{http_cod
   -X POST "$BASE/api/applications/journal/$TEST_APP/submit" -H "x-csrf-token: $csrf")
 [[ "$submit_code" == "200" ]] && pass "journal submit" || fail "journal submit $submit_code $(cat /tmp/fazb-submit.json)"
 
-trigger_action() {
-  local action="$1" note="$2"
+trigger_action_for() {
+  local app_id="$1" action="$2" note="$3"
   local csrf
   csrf=$(fetch_csrf)
-  curl -sS -b "$CJ" -c "$CJ" -X PATCH "$BASE/api/admin/applications/journal/$TEST_APP" \
+  curl -sS -b "$CJ" -c "$CJ" -X PATCH "$BASE/api/admin/applications/journal/$app_id" \
     -H "Content-Type: application/json" -H "x-csrf-token: $csrf" \
     -d "{\"action\":\"$action\",\"note\":\"$note\"}" -o /dev/null
 }
 
 echo "=== TRIGGER revision_requested ==="
-trigger_action request_revision "Faz B outbox revision test"
+trigger_action_for "$TEST_APP" request_revision "Faz B outbox revision test"
 sleep 1
 $ACAR_COMPOSE --profile tools run --rm --no-deps etl scripts/process-notification-outbox.ts 20
 STATUS=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -tAc \
@@ -124,19 +146,10 @@ csrf=$(fetch_csrf)
 rej_json=$(curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/applications/journal" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf")
 REJ_APP=$(echo "$rej_json" | sed -n 's/.*"contentApplicationId":"\([^"]*\)".*/\1/p')
-csrf=$(fetch_csrf)
-curl -sS -b "$CJ" -c "$CJ" -X PATCH "$BASE/api/applications/journal/$REJ_APP" \
-  -H "Content-Type: application/json" -H "x-csrf-token: $csrf" \
-  -d @/tmp/fazb-journal-draft.json -o /dev/null
-csrf=$(fetch_csrf)
-curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/applications/$REJ_APP/attachments" \
-  -H "x-csrf-token: $csrf" \
-  -F "kind=cover_image" -F "file=@/tmp/fazb-cover.png;type=image/png" -o /dev/null
-csrf=$(fetch_csrf)
-curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/applications/journal/$REJ_APP/submit" \
-  -H "x-csrf-token: $csrf" -o /dev/null
-TEST_APP="$REJ_APP"
-trigger_action reject "Faz B outbox reject test"
+write_fazb_journal_draft_json "Faz B Outbox Reject $(date +%s)" "fazb-reject-$(date +%s)"
+submit_code=$(submit_journal_app_with_cover "$REJ_APP")
+[[ "$submit_code" == "200" ]] || fail "reject app submit $submit_code $(cat "/tmp/fazb-submit-$REJ_APP.json" 2>/dev/null)"
+trigger_action_for "$REJ_APP" reject "Faz B outbox reject test"
 $ACAR_COMPOSE --profile tools run --rm --no-deps etl scripts/process-notification-outbox.ts 20
 STATUS=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -tAc \
   "SELECT status FROM notification_outbox WHERE type='journal_application.rejected' AND payload->>'contentApplicationId'='$REJ_APP' ORDER BY created_at DESC LIMIT 1;" | tr -d ' \r\n')
@@ -147,19 +160,11 @@ csrf=$(fetch_csrf)
 ap_json=$(curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/applications/journal" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf")
 AP_APP=$(echo "$ap_json" | sed -n 's/.*"contentApplicationId":"\([^"]*\)".*/\1/p')
-csrf=$(fetch_csrf)
-curl -sS -b "$CJ" -c "$CJ" -X PATCH "$BASE/api/applications/journal/$AP_APP" \
-  -H "Content-Type: application/json" -H "x-csrf-token: $csrf" \
-  -d @/tmp/fazb-journal-draft.json -o /dev/null
-csrf=$(fetch_csrf)
-curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/applications/$AP_APP/attachments" \
-  -H "x-csrf-token: $csrf" \
-  -F "kind=cover_image" -F "file=@/tmp/fazb-cover.png;type=image/png" -o /dev/null
-csrf=$(fetch_csrf)
-curl -sS -b "$CJ" -c "$CJ" -X POST "$BASE/api/applications/journal/$AP_APP/submit" \
-  -H "x-csrf-token: $csrf" -o /dev/null
-trigger_action under_review ""
-trigger_action approve "Faz B outbox approve test"
+write_fazb_journal_draft_json "Faz B Outbox Approve $(date +%s)" "fazb-approve-$(date +%s)"
+submit_code=$(submit_journal_app_with_cover "$AP_APP")
+[[ "$submit_code" == "200" ]] || fail "approve app submit $submit_code $(cat "/tmp/fazb-submit-$AP_APP.json" 2>/dev/null)"
+trigger_action_for "$AP_APP" under_review ""
+trigger_action_for "$AP_APP" approve "Faz B outbox approve test"
 $ACAR_COMPOSE --profile tools run --rm --no-deps etl scripts/process-notification-outbox.ts 20
 STATUS=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarindex_pilot -tAc \
   "SELECT status FROM notification_outbox WHERE type='journal_application.approved' AND payload->>'contentApplicationId'='$AP_APP' ORDER BY created_at DESC LIMIT 1;" | tr -d ' \r\n')

@@ -122,11 +122,11 @@ echo "=== E2E STEP 3 member resubmit ==="
 csrf=$(fetch_csrf)
 curl -sS -b "$CJ" -c "$CJ" -X PATCH "$BASE/api/applications/journal/$APP_ID" \
   -H "Content-Type: application/json" -H "x-csrf-token: $csrf" \
-  -d "{\"journal\":{\"editorName\":\"E2E Editör Rev2\"}}" -o /dev/null
+  -d "{\"journal\":{\"editorName\":\"E2E Editör Rev2\",\"websiteUrl\":\"https://example.com/${UNIQUE_SLUG}-rev2\"},\"duplicateContinueReason\":\"E2E revision resubmit after admin note\"}" -o /dev/null
 csrf=$(fetch_csrf)
 resubmit=$(curl -sS -b "$CJ" -c "$CJ" -o /tmp/fazb-e2e-resubmit.json -w '%{http_code}' \
   -X POST "$BASE/api/applications/journal/$APP_ID/submit" -H "x-csrf-token: $csrf")
-[[ "$resubmit" == "200" ]] && pass "resubmit" || fail "resubmit $resubmit"
+[[ "$resubmit" == "200" ]] && pass "resubmit" || fail "resubmit $resubmit $(cat /tmp/fazb-e2e-resubmit.json 2>/dev/null)"
 
 echo "=== E2E STEP 4 admin approve ==="
 admin_patch under_review "" >/dev/null
