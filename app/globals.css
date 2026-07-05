@@ -230,7 +230,7 @@
      type-meta-value      : 15–16px metadata değeri
      type-meta-link       : 15–16px link metadata
      type-reading-heading : 21–24px özet/bölüm başlığı
-     type-reading-body    : 16–18px okuma metni (~85ch)
+     type-reading-body    : 16–18px okuma metni (tam sütun genişliği)
      type-sidebar-heading : 16–17px sidebar kart başlığı
      type-sidebar-body    : 14–15px sidebar açıklama
      type-sidebar-link    : 15px sidebar link
@@ -265,7 +265,7 @@
   }
 
   .type-reading-body {
-    @apply text-base md:text-[1.0625rem] leading-[1.7] text-foreground/90 max-w-[85ch] text-justify hyphens-auto whitespace-pre-line;
+    @apply text-base md:text-[1.0625rem] leading-[1.7] text-foreground/90 text-justify hyphens-auto whitespace-pre-line;
   }
 
   .type-sidebar-heading {
