@@ -501,7 +501,12 @@
     line-height: 1.45;
   }
 
-  /* Ana içerik + sağ sidebar (ana sayfa, dergi detay, yazar) */
+  /* Dergi detay: ana içerik + geniş sidebar (ana sayfa / makale detay hizasında) */
+  .layout-journal-detail {
+    @apply grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:gap-9;
+  }
+
+  /* Ana içerik + sağ sidebar (ana sayfa, yazar) */
   .layout-with-sidebar {
     @apply grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-9 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-10;
   }

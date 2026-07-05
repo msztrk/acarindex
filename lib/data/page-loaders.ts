@@ -30,6 +30,7 @@ export async function loadSearchPageData(options: {
   language?: 'tr' | 'en'
   yearFrom?: number
   yearTo?: number
+  journalId?: number
   boostCategoryIds?: number[]
   personalize?: boolean
 }) {
@@ -71,6 +72,7 @@ export async function loadSearchPageData(options: {
         type: 'article',
         area: options.area as 'all' | 'title' | 'author' | 'keywords',
         language: options.language,
+        journalId: options.journalId,
         yearFrom: options.yearFrom,
         yearTo: options.yearTo,
         page: options.page,

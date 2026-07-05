@@ -29,6 +29,7 @@ import { getServerSession } from '@/lib/auth/session'
 import { recordRecentView } from '@/lib/user-panel/recent-views'
 import { isJournalFollowed } from '@/lib/user-panel/follows'
 import { FollowJournalButton } from '@/components/user-panel/FollowJournalButton'
+import { JournalSearchForm } from '@/components/journals/JournalSearchForm'
 import { buildLoginHref } from '@/lib/user-panel/login-redirect'
 import { getRequestLocale } from '@/lib/i18n/request-locale'
 import type { SiteLocale } from '@/lib/i18n/locale'
@@ -215,9 +216,53 @@ export async function generateMetadata({
 
 function formatAuthors(raw: string | null | undefined, max = 3): string {
   if (!raw) return ''
-  return [...new Set(raw.split(/[,;]+/).map((a) => a.trim()).filter(Boolean))]
-    .slice(0, max)
-    .join(', ')
+  return parseAuthorNames(raw, max).join(', ')
+}
+
+function parseAuthorNames(raw: string | null | undefined, max = 4): string[] {
+  if (!raw) return []
+  return [...new Set(raw.split(/[,;]+/).map((a) => a.trim()).filter(Boolean))].slice(0, max)
+}
+
+function hasCmsContent(html: string | null | undefined): boolean {
+  if (!html?.trim()) return false
+  const text = html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text.length > 0
+}
+
+function AuthorNameLinks({
+  authorsRaw,
+  max = 4,
+  className,
+}: {
+  authorsRaw: string | null | undefined
+  max?: number
+  className?: string
+}) {
+  const names = parseAuthorNames(authorsRaw, max)
+  if (names.length === 0) return null
+
+  return (
+    <span className={cn('inline-flex flex-wrap items-center gap-x-1 gap-y-0.5 min-w-0', className)}>
+      {names.map((name, index) => (
+        <span key={`${name}-${index}`} className="inline-flex items-center gap-1 min-w-0">
+          <Link
+            href={`/search?q=${encodeURIComponent(name)}&type=article&area=author`}
+            className={cn('type-meta-link text-primary hover:text-accent no-underline', linkFocusClass)}
+          >
+            {name}
+          </Link>
+          {index < names.length - 1 && (
+            <span className="text-muted-foreground" aria-hidden>,</span>
+          )}
+        </span>
+      ))}
+    </span>
+  )
 }
 
 function formatPageRange(start?: number | null, end?: number | null): string | null {
@@ -359,7 +404,7 @@ export default async function JournalPage({
       <div className="content-width py-6 lg:py-10 min-w-0">
         {resolved.subPage === 'sayi' && resolved.issueId ? (
           <>
-            <JournalNav segment={resolved.journalSegment} active={resolved.subPage} />
+            <JournalNav segment={resolved.journalSegment} active={resolved.subPage} journal={journal} />
             <div className="border-b border-border/80 mb-6 md:mb-8" />
             <JournalSayi
               journal={journal}
@@ -389,7 +434,7 @@ export default async function JournalPage({
             </Breadcrumb>
 
             <header className="mb-6 md:mb-8 flex flex-col sm:flex-row gap-5 sm:gap-6 min-w-0">
-              <div className="shrink-0 w-20 h-28 sm:w-[5.5rem] sm:h-[7.75rem] bg-secondary rounded-lg border border-border/80 flex items-center justify-center overflow-hidden">
+              <div className="shrink-0 w-28 h-40 sm:w-36 sm:h-[13.5rem] md:w-40 md:h-56 bg-secondary rounded-lg border border-border/80 flex items-center justify-center overflow-hidden shadow-sm">
                 {journal.cover_path ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -416,7 +461,7 @@ export default async function JournalPage({
               </div>
             </header>
 
-            <JournalNav segment={resolved.journalSegment} active={resolved.subPage} />
+            <JournalNav segment={resolved.journalSegment} active={resolved.subPage} journal={journal} />
 
             <div className="border-b border-border/80 mb-6 md:mb-8" />
 
@@ -434,26 +479,34 @@ export default async function JournalPage({
             {resolved.subPage === 'amac-kapsam' &&
               (locale === 'en' ? (
                 <TrOnlyContentNotice trHref={`/journals/${resolved.journalSegment}/amac-kapsam`} />
-              ) : (
+              ) : hasCmsContent(journal.aim_and_scope) ? (
                 <CmsSection title="Amaç ve Kapsam" html={journal.aim_and_scope} />
+              ) : (
+                redirect(`/journals/${resolved.journalSegment}`)
               ))}
             {resolved.subPage === 'editor-kurulu' &&
               (locale === 'en' ? (
                 <TrOnlyContentNotice trHref={`/journals/${resolved.journalSegment}/editor-kurulu`} />
-              ) : (
+              ) : hasCmsContent(journal.editorial_board) ? (
                 <CmsSection title="Editör Kurulu" html={journal.editorial_board} />
+              ) : (
+                redirect(`/journals/${resolved.journalSegment}`)
               ))}
             {resolved.subPage === 'yazim-kurallari' &&
               (locale === 'en' ? (
                 <TrOnlyContentNotice trHref={`/journals/${resolved.journalSegment}/yazim-kurallari`} />
-              ) : (
+              ) : hasCmsContent(journal.writing_rules) ? (
                 <CmsSection title="Yazım Kuralları" html={journal.writing_rules} />
+              ) : (
+                redirect(`/journals/${resolved.journalSegment}`)
               ))}
             {resolved.subPage === 'iletisim' &&
               (locale === 'en' ? (
                 <TrOnlyContentNotice trHref={`/journals/${resolved.journalSegment}/iletisim`} />
-              ) : (
+              ) : hasCmsContent(journal.contact_text) ? (
                 <CmsSection title="İletişim" html={journal.contact_text} />
+              ) : (
+                redirect(`/journals/${resolved.journalSegment}`)
               ))}
           </>
         )}
@@ -464,16 +517,46 @@ export default async function JournalPage({
 
 // ─── Alt bileşenler ───────────────────────────────────────────────────────────
 
-function JournalNav({ segment, active }: { segment: string; active: SubPage }) {
+function JournalNav({
+  segment,
+  active,
+  journal,
+}: {
+  segment: string
+  active: SubPage
+  journal: Journal
+}) {
   const base = `/journals/${segment}`
-  const links: { label: string; href: string; key: SubPage }[] = [
-    { label: 'Dergi', href: base, key: 'home' },
-    { label: 'Arşiv', href: `${base}/arsiv`, key: 'arsiv' },
-    { label: 'Amaç & Kapsam', href: `${base}/amac-kapsam`, key: 'amac-kapsam' },
-    { label: 'Editör Kurulu', href: `${base}/editor-kurulu`, key: 'editor-kurulu' },
-    { label: 'Yazım Kuralları', href: `${base}/yazim-kurallari`, key: 'yazim-kurallari' },
-    { label: 'İletişim', href: `${base}/iletisim`, key: 'iletisim' },
+  const allLinks: { label: string; href: string; key: SubPage; visible: boolean }[] = [
+    { label: 'Dergi', href: base, key: 'home', visible: true },
+    { label: 'Arşiv', href: `${base}/arsiv`, key: 'arsiv', visible: true },
+    {
+      label: 'Amaç & Kapsam',
+      href: `${base}/amac-kapsam`,
+      key: 'amac-kapsam',
+      visible: hasCmsContent(journal.aim_and_scope),
+    },
+    {
+      label: 'Editör Kurulu',
+      href: `${base}/editor-kurulu`,
+      key: 'editor-kurulu',
+      visible: hasCmsContent(journal.editorial_board),
+    },
+    {
+      label: 'Yazım Kuralları',
+      href: `${base}/yazim-kurallari`,
+      key: 'yazim-kurallari',
+      visible: hasCmsContent(journal.writing_rules),
+    },
+    {
+      label: 'İletişim',
+      href: `${base}/iletisim`,
+      key: 'iletisim',
+      visible: hasCmsContent(journal.contact_text),
+    },
   ]
+  const links = allLinks.filter((link) => link.visible)
+
   return (
     <nav className="flex flex-wrap gap-1.5 mb-4 min-w-0" aria-label="Dergi menüsü">
       {links.map(({ label, href, key }) => (
@@ -524,10 +607,50 @@ async function JournalHome({
   ])
 
   const arsivHref = `/journals/${segment}/arsiv`
+  const quickLinks = [
+    { label: 'Arşiv ve sayılar', href: arsivHref, visible: true },
+    {
+      label: 'Amaç ve kapsam',
+      href: `/journals/${segment}/amac-kapsam`,
+      visible: hasCmsContent(journal.aim_and_scope),
+    },
+    {
+      label: 'İletişim',
+      href: `/journals/${segment}/iletisim`,
+      visible: hasCmsContent(journal.contact_text),
+    },
+  ].filter((link) => link.visible)
 
   return (
-    <div className="layout-with-sidebar min-w-0">
+    <div className="layout-journal-detail min-w-0">
       <div className="min-w-0 space-y-8 md:space-y-10 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
+        <section className="min-w-0">
+          <h2 className="type-section-title mb-4">Son makaleler</h2>
+          {articles.length === 0 ? (
+            <p className="type-card-meta py-4">
+              Bu dergide henüz listelenecek makale bulunmuyor.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border/80 min-w-0">
+              {articles.map((a) => (
+                <ArticleRow key={a.id} article={a} locale={locale} />
+              ))}
+            </ul>
+          )}
+          {articles.length > 0 && (
+            <Link
+              href={arsivHref}
+              className={cn(
+                'type-sidebar-link inline-flex items-center gap-1 text-primary hover:text-accent mt-4 no-underline',
+                linkFocusClass,
+              )}
+            >
+              Tüm sayıları gör
+              <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+          )}
+        </section>
+
         {issues.length > 0 && (
           <section className="min-w-0">
             <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
@@ -565,33 +688,6 @@ async function JournalHome({
           </section>
         )}
 
-        <section className="min-w-0">
-          <h2 className="type-section-title mb-4">Son makaleler</h2>
-          {articles.length === 0 ? (
-            <p className="type-card-meta py-4">
-              Bu dergide henüz listelenecek makale bulunmuyor.
-            </p>
-          ) : (
-            <ul className="divide-y divide-border/80 min-w-0">
-              {articles.map((a) => (
-                <ArticleRow key={a.id} article={a} locale={locale} />
-              ))}
-            </ul>
-          )}
-          {articles.length > 0 && (
-            <Link
-              href={arsivHref}
-              className={cn(
-                'type-sidebar-link inline-flex items-center gap-1 text-primary hover:text-accent mt-4 no-underline',
-                linkFocusClass,
-              )}
-            >
-              Tüm sayıları gör
-              <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-            </Link>
-          )}
-        </section>
-
         {locale !== 'en' && journal.description?.trim() && (
           <section className="min-w-0">
             <h2 className="type-section-title mb-3">Dergi hakkında</h2>
@@ -602,7 +698,12 @@ async function JournalHome({
         )}
       </div>
 
-      <aside className="space-y-5 min-w-0 lg:pt-0">
+      <aside className="layout-sidebar-column space-y-5 min-w-0 lg:pt-0">
+        <div className="aside-panel min-w-0">
+          <h3 className="type-sidebar-heading mb-3">Dergide ara</h3>
+          <JournalSearchForm journalId={journalId} />
+        </div>
+
         {issues[0] && (
           <div className="aside-panel min-w-0">
             <h3 className="type-sidebar-heading mb-2">Son sayı</h3>
@@ -618,32 +719,20 @@ async function JournalHome({
           </div>
         )}
 
-        <div className="aside-panel min-w-0">
-          <h3 className="type-sidebar-heading mb-3">Hızlı bağlantılar</h3>
-          <ul className="space-y-2.5 type-sidebar-link">
-            <li>
-              <Link href={arsivHref} className={cn('text-primary hover:text-accent no-underline', linkFocusClass)}>
-                Arşiv ve sayılar
-              </Link>
-            </li>
-            <li>
-              <Link
-                href={`/journals/${segment}/amac-kapsam`}
-                className={cn('text-primary hover:text-accent no-underline', linkFocusClass)}
-              >
-                Amaç ve kapsam
-              </Link>
-            </li>
-            <li>
-              <Link
-                href={`/journals/${segment}/iletisim`}
-                className={cn('text-primary hover:text-accent no-underline', linkFocusClass)}
-              >
-                İletişim
-              </Link>
-            </li>
-          </ul>
-        </div>
+        {quickLinks.length > 0 && (
+          <div className="aside-panel min-w-0">
+            <h3 className="type-sidebar-heading mb-3">Hızlı bağlantılar</h3>
+            <ul className="space-y-2.5 type-sidebar-link">
+              {quickLinks.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className={cn('text-primary hover:text-accent no-underline', linkFocusClass)}>
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </aside>
     </div>
   )
@@ -914,8 +1003,8 @@ function IssueArticleRow({
 }) {
   const title = pickLocalizedArticleDisplayTitle(article.title_tr, article.title_en, locale)
   const href = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
-  const authors = formatAuthors(article.authors_raw)
   const pages = formatPageRange(article.page_start, article.page_end)
+  const authorNames = parseAuthorNames(article.authors_raw)
 
   return (
     <li className="group py-4 first:pt-0 last:pb-0 min-w-0">
@@ -924,22 +1013,24 @@ function IssueArticleRow({
           {title}
         </h3>
       </Link>
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
-        {(authors || pages) && (
-          <div className="type-card-meta flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
-            {authors && <span className="min-w-0">{authors}</span>}
-            {authors && pages && (
-              <span className="text-muted-foreground" aria-hidden>·</span>
-            )}
-            {pages && (
-              <span className="tabular-nums shrink-0 text-muted-foreground">ss. {pages}</span>
-            )}
-          </div>
-        )}
+      <div className="mt-2 flex items-start justify-between gap-3 min-w-0">
+        <div className="min-w-0 flex-1">
+          {(authorNames.length > 0 || pages) && (
+            <div className="type-card-meta flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+              {authorNames.length > 0 && <AuthorNameLinks authorsRaw={article.authors_raw} />}
+              {authorNames.length > 0 && pages && (
+                <span className="text-muted-foreground" aria-hidden>·</span>
+              )}
+              {pages && (
+                <span className="tabular-nums shrink-0 text-muted-foreground">ss. {pages}</span>
+              )}
+            </div>
+          )}
+        </div>
         <Link
           href={`/pdfs/${article.id}`}
           aria-label={`${title} — tam metin PDF`}
-          className={cn('catalog-pdf-badge', linkFocusClass)}
+          className={cn('catalog-pdf-badge shrink-0', linkFocusClass)}
         >
           <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
           PDF
@@ -958,8 +1049,8 @@ function ArticleRow({
 }) {
   const title = pickLocalizedArticleDisplayTitle(article.title_tr, article.title_en, locale)
   const href = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
-  const authors = formatAuthors(article.authors_raw)
   const pages = formatPageRange(article.page_start, article.page_end)
+  const authorNames = parseAuthorNames(article.authors_raw)
 
   return (
     <li className="group py-4 first:pt-0 last:pb-0 min-w-0">
@@ -971,30 +1062,32 @@ function ArticleRow({
           {title}
         </span>
       </Link>
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
-        {(authors || article.published_year) && (
-          <div className="type-card-meta flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
-            {authors && <span className="min-w-0">{authors}</span>}
-            {authors && article.published_year && (
-              <span className="text-muted-foreground" aria-hidden>·</span>
-            )}
-            {article.published_year && (
-              <span className="tabular-nums shrink-0 text-muted-foreground">
-                {article.published_year}
-              </span>
-            )}
-            {pages && (
-              <>
+      <div className="mt-2 flex items-start justify-between gap-3 min-w-0">
+        <div className="min-w-0 flex-1">
+          {(authorNames.length > 0 || article.published_year || pages) && (
+            <div className="type-card-meta flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+              {authorNames.length > 0 && <AuthorNameLinks authorsRaw={article.authors_raw} />}
+              {authorNames.length > 0 && article.published_year && (
                 <span className="text-muted-foreground" aria-hidden>·</span>
-                <span className="tabular-nums shrink-0 text-muted-foreground">ss. {pages}</span>
-              </>
-            )}
-          </div>
-        )}
+              )}
+              {article.published_year && (
+                <span className="tabular-nums shrink-0 text-muted-foreground">
+                  {article.published_year}
+                </span>
+              )}
+              {pages && (
+                <>
+                  <span className="text-muted-foreground" aria-hidden>·</span>
+                  <span className="tabular-nums shrink-0 text-muted-foreground">ss. {pages}</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
         <Link
           href={`/pdfs/${article.id}`}
           aria-label={`${title} — tam metin PDF`}
-          className={cn('catalog-pdf-badge', linkFocusClass)}
+          className={cn('catalog-pdf-badge shrink-0', linkFocusClass)}
         >
           <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
           PDF

@@ -35,6 +35,7 @@ interface PageProps {
     language?: string
     year_from?: string
     year_to?: string
+    journal_id?: string
     page?: string
     personalize?: string
   }>
@@ -68,6 +69,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
   const language = sp.language === 'en' ? 'en' : sp.language === 'tr' ? 'tr' : undefined
   const yearFrom = sp.year_from ? parseInt(sp.year_from, 10) : undefined
   const yearTo = sp.year_to ? parseInt(sp.year_to, 10) : undefined
+  const journalId = sp.journal_id ? parseInt(sp.journal_id, 10) : undefined
   const personalize = sp.personalize !== '0'
 
   const interestCategories = personalize ? await getSessionInterestCategories() : []
@@ -95,6 +97,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       language,
       yearFrom,
       yearTo,
+      journalId: Number.isFinite(journalId) ? journalId : undefined,
       page,
       boostCategoryIds,
       personalize,
@@ -121,6 +124,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     if (language) base.language = language
     if (sp.year_from) base.year_from = sp.year_from
     if (sp.year_to) base.year_to = sp.year_to
+    if (sp.journal_id) base.journal_id = sp.journal_id
     if (sp.personalize === '0') base.personalize = '0'
     const merged = { ...base, ...overrides }
     return '/search?' + new URLSearchParams(
@@ -169,6 +173,14 @@ export default async function SearchPage({ searchParams }: PageProps) {
               Ara
             </button>
           </div>
+          {Number.isFinite(journalId) && journalId && (
+            <>
+              <input type="hidden" name="journal_id" value={String(journalId)} />
+              <p className="text-sm text-muted-foreground">
+                Arama yalnızca seçili derginin makalelerinde yapılıyor.
+              </p>
+            </>
+          )}
 
           <div className="flex flex-wrap gap-2" role="group" aria-label="Sonuç türü">
             {(['article', 'journal', 'author'] as SearchType[]).map((t) => (
