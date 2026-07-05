@@ -5,8 +5,12 @@ set -Eeuo pipefail
 PILOT_ENV="${1:-/etc/acarindex/pilot.env}"
 BUCKET="${2:-acarindex-applications-pilot}"
 
-KEY_ID=$(grep '^B2_APPLICATION_KEY_ID=' "$PILOT_ENV" | cut -d= -f2- | tr -d '\r')
-KEY=$(grep '^B2_APPLICATION_KEY=' "$PILOT_ENV" | cut -d= -f2- | tr -d '\r')
+KEY_ID="${B2_APPLICATION_KEY_ID:-}"
+KEY="${B2_APPLICATION_KEY:-}"
+if [[ -z "$KEY_ID" || -z "$KEY" ]]; then
+  KEY_ID=$(grep '^B2_APPLICATION_KEY_ID=' "$PILOT_ENV" | cut -d= -f2- | tr -d '\r')
+  KEY=$(grep '^B2_APPLICATION_KEY=' "$PILOT_ENV" | cut -d= -f2- | tr -d '\r')
+fi
 [[ -n "$KEY_ID" && -n "$KEY" ]] || { echo "FAIL: B2_APPLICATION_* missing"; exit 1; }
 
 AUTH_JSON=$(curl -sS -u "${KEY_ID}:${KEY}" https://api.backblazeb2.com/b2api/v2/b2_authorize_account)
