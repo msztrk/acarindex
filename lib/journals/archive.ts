@@ -1,8 +1,11 @@
 import {
+  formatIssueVolumeIssueLabel,
+  getIssueLabelStrings,
   isRedundantYearLabel,
   parseIssueCitationParts,
   buildIssueMetadataTitle,
 } from '@/lib/journals/issue-citation'
+import type { SiteLocale } from '@/lib/i18n/locale'
 import { buildIssueUrlFromSegment } from '@/lib/urls/journal'
 import type { Issue } from '@/types/database'
 
@@ -27,29 +30,19 @@ function parseNumericSortValue(value: string | null | undefined): number | null 
   return Number.isFinite(parsed) ? parsed : null
 }
 
-export function buildArchiveIssueLabel(issue: Issue): string {
+export function buildArchiveIssueLabel(issue: Issue, locale: SiteLocale = 'tr'): string {
+  const labels = getIssueLabelStrings(locale)
   const { volumeLabel, issueNumLabel, year } = parseIssueCitationParts(issue)
+  const structured = formatIssueVolumeIssueLabel(volumeLabel, issueNumLabel, labels)
 
-  if (volumeLabel && issueNumLabel) {
-    return `Cilt ${volumeLabel}, Sayı ${issueNumLabel}`
-  }
-  if (issueNumLabel) {
-    return `Sayı ${issueNumLabel}`
-  }
-  if (volumeLabel) {
-    return `Cilt ${volumeLabel}`
-  }
+  if (structured) return structured
 
   const label = issue.issue_label?.trim()
   if (label && !isRedundantYearLabel(label, year)) {
     return label
   }
 
-  if (year) {
-    return 'Sayı'
-  }
-
-  return 'Sayı'
+  return labels.issueFallback
 }
 
 export function compareArchiveIssues(a: Issue, b: Issue): number {
@@ -75,7 +68,8 @@ export function compareArchiveIssues(a: Issue, b: Issue): number {
   return b.id - a.id
 }
 
-export function groupArchiveIssues(issues: Issue[]): GroupedArchiveIssues {
+export function groupArchiveIssues(issues: Issue[], locale: SiteLocale = 'tr'): GroupedArchiveIssues {
+  const labels = getIssueLabelStrings(locale)
   const uniqueById = new Map<number, Issue>()
   for (const issue of issues) {
     if (!uniqueById.has(issue.id)) {
@@ -107,7 +101,7 @@ export function groupArchiveIssues(issues: Issue[]): GroupedArchiveIssues {
   if (undated?.length) {
     groups.push({
       yearKey: ARCHIVE_UNDATED_YEAR_KEY,
-      heading: 'Yılı belirtilmemiş sayılar',
+      heading: labels.undatedIssuesHeading,
       issues: [...undated].sort(compareArchiveIssues),
     })
   }
@@ -125,6 +119,7 @@ export function buildArchiveIssueHref(journalSegment: string, issueId: number): 
 export function buildArchiveIssueDisplayTitle(
   journalTitle: string,
   issue: Issue,
+  locale: SiteLocale = 'tr',
 ): string {
-  return buildIssueMetadataTitle(journalTitle, issue)
+  return buildIssueMetadataTitle(journalTitle, issue, locale)
 }

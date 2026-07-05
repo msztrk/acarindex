@@ -1,9 +1,9 @@
 import {
   buildArchiveIssueDisplayTitle,
   buildArchiveIssueHref,
-  buildArchiveIssueLabel,
   groupArchiveIssues,
 } from '@/lib/journals/archive'
+import type { SiteLocale } from '@/lib/i18n/locale'
 import type { Issue, Journal } from '@/types/database'
 
 type JsonLdNode = Record<string, unknown>
@@ -47,17 +47,18 @@ export interface BuildArchivePageJsonLdInput {
   issues: Issue[]
   pageTitle: string
   description?: string
+  locale?: SiteLocale
 }
 
 export function buildArchivePageJsonLd(input: BuildArchivePageJsonLdInput): JsonLdNode {
-  const { canonicalBase, journalSegment, journal, issues, pageTitle, description } = input
+  const { canonicalBase, journalSegment, journal, issues, pageTitle, description, locale = 'tr' } = input
   const journalTitle = journal.title_tr ?? journal.title_en ?? 'Dergi'
   const archiveCanonical = `${canonicalBase}/journals/${journalSegment}/arsiv`
   const journalCanonical = `${canonicalBase}/journals/${journalSegment}`
   const periodicalId = `${journalCanonical}#periodical`
   const webpageId = `${archiveCanonical}#webpage`
 
-  const grouped = groupArchiveIssues(issues)
+  const grouped = groupArchiveIssues(issues, locale)
   const listItems: JsonLdNode[] = []
 
   let position = 0
@@ -65,7 +66,7 @@ export function buildArchivePageJsonLd(input: BuildArchivePageJsonLdInput): Json
     for (const issue of group.issues) {
       position += 1
       const issueCanonical = `${canonicalBase}${buildArchiveIssueHref(journalSegment, issue.id)}`
-      const issueName = buildArchiveIssueDisplayTitle(journalTitle, issue)
+      const issueName = buildArchiveIssueDisplayTitle(journalTitle, issue, locale)
       listItems.push({
         '@type': 'ListItem',
         position,

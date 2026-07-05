@@ -63,6 +63,15 @@ describe('groupArchiveIssues', () => {
     expect(grouped.groups.at(-1)?.yearKey).toBe(ARCHIVE_UNDATED_YEAR_KEY)
   })
 
+  it('eksik yıl grubu başlığını locale ile üretir', () => {
+    const grouped = groupArchiveIssues(
+      [issue(1, { year: null, issue_label: 'Special issue' })],
+      'en',
+    )
+
+    expect(grouped.groups[0]?.heading).toBe('Issues without publication year')
+  })
+
   it('yinelenen issue kaydı oluşturmaz', () => {
     const grouped = groupArchiveIssues([
       issue(1, { year: 2020 }),
@@ -81,6 +90,24 @@ describe('buildArchiveIssueLabel', () => {
     expect(
       buildArchiveIssueLabel(issue(2, { issue_number: 'Cilt: 52', year: 1997, volume: '52' })),
     ).toBe('Cilt 52')
+  })
+
+  it('İngilizce locale için Vol./Issue etiketleri üretir', () => {
+    expect(
+      buildArchiveIssueLabel(
+        issue(1, { issue_number: 'Cilt: 52 - Sayı: 1', year: 1997 }),
+        'en',
+      ),
+    ).toBe('Vol. 52, Issue 1')
+    expect(
+      buildArchiveIssueLabel(
+        issue(2, { issue_number: 'Cilt: 52', year: 1997, volume: '52' }),
+        'en',
+      ),
+    ).toBe('Vol. 52')
+    expect(
+      buildArchiveIssueLabel(issue(65, { year: 2019, issue_label: '2019', issue_number: null }), 'en'),
+    ).toBe('Issue')
   })
 
   it('yalnızca yıl etiketinde tekrar üretmez', () => {

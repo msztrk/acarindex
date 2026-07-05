@@ -13,6 +13,9 @@ import { JsonLd } from '@/components/seo/JsonLd'
 import {
   buildIssueMetadataDescription,
   buildIssueMetadataTitle,
+  formatIssueVolumeIssueLabel,
+  getIssueLabelStrings,
+  parseIssueCitationParts,
 } from '@/lib/journals/issue-citation'
 import { buildIssuePageJsonLd } from '@/lib/seo/issue-jsonld'
 import { buildArchivePageJsonLd } from '@/lib/seo/archive-jsonld'
@@ -176,8 +179,8 @@ export async function generateMetadata({
     const issue = await requireJournalIssue(parsed.journalId, resolved.issueId)
 
     const articleCount = await countIssueArticles(resolved.issueId)
-    const pageTitle = buildIssueMetadataTitle(journalTitle, issue)
-    const description = buildIssueMetadataDescription(journalTitle, issue, articleCount)
+    const pageTitle = buildIssueMetadataTitle(journalTitle, issue, locale)
+    const description = buildIssueMetadataDescription(journalTitle, issue, articleCount, locale)
 
     return {
       title: pageTitle,
@@ -754,7 +757,7 @@ async function JournalArsiv({
   lp: (path: string) => string
 }) {
   const issues = await getIssues(journal.id)
-  const grouped = groupArchiveIssues(issues)
+  const grouped = groupArchiveIssues(issues, locale)
   const journalTitle = pickLocalizedTitle(journal.title_tr, journal.title_en, locale) || (locale === 'en' ? 'Journal' : 'Dergi')
   const archiveTitle = ui.journalPage.archivePageTitle.replace('{title}', journalTitle)
   const archiveDescription = ui.journalPage.archiveIntro.replace('{title}', journalTitle)
@@ -766,6 +769,7 @@ async function JournalArsiv({
     issues,
     pageTitle: archiveTitle,
     description: archiveDescription,
+    locale,
   })
 
   return (
@@ -802,7 +806,7 @@ async function JournalArsiv({
                       >
                         <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
                         <span className="min-w-0 line-clamp-2 leading-snug">
-                          {buildArchiveIssueLabel(issue)}
+                          {buildArchiveIssueLabel(issue, locale)}
                         </span>
                       </Link>
                     </li>
@@ -822,10 +826,14 @@ function formatIssueBreadcrumbLabel(issue: Issue, fallback: string): string {
   return raw.length > 40 ? `${raw.slice(0, 37).trimEnd()}…` : raw
 }
 
-function buildIssueHeadingSuffix(issue: Issue, ui: UiMessages): string | null {
-  if (issue.issue_number?.trim()) return issue.issue_number.trim()
+function buildIssueHeadingSuffix(issue: Issue, locale: SiteLocale): string | null {
+  const labels = getIssueLabelStrings(locale)
+  const { volumeLabel, issueNumLabel, year } = parseIssueCitationParts(issue)
+  const structured = formatIssueVolumeIssueLabel(volumeLabel, issueNumLabel, labels)
+  if (structured) return structured
+
   const parts: string[] = []
-  if (issue.volume?.trim()) parts.push(`${ui.journalPage.volume} ${issue.volume.trim()}`)
+  if (issue.volume?.trim()) parts.push(`${labels.volume} ${issue.volume.trim()}`)
   if (issue.year) parts.push(String(issue.year))
   if (parts.length > 0) return parts.join(', ')
   if (issue.issue_label?.trim()) return issue.issue_label.trim()
@@ -855,12 +863,12 @@ async function JournalSayi({
   const journalTitle = pickLocalizedTitle(journal.title_tr, journal.title_en, locale) || (locale === 'en' ? 'Journal' : 'Dergi')
   const journalHref = lp(`/journals/${segment}`)
   const arsivHref = lp(`/journals/${segment}/arsiv`)
-  const issueSuffix = buildIssueHeadingSuffix(issueRow, ui)
+  const issueSuffix = buildIssueHeadingSuffix(issueRow, locale)
   const breadcrumbIssueLabel = formatIssueBreadcrumbLabel(issueRow, ui.journalPage.issueFallback)
   const articleCount = articles.length
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
-  const pageTitle = buildIssueMetadataTitle(journalTitle, issueRow)
-  const pageDescription = buildIssueMetadataDescription(journalTitle, issueRow, articleCount)
+  const pageTitle = buildIssueMetadataTitle(journalTitle, issueRow, locale)
+  const pageDescription = buildIssueMetadataDescription(journalTitle, issueRow, articleCount, locale)
   const issueJsonLd = buildIssuePageJsonLd({
     canonicalBase,
     journalSegment: segment,

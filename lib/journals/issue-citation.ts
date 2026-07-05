@@ -1,4 +1,46 @@
+import type { SiteLocale } from '@/lib/i18n/locale'
 import type { Issue } from '@/types/database'
+
+export type IssueLabelStrings = {
+  volume: string
+  issue: string
+  issueFallback: string
+  undatedIssuesHeading: string
+}
+
+export function getIssueLabelStrings(locale: SiteLocale): IssueLabelStrings {
+  if (locale === 'en') {
+    return {
+      volume: 'Vol.',
+      issue: 'Issue',
+      issueFallback: 'Issue',
+      undatedIssuesHeading: 'Issues without publication year',
+    }
+  }
+  return {
+    volume: 'Cilt',
+    issue: 'Sayı',
+    issueFallback: 'Sayı',
+    undatedIssuesHeading: 'Yılı belirtilmemiş sayılar',
+  }
+}
+
+export function formatIssueVolumeIssueLabel(
+  volumeLabel: string | null,
+  issueNumLabel: string | null,
+  labels: IssueLabelStrings,
+): string | null {
+  if (volumeLabel && issueNumLabel) {
+    return `${labels.volume} ${volumeLabel}, ${labels.issue} ${issueNumLabel}`
+  }
+  if (issueNumLabel) {
+    return `${labels.issue} ${issueNumLabel}`
+  }
+  if (volumeLabel) {
+    return `${labels.volume} ${volumeLabel}`
+  }
+  return null
+}
 
 export function isRedundantYearLabel(label: string, year: number | null): boolean {
   return year !== null && label === String(year)
@@ -25,41 +67,43 @@ export function parseIssueCitationParts(issue: Issue): {
   return { volumeLabel, issueNumLabel, year }
 }
 
-export function buildIssueMetadataTitle(journalTitle: string, issue: Issue): string {
+export function buildIssueMetadataTitle(
+  journalTitle: string,
+  issue: Issue,
+  locale: SiteLocale = 'tr',
+): string {
+  const labels = getIssueLabelStrings(locale)
   const { volumeLabel, issueNumLabel, year } = parseIssueCitationParts(issue)
-  const detailParts: string[] = []
+  const structured = formatIssueVolumeIssueLabel(volumeLabel, issueNumLabel, labels)
+  let detail: string | null = structured
 
-  if (volumeLabel && issueNumLabel) {
-    detailParts.push(`Cilt ${volumeLabel}, Sayı ${issueNumLabel}`)
-  } else if (issueNumLabel) {
-    detailParts.push(`Sayı ${issueNumLabel}`)
-  } else if (volumeLabel) {
-    detailParts.push(`Cilt ${volumeLabel}`)
-  } else {
+  if (!detail) {
     const label = issue.issue_label?.trim()
     if (label && !isRedundantYearLabel(label, year)) {
-      detailParts.push(label)
+      detail = label
     }
   }
 
-  if (detailParts.length === 0) {
+  if (!detail) {
     return year ? `${journalTitle} — ${year}` : journalTitle
   }
 
   return year
-    ? `${journalTitle} — ${detailParts[0]} (${year})`
-    : `${journalTitle} — ${detailParts[0]}`
+    ? `${journalTitle} — ${detail} (${year})`
+    : `${journalTitle} — ${detail}`
 }
 
 export function buildIssueMetadataDescription(
   journalTitle: string,
   issue: Issue,
   articleCount: number,
+  locale: SiteLocale = 'tr',
 ): string | undefined {
+  const labels = getIssueLabelStrings(locale)
   const { volumeLabel, issueNumLabel, year } = parseIssueCitationParts(issue)
   const issueBits: string[] = []
-  if (volumeLabel) issueBits.push(`Cilt ${volumeLabel}`)
-  if (issueNumLabel) issueBits.push(`Sayı ${issueNumLabel}`)
+  if (volumeLabel) issueBits.push(`${labels.volume} ${volumeLabel}`)
+  if (issueNumLabel) issueBits.push(`${labels.issue} ${issueNumLabel}`)
   const labelFallback = issue.issue_label?.trim()
   const issueStr =
     issueBits.join(' ') ||
