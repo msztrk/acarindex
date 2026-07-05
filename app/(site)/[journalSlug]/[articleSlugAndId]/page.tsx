@@ -27,6 +27,7 @@ import { recordRecentView } from '@/lib/user-panel/recent-views'
 import { isArticleSaved } from '@/lib/user-panel/saved-articles'
 import { listReadingLists } from '@/lib/user-panel/reading-lists'
 import { ArticleSaveActions } from '@/components/user-panel/ArticleSaveActions'
+import { ArticleSocialShare } from '@/components/catalog/ArticleSocialShare'
 import { buildLoginHref } from '@/lib/user-panel/login-redirect'
 import { getRequestLocale } from '@/lib/i18n/request-locale'
 import { buildArticleMetadataAlternates, pickLocalizedTitle } from '@/lib/seo/hreflang'
@@ -494,6 +495,8 @@ export default async function ArticlePage({ params }: PageProps) {
                   <AuthorLinks authorLinks={authorLinks} authorsList={authorsList} />
                 </div>
               )}
+
+              <ArticleSocialShare pageUrl={canonicalUrl} title={title} className="pt-1" />
 
               {hasPublicationMeta && (
                 <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-4 pt-1 min-w-0">
