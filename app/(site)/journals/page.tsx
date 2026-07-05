@@ -93,7 +93,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
           {/* Kategoriler */}
           {categories.length > 0 && (
             <div>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
                 Kategoriler
               </h2>
               <ul className="space-y-0.5">
@@ -203,17 +203,17 @@ function JournalCard({ journal }: { journal: Partial<Journal> }) {
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <h2 className="text-sm font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug mb-1">
+        <h2 className="text-base font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug mb-1">
           {title}
         </h2>
         {journal.issn && (
-          <p className="text-xs text-muted-foreground">ISSN: {journal.issn}</p>
+          <p className="text-sm text-muted-foreground">ISSN: {journal.issn}</p>
         )}
         {journal.publisher && (
-          <p className="text-xs text-muted-foreground truncate">{journal.publisher}</p>
+          <p className="text-sm text-muted-foreground truncate">{journal.publisher}</p>
         )}
         {journal.frequency && (
-          <Badge variant="secondary" className="text-xs mt-1">{journal.frequency}</Badge>
+          <Badge variant="secondary" className="text-[0.8125rem] mt-1">{journal.frequency}</Badge>
         )}
       </div>
     </Link>

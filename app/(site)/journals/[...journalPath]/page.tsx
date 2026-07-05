@@ -230,8 +230,8 @@ function formatPageRange(start?: number | null, end?: number | null): string | n
 function MetadataItem({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="text-sm text-foreground mt-0.5 min-w-0">{children}</dd>
+      <dt className="type-section-label">{label}</dt>
+      <dd className="type-meta-value mt-1 min-w-0">{children}</dd>
     </div>
   )
 }
@@ -554,7 +554,7 @@ async function JournalHome({
                       {issue.issue_label ?? (issue.year ? String(issue.year) : 'Sayı')}
                     </span>
                     {issue.year && issue.issue_label && (
-                      <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                      <span className="text-sm text-muted-foreground tabular-nums shrink-0">
                         {issue.year}
                       </span>
                     )}
@@ -605,11 +605,11 @@ async function JournalHome({
       <aside className="space-y-5 min-w-0 lg:pt-0">
         {issues[0] && (
           <div className="aside-panel min-w-0">
-            <h3 className="text-sm font-semibold text-foreground mb-2">Son sayı</h3>
+            <h3 className="type-sidebar-heading mb-2">Son sayı</h3>
             <Link
               href={`/journals/${segment}/sayi/${issues[0].id}`}
               className={cn(
-                'text-sm font-medium text-primary hover:text-accent leading-snug line-clamp-3 no-underline',
+                'type-sidebar-link text-primary hover:text-accent line-clamp-3 no-underline',
                 linkFocusClass,
               )}
             >
@@ -619,8 +619,8 @@ async function JournalHome({
         )}
 
         <div className="aside-panel min-w-0">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Hızlı bağlantılar</h3>
-          <ul className="space-y-2 text-sm">
+          <h3 className="type-sidebar-heading mb-3">Hızlı bağlantılar</h3>
+          <ul className="space-y-2.5 text-[0.9375rem] md:text-base">
             <li>
               <Link href={arsivHref} className={cn('text-primary hover:text-accent no-underline', linkFocusClass)}>
                 Arşiv ve sayılar
@@ -926,7 +926,7 @@ function IssueArticleRow({
       </Link>
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
         {(authors || pages) && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-[0.8125rem] text-foreground/70">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-sm text-foreground/70">
             {authors && <span className="min-w-0">{authors}</span>}
             {authors && pages && (
               <span className="text-muted-foreground" aria-hidden>·</span>
@@ -973,7 +973,7 @@ function ArticleRow({
       </Link>
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
         {(authors || article.published_year) && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-[0.8125rem] text-foreground/70">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-sm text-foreground/70">
             {authors && <span className="min-w-0">{authors}</span>}
             {authors && article.published_year && (
               <span className="text-muted-foreground" aria-hidden>·</span>

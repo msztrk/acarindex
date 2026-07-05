@@ -149,7 +149,7 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
               placeholder={placeholder ?? defaultPlaceholder}
               className={cn(
                 'flex-1 min-w-0 bg-transparent outline-none placeholder:text-muted-foreground rounded-none',
-                isHero ? 'px-3 py-3 text-base min-h-[44px]' : 'px-2 py-2 text-[0.9375rem]',
+                isHero ? 'px-3 py-3 text-base min-h-[44px]' : 'px-2.5 py-2.5 text-base min-h-[44px]',
               )}
             />
             {q && (
@@ -170,7 +170,7 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
               'transition-colors hover:bg-brand-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               isHero
                 ? 'px-4 sm:px-5 min-h-[44px] min-w-[44px] rounded-none rounded-r-xl text-sm'
-                : 'px-3 py-2 min-h-[36px] rounded-none rounded-r-xl text-xs',
+                : 'px-3.5 min-h-[44px] min-w-[44px] rounded-none rounded-r-xl text-sm',
             )}
             aria-label={m.search.search}
           >
@@ -201,7 +201,7 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
                     href={item.href}
                     onClick={() => setOpen(false)}
                     className={cn(
-                      'flex items-start gap-3 px-4 py-2.5 text-sm transition-colors no-underline',
+                      'flex items-start gap-3 px-4 py-3 text-[0.9375rem] transition-colors no-underline',
                       idx === activeIdx
                         ? 'bg-accent/10 text-foreground'
                         : 'text-foreground hover:bg-secondary',
@@ -211,10 +211,10 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
                     <div className="flex-1 min-w-0">
                       <span className="block font-medium truncate">{item.label}</span>
                       {item.subtitle && (
-                        <span className="text-xs text-muted-foreground">{item.subtitle}</span>
+                        <span className="text-[0.8125rem] text-muted-foreground">{item.subtitle}</span>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground shrink-0 self-center">
+                    <span className="text-[0.8125rem] text-muted-foreground shrink-0 self-center">
                       {typeLabels[item.type]}
                     </span>
                   </Link>

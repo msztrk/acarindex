@@ -52,16 +52,16 @@ export function HeaderAuthNav({
         <Link
           href={lp('/login')}
           className={cn(
-            buttonVariants({ variant: 'outline', size: 'sm' }),
+            buttonVariants({ variant: 'outline', size: 'action' }),
             'border-foreground/30 text-foreground font-semibold hover:bg-secondary hover:border-foreground/45 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-            compact && 'px-2.5',
+            compact && 'px-3',
           )}
         >
           {m.auth.login}
         </Link>
         <Link
           href={lp('/register')}
-          className={cn(buttonVariants({ size: 'sm' }), compact && 'px-2.5')}
+          className={cn(buttonVariants({ size: 'action' }), compact && 'px-3')}
         >
           {m.auth.register}
         </Link>

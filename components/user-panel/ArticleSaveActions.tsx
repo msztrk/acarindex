@@ -42,7 +42,7 @@ export function ArticleSaveActions({
 
   if (!isLoggedIn) {
     return (
-      <Link href={loginHref} className="text-[0.9375rem] text-primary hover:underline">
+      <Link href={loginHref} className="text-[0.9375rem] font-medium text-primary hover:underline">
         {m.article.loginToSave}
       </Link>
     )
@@ -93,7 +93,7 @@ export function ArticleSaveActions({
     <div className="flex flex-wrap items-center gap-2">
       <Button
         type="button"
-        size="sm"
+        size="action"
         variant={saved ? 'secondary' : 'outline'}
         disabled={busy}
         onClick={toggleSave}
@@ -103,7 +103,7 @@ export function ArticleSaveActions({
       </Button>
       <Button
         type="button"
-        size="sm"
+        size="action"
         variant="outline"
         disabled={busy}
         onClick={() => setModalOpen(true)}

@@ -267,7 +267,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               </span>
             </p>
             {searchPersonalized && (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-sm text-muted-foreground">
                 Sonuçlar ilgi alanlarınıza göre önceliklendirildi.
                 {' '}
                 <Link href={qs({ personalize: '0', page: '1' })} className="text-primary hover:underline">
@@ -409,7 +409,7 @@ function ArticleResultItem({
 
       <div className="mt-2.5 space-y-1.5 min-w-0">
         {(authors || article.published_year) && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-[0.8125rem] text-foreground/70">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-sm text-foreground/70">
             {authors && <span className="min-w-0">{authors}</span>}
             {authors && article.published_year && (
               <span className="text-muted-foreground" aria-hidden>·</span>
@@ -427,13 +427,13 @@ function ArticleResultItem({
             <Link
               href={`/journals/${article.journal_slug}-${article.journal_id}`}
               title={article.journal_title}
-              className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-foreground/75 hover:text-foreground line-clamp-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
+              className="min-w-0 flex-1 text-sm leading-snug text-foreground/75 hover:text-foreground line-clamp-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
             >
               {article.journal_title}
             </Link>
           )}
           {showCategory && article.category_label && (
-            <Badge variant="secondary" className="text-[0.6875rem] shrink-0">
+            <Badge variant="secondary" className="text-[0.8125rem] shrink-0">
               {article.category_label}
             </Badge>
           )}
@@ -450,7 +450,7 @@ function ArticleResultItem({
               >
                 <Badge
                   variant="outline"
-                  className="text-[0.6875rem] cursor-pointer hover:bg-secondary text-muted-foreground"
+                  className="text-[0.8125rem] cursor-pointer hover:bg-secondary text-muted-foreground"
                 >
                   {kw}
                 </Badge>
@@ -481,10 +481,10 @@ function JournalResultItem({
       >
         {title}
       </Link>
-      <div className="flex flex-wrap gap-2 mt-1.5 text-xs text-muted-foreground">
-        {journal.issn && <Badge variant="outline" className="text-xs">ISSN: {journal.issn}</Badge>}
+          <div className="flex flex-wrap gap-2 mt-1.5 text-sm text-muted-foreground">
+        {journal.issn && <Badge variant="outline" className="text-[0.8125rem]">ISSN: {journal.issn}</Badge>}
         {showCategory && journal.category_label && (
-          <Badge variant="secondary" className="text-xs">{journal.category_label}</Badge>
+          <Badge variant="secondary" className="text-[0.8125rem]">{journal.category_label}</Badge>
         )}
         {journal.publisher && <span>{journal.publisher}</span>}
       </div>

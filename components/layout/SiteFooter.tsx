@@ -6,7 +6,7 @@ import { withLocalePath } from '@/lib/i18n/locale'
 import { getUiMessages } from '@/lib/i18n/ui-messages'
 
 const footerLinkClass =
-  'inline-flex min-h-6 items-center text-muted-foreground hover:text-brand-primary transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline'
+  'inline-flex min-h-6 items-center text-[0.9375rem] md:text-base text-muted-foreground hover:text-brand-primary transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline'
 
 export function SiteFooter({
   showAuth = false,
@@ -42,7 +42,7 @@ export function SiteFooter({
         <div className="grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
           <div className="col-span-2 sm:col-span-2 lg:col-span-1">
             <BrandWordmark variant="footer" asLink />
-            <p className="mt-1.5 max-w-sm text-sm leading-snug text-muted-foreground md:mt-3 md:leading-relaxed">
+            <p className="mt-1.5 max-w-sm text-[0.9375rem] md:text-base leading-snug text-muted-foreground md:mt-3 md:leading-relaxed">
               {m.footer.tagline}
             </p>
           </div>

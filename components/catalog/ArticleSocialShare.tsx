@@ -117,7 +117,7 @@ export function ArticleSocialShare({
 
   return (
     <div className={cn('flex flex-wrap items-center gap-3', className)}>
-      <span className="text-sm font-medium text-muted-foreground">{shareLabel}</span>
+      <span className="type-section-label">{shareLabel}</span>
       <ul className="flex flex-wrap items-center gap-2.5 list-none m-0 p-0">
         {links.map((link) => (
           <li key={link.id}>

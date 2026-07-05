@@ -222,6 +222,68 @@
     @apply max-w-[85ch] mx-auto;
   }
 
+  /* ─── Tipografi hiyerarşisi ───────────────────────────────────
+     type-breadcrumb      : 15–16px, satır 1.45
+     type-page-title      : 26–34px, satır 1.2
+     type-alt-title       : 17–18px alt başlık
+     type-section-label   : 14–15px bölüm etiketi
+     type-meta-value      : 15–16px metadata değeri
+     type-meta-link       : 15–16px link metadata
+     type-reading-heading : 21–24px özet/bölüm başlığı
+     type-reading-body    : 16–18px okuma metni (~85ch)
+     type-sidebar-heading : 16–17px sidebar kart başlığı
+     type-sidebar-body    : 14–15px sidebar açıklama
+     type-sidebar-link    : 15px sidebar link
+     type-sidebar-list-link : 15px liste başlığı
+  ─────────────────────────────────────────────────────────────── */
+  .type-breadcrumb {
+    @apply text-[0.9375rem] md:text-base leading-[1.45] text-muted-foreground;
+  }
+
+  .type-page-title {
+    @apply text-[1.625rem] sm:text-[1.875rem] md:text-[2rem] lg:text-[2.125rem] font-semibold leading-[1.2] tracking-tight text-foreground;
+  }
+
+  .type-alt-title {
+    @apply text-[1.0625rem] md:text-lg text-text-soft leading-normal;
+  }
+
+  .type-section-label {
+    @apply text-sm md:text-[0.9375rem] font-medium text-muted-foreground;
+  }
+
+  .type-meta-value {
+    @apply text-[0.9375rem] md:text-base leading-normal text-foreground;
+  }
+
+  .type-meta-link {
+    @apply text-[0.9375rem] md:text-base leading-normal font-medium;
+  }
+
+  .type-reading-heading {
+    @apply text-xl md:text-[1.375rem] lg:text-[1.5rem] font-serif font-semibold leading-snug text-foreground;
+  }
+
+  .type-reading-body {
+    @apply text-base md:text-[1.0625rem] leading-[1.7] text-foreground/90 max-w-[85ch] text-justify hyphens-auto whitespace-pre-line;
+  }
+
+  .type-sidebar-heading {
+    @apply text-base md:text-[1.0625rem] font-semibold leading-snug text-foreground;
+  }
+
+  .type-sidebar-body {
+    @apply text-sm md:text-[0.9375rem] leading-normal text-muted-foreground;
+  }
+
+  .type-sidebar-link {
+    @apply text-[0.9375rem] md:text-base leading-snug font-medium;
+  }
+
+  .type-sidebar-list-link {
+    @apply text-[0.9375rem] leading-[1.45] text-foreground/85;
+  }
+
   /* Ana içerik + sağ sidebar (ana sayfa, dergi detay, yazar) */
   .layout-with-sidebar {
     @apply grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-9 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-10;
@@ -289,7 +351,7 @@
   }
 
   .catalog-pdf-badge {
-    @apply inline-flex items-center gap-1.5 shrink-0 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition-colors no-underline hover:bg-primary/15 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+    @apply inline-flex items-center gap-1.5 shrink-0 rounded-md border border-primary/35 bg-primary/10 px-2.5 py-1 text-[0.8125rem] font-semibold text-primary transition-colors no-underline hover:bg-primary/15 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
   }
 
   .catalog-empty-panel {
@@ -303,6 +365,6 @@
 
   /* Sidebar / aside panel — lighter than home-surface-card, no shadow */
   .aside-panel {
-    @apply rounded-xl border border-border/60 bg-surface p-4;
+    @apply rounded-xl border border-border/60 bg-surface p-[1.125rem] md:p-5;
   }
 }

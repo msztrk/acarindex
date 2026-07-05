@@ -124,7 +124,7 @@ function AuthorArticleListItem({
         <FileText className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" aria-hidden />
         <span className="min-w-0 line-clamp-3 leading-snug">{title}</span>
       </Link>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-3 sm:px-4 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-3 sm:px-4 text-sm text-muted-foreground">
         {journalTitle && journalHref && (
           <Link
             href={journalHref}

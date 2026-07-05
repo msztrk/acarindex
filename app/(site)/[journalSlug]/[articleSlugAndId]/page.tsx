@@ -196,8 +196,8 @@ function formatPageRange(start: number | null, end: number | null): string | nul
 function MetadataItem({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd className="text-sm text-foreground mt-0.5 min-w-0">{children}</dd>
+      <dt className="type-section-label">{label}</dt>
+      <dd className="type-meta-value mt-1 min-w-0">{children}</dd>
     </div>
   )
 }
@@ -231,7 +231,7 @@ function AuthorLinks({
           <Link
             href={entry.href}
             className={cn(
-              'text-sm font-medium text-primary hover:text-accent transition-colors no-underline',
+              'type-meta-link text-primary hover:text-accent transition-colors no-underline',
               linkFocusClass,
             )}
           >
@@ -477,11 +477,11 @@ export default async function ArticlePage({ params }: PageProps) {
           <article className="layout-reading-column min-w-0 rounded-xl border border-border/80 bg-surface p-5 sm:p-7 lg:p-8">
             <header className="mb-6 md:mb-8 space-y-4">
               <div className="space-y-2 min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-semibold leading-tight tracking-tight text-foreground">
+                <h1 className="type-page-title break-words">
                   {title}
                 </h1>
                 {titleOther && (
-                  <p className="text-[0.9375rem] sm:text-base text-muted-foreground leading-snug">
+                  <p className="type-alt-title break-words">
                     {titleOther}
                   </p>
                 )}
@@ -497,7 +497,7 @@ export default async function ArticlePage({ params }: PageProps) {
 
               {hasAuthors && (
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-muted-foreground mb-1.5">{ui.article.authors}</p>
+                  <p className="type-section-label mb-1.5">{ui.article.authors}</p>
                   <AuthorLinks authorLinks={authorLinks} authorsList={authorsList} />
                 </div>
               )}
@@ -603,8 +603,8 @@ export default async function ArticlePage({ params }: PageProps) {
                     href={pdfViewerUrl}
                     aria-label={`${title} — ${ui.article.viewPdf}`}
                     className={cn(
-                      buttonVariants(),
-                      'inline-flex items-center gap-2 min-h-[44px] px-5 no-underline',
+                      buttonVariants({ size: 'action' }),
+                      'inline-flex items-center gap-2 no-underline',
                       linkFocusClass,
                     )}
                   >
@@ -617,8 +617,8 @@ export default async function ArticlePage({ params }: PageProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className={cn(
-                        buttonVariants({ variant: 'outline' }),
-                        'inline-flex items-center gap-2 min-h-[44px] px-4 no-underline',
+                        buttonVariants({ variant: 'outline', size: 'action' }),
+                        'inline-flex items-center gap-2 no-underline',
                         linkFocusClass,
                       )}
                       aria-label={`${title} — ${ui.article.downloadPdf}`}
@@ -632,12 +632,12 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {abstractSections.map((section) => (
               <section key={section.heading} className="mb-8 min-w-0">
-                <h2 className="text-lg font-serif font-semibold text-foreground mb-3">
+                <h2 className="type-reading-heading mb-3">
                   {section.heading}
                 </h2>
                 <div
                   className={cn(
-                    'text-base leading-relaxed whitespace-pre-line text-justify hyphens-auto',
+                    'type-reading-body',
                     section.heading === 'Abstract'
                       ? 'text-foreground/85'
                       : 'text-foreground/90',
@@ -650,7 +650,7 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {keywords.length > 0 && (
               <section className="mb-8 min-w-0">
-                <h2 className="text-sm font-medium text-muted-foreground mb-2">{ui.article.keywords}</h2>
+                <h2 className="type-section-label mb-2">{ui.article.keywords}</h2>
                 <div className="flex flex-wrap gap-1.5">
                   {keywords.map((kw) => (
                     <Link
@@ -660,7 +660,7 @@ export default async function ArticlePage({ params }: PageProps) {
                     >
                       <Badge
                         variant="outline"
-                        className="text-[0.6875rem] text-muted-foreground hover:bg-secondary cursor-pointer transition-colors max-w-full truncate"
+                        className="text-[0.8125rem] text-muted-foreground hover:bg-secondary cursor-pointer transition-colors max-w-full truncate"
                       >
                         {kw}
                       </Badge>
@@ -672,15 +672,15 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {article.institution_raw?.trim() && (
               <section className="mb-8 min-w-0">
-                <h2 className="text-sm font-medium text-muted-foreground mb-1.5">{ui.article.institution}</h2>
-                <p className="text-sm text-foreground/80 leading-relaxed">{article.institution_raw}</p>
+                <h2 className="type-section-label mb-1.5">{ui.article.institution}</h2>
+                <p className="type-meta-value leading-relaxed">{article.institution_raw}</p>
               </section>
             )}
 
             {article.references_raw?.trim() && (
               <section className="min-w-0">
-                <h2 className="text-lg font-serif font-semibold text-foreground mb-3">{ui.article.references}</h2>
-                <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                <h2 className="type-reading-heading mb-3">{ui.article.references}</h2>
+                <div className="type-reading-body text-muted-foreground">
                   {article.references_raw}
                 </div>
               </section>
@@ -690,17 +690,17 @@ export default async function ArticlePage({ params }: PageProps) {
           <aside className="layout-article-sidebar space-y-5 lg:pt-1">
             {pdfAvailable && (
               <div className="aside-panel min-w-0">
-                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <h3 className="type-sidebar-heading mb-3 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary shrink-0" aria-hidden />
                   {ui.article.fullText}
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <Link
                     href={pdfViewerUrl}
                     aria-label={`${title} — ${ui.article.viewPdf}`}
                     className={cn(
-                      buttonVariants({ size: 'sm' }),
-                      'w-full justify-center min-h-[40px] no-underline',
+                      buttonVariants({ size: 'action' }),
+                      'w-full justify-center no-underline',
                       linkFocusClass,
                     )}
                   >
@@ -713,8 +713,8 @@ export default async function ArticlePage({ params }: PageProps) {
                       rel="noopener noreferrer"
                       aria-label={`${title} — ${ui.article.downloadPdf}`}
                       className={cn(
-                        buttonVariants({ variant: 'outline', size: 'sm' }),
-                        'w-full justify-center min-h-[40px] no-underline',
+                        buttonVariants({ variant: 'outline', size: 'action' }),
+                        'w-full justify-center no-underline',
                         linkFocusClass,
                       )}
                     >
@@ -727,14 +727,14 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {journal && journalHref && (
               <div className="aside-panel min-w-0">
-                <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                <h3 className="type-sidebar-heading mb-2.5 flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-primary shrink-0" aria-hidden />
                   {ui.article.journal}
                 </h3>
                 <Link
                   href={journalHref}
                   className={cn(
-                    'text-sm font-medium text-primary hover:text-accent leading-snug line-clamp-3 no-underline',
+                    'type-sidebar-link text-primary hover:text-accent line-clamp-3 no-underline',
                     linkFocusClass,
                   )}
                   title={journalTitle}
@@ -742,19 +742,19 @@ export default async function ArticlePage({ params }: PageProps) {
                   {journalTitle}
                 </Link>
                 {journal.issn && (
-                  <p className="text-xs text-muted-foreground mt-2 tabular-nums">
+                  <p className="type-sidebar-body mt-2.5 tabular-nums">
                     ISSN: {journal.issn}
                     {journal.eissn && ` · E-ISSN: ${journal.eissn}`}
                   </p>
                 )}
                 {journal.publisher && (
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{journal.publisher}</p>
+                  <p className="type-sidebar-body mt-1.5 line-clamp-2">{journal.publisher}</p>
                 )}
                 {issue && (issue.issue_label || issue.issue_number) && issueHref && (
-                  <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/80">
+                  <p className="type-sidebar-body mt-3 pt-3 border-t border-border/80">
                     <Link
                       href={issueHref}
-                      className={cn('text-primary hover:text-accent no-underline', linkFocusClass)}
+                      className={cn('type-sidebar-link text-primary hover:text-accent no-underline', linkFocusClass)}
                     >
                       {issue.issue_label ?? issue.issue_number}
                     </Link>
@@ -765,11 +765,11 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {issueArticles.length > 0 && issueHref && (
               <div className="aside-panel min-w-0">
-                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <h3 className="type-sidebar-heading mb-3 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary shrink-0" aria-hidden />
                   {ui.article.articlesInIssue}
                 </h3>
-                <ul className="space-y-0 divide-y divide-border/60 -mx-4">
+                <ul className="space-y-0 divide-y divide-border/60 -mx-[1.125rem] md:-mx-5">
                   {issueArticles.slice(0, 5).map((a) => {
                     const aTitle = pickLocalizedArticleDisplayTitle(a.title_tr, a.title_en, locale)
                     const aHref = `/${a.legacy_journal_slug}/${a.slug}-${a.id}`
@@ -778,7 +778,7 @@ export default async function ArticlePage({ params }: PageProps) {
                         <Link
                           href={aHref}
                           className={cn(
-                            'block px-4 py-2.5 text-[0.8125rem] leading-snug text-foreground/80 hover:text-primary hover:bg-brand-primary/[0.035] transition-colors no-underline line-clamp-3',
+                            'block px-[1.125rem] md:px-5 py-3 type-sidebar-list-link hover:text-primary hover:bg-brand-primary/[0.035] transition-colors no-underline line-clamp-3',
                             linkFocusClass,
                           )}
                           title={aTitle}
@@ -793,7 +793,7 @@ export default async function ArticlePage({ params }: PageProps) {
                   <Link
                     href={issueHref}
                     className={cn(
-                      'mt-3 pt-3 border-t border-border/80 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-accent no-underline',
+                      'mt-3 pt-3 border-t border-border/80 inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-accent no-underline',
                       linkFocusClass,
                     )}
                   >
