@@ -17,7 +17,7 @@ import {
   isTurkishLanguage,
   normalizeLanguageCode,
 } from '@/lib/i18n/language'
-import { pickLocalizedAbstract, pickLocalizedJournalDescription } from '@/lib/i18n/pick-localized-text'
+import { pickLocalizedAbstract, pickLocalizedJournalDescription, buildArticleAbstractSections, pickAlternateTitle } from '@/lib/i18n/pick-localized-text'
 import { buildArticlePath } from '@/lib/i18n/slugs'
 import {
   computeEnSitemapPageCount,
@@ -264,6 +264,27 @@ describe('html lang and localized metadata', () => {
     expect(pickLocalizedJournalDescription('Türkçe dergi açıklaması', 'tr')).toBe(
       'Türkçe dergi açıklaması',
     )
+  })
+
+  it('buildArticleAbstractSections puts English abstract first on EN pages', () => {
+    expect(
+      buildArticleAbstractSections(
+        'Türkçe özet metni burada yer alır.',
+        'English abstract text appears here.',
+        'en',
+      ).map((section) => section.heading),
+    ).toEqual(['Abstract', 'Özet'])
+  })
+
+  it('pickAlternateTitle returns Turkish subtitle on EN pages', () => {
+    expect(
+      pickAlternateTitle(
+        'Türkçe Başlık',
+        'English Title',
+        'en',
+        'English Title',
+      ),
+    ).toBe('Türkçe Başlık')
   })
 
   it('journal EN index requires title_en', () => {

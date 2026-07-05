@@ -33,7 +33,12 @@ import { getRequestLocale } from '@/lib/i18n/request-locale'
 import { buildArticleMetadataAlternates, pickLocalizedTitle } from '@/lib/seo/hreflang'
 import { buildArticlePath } from '@/lib/i18n/slugs'
 import { shouldRedirectEnArticleToTr } from '@/lib/i18n/en-route-guard'
-import { pickLocalizedAbstract } from '@/lib/i18n/pick-localized-text'
+import {
+  buildArticleAbstractSections,
+  pickAlternateTitle,
+  pickLocalizedAbstract,
+  pickLocalizedArticleDisplayTitle,
+} from '@/lib/i18n/pick-localized-text'
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 interface ArticleRow {
@@ -288,24 +293,21 @@ export default async function ArticlePage({ params }: PageProps) {
   const issue = article.issue
   const pdf = article.pdf
 
-  const title = article.title_tr ?? article.title_en ?? 'Başlıksız'
-  const titleOtherRaw = article.title_en ?? article.title_tr
-  const titleOther =
-    titleOtherRaw &&
-    titleOtherRaw.trim() !== '-' &&
-    titleOtherRaw.trim() !== title.trim()
-      ? titleOtherRaw
-      : null
+  const title = pickLocalizedArticleDisplayTitle(article.title_tr, article.title_en, locale)
+  const titleOther = pickAlternateTitle(article.title_tr, article.title_en, locale, title)
 
-  const abstractTr = article.abstract_tr?.trim() || null
-  const abstractEn =
-    article.abstract_en?.trim() &&
-    article.abstract_en.trim() !== '-' &&
-    article.abstract_en.trim() !== abstractTr
-      ? article.abstract_en.trim()
-      : null
+  const abstractSections = buildArticleAbstractSections(
+    article.abstract_tr,
+    article.abstract_en,
+    locale,
+  )
+  const primaryAbstract = pickLocalizedAbstract(
+    article.abstract_tr,
+    article.abstract_en,
+    locale,
+  )
 
-  const journalTitle = journal?.title_tr ?? journal?.title_en ?? ''
+  const journalTitle = pickLocalizedTitle(journal?.title_tr, journal?.title_en, locale) || ''
   const journalHref = journal ? `/journals/${journal.slug}-${journal.id}` : null
   const issueHref =
     journal && issue
@@ -341,8 +343,8 @@ export default async function ArticlePage({ params }: PageProps) {
     '@type': 'ScholarlyArticle',
     headline: title,
     alternativeHeadline: titleOther ?? undefined,
-    description: (abstractTr ?? abstractEn)?.slice(0, 300) ?? undefined,
-    abstract: abstractTr ?? abstractEn ?? undefined,
+    description: primaryAbstract?.slice(0, 300) ?? undefined,
+    abstract: primaryAbstract ?? undefined,
     author: authorsList.map((name) => ({ '@type': 'Person', name })),
     publisher: {
       '@type': 'Organization',
@@ -361,7 +363,7 @@ export default async function ArticlePage({ params }: PageProps) {
     keywords: [article.keywords_tr, article.keywords_en].filter(Boolean).join(', ') || undefined,
     url: canonicalUrl,
     mainEntityOfPage: canonicalUrl,
-    inLanguage: article.language ?? 'tr',
+    inLanguage: locale === 'en' ? 'en' : (article.language ?? 'tr'),
     ...(article.doi ? { identifier: { '@type': 'PropertyValue', propertyID: 'doi', value: article.doi } } : {}),
     ...(pdfDirectUrl ? { encoding: { '@type': 'MediaObject', contentUrl: pdfDirectUrl, encodingFormat: 'application/pdf' } } : {}),
   }
@@ -421,7 +423,7 @@ export default async function ArticlePage({ params }: PageProps) {
         pdfUrl={pdfDirectUrl ?? undefined}
         doi={article.doi}
         language={article.language}
-        abstract={article.abstract_tr ?? article.abstract_en}
+        abstract={primaryAbstract}
       />
       <JsonLd data={[articleSchema, breadcrumbSchema]} />
 
@@ -613,23 +615,23 @@ export default async function ArticlePage({ params }: PageProps) {
               )}
             </header>
 
-            {abstractTr && (
-              <section className="mb-8 min-w-0 max-w-[900px]">
-                <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Özet</h2>
-                <div className="text-base leading-relaxed text-foreground/90 whitespace-pre-line text-justify hyphens-auto">
-                  {abstractTr}
+            {abstractSections.map((section) => (
+              <section key={section.heading} className="mb-8 min-w-0 max-w-[900px]">
+                <h2 className="text-lg font-serif font-semibold text-foreground mb-3">
+                  {section.heading}
+                </h2>
+                <div
+                  className={cn(
+                    'text-base leading-relaxed whitespace-pre-line text-justify hyphens-auto',
+                    section.heading === 'Abstract'
+                      ? 'text-foreground/85'
+                      : 'text-foreground/90',
+                  )}
+                >
+                  {section.text}
                 </div>
               </section>
-            )}
-
-            {abstractEn && (
-              <section className="mb-8 min-w-0 max-w-[900px]">
-                <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Abstract</h2>
-                <div className="text-base leading-relaxed text-foreground/85 whitespace-pre-line text-justify hyphens-auto">
-                  {abstractEn}
-                </div>
-              </section>
-            )}
+            ))}
 
             {keywords.length > 0 && (
               <section className="mb-8 min-w-0">
@@ -754,7 +756,7 @@ export default async function ArticlePage({ params }: PageProps) {
                 </h3>
                 <ul className="space-y-0 divide-y divide-border/60 -mx-4">
                   {issueArticles.slice(0, 5).map((a) => {
-                    const aTitle = a.title_tr ?? a.title_en ?? 'Başlıksız'
+                    const aTitle = pickLocalizedArticleDisplayTitle(a.title_tr, a.title_en, locale)
                     const aHref = `/${a.legacy_journal_slug}/${a.slug}-${a.id}`
                     return (
                       <li key={a.id}>

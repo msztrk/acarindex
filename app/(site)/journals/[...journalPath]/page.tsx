@@ -34,7 +34,7 @@ import { getRequestLocale } from '@/lib/i18n/request-locale'
 import type { SiteLocale } from '@/lib/i18n/locale'
 import { buildJournalCatalogPath } from '@/lib/i18n/slugs'
 import { shouldRedirectEnJournalToTr } from '@/lib/i18n/en-route-guard'
-import { pickLocalizedJournalDescription } from '@/lib/i18n/pick-localized-text'
+import { pickLocalizedArticleDisplayTitle, pickLocalizedJournalDescription } from '@/lib/i18n/pick-localized-text'
 import { buildJournalMetadataAlternates, pickLocalizedTitle } from '@/lib/seo/hreflang'
 
 // ─── URL çözümleme ───────────────────────────────────────────────────────────
@@ -365,6 +365,7 @@ export default async function JournalPage({
               journal={journal}
               issueId={resolved.issueId}
               segment={resolved.journalSegment}
+              locale={locale}
             />
           </>
         ) : (
@@ -428,7 +429,7 @@ export default async function JournalPage({
               />
             )}
             {resolved.subPage === 'arsiv' && (
-              <JournalArsiv journal={journal} segment={resolved.journalSegment} />
+              <JournalArsiv journal={journal} segment={resolved.journalSegment} locale={locale} />
             )}
             {resolved.subPage === 'amac-kapsam' &&
               (locale === 'en' ? (
@@ -573,7 +574,7 @@ async function JournalHome({
           ) : (
             <ul className="divide-y divide-border/80 min-w-0">
               {articles.map((a) => (
-                <ArticleRow key={a.id} article={a} />
+                <ArticleRow key={a.id} article={a} locale={locale} />
               ))}
             </ul>
           )}
@@ -651,13 +652,15 @@ async function JournalHome({
 async function JournalArsiv({
   journal,
   segment,
+  locale,
 }: {
   journal: Journal
   segment: string
+  locale: SiteLocale
 }) {
   const issues = await getIssues(journal.id)
   const grouped = groupArchiveIssues(issues)
-  const journalTitle = journal.title_tr ?? journal.title_en ?? 'Dergi'
+  const journalTitle = pickLocalizedTitle(journal.title_tr, journal.title_en, locale) || 'Dergi'
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
   const archiveTitle = `${journalTitle} Arşivi`
   const archiveDescription = `${journalTitle} dergisinin yayımlanmış sayılarını yıllara göre inceleyin.`
@@ -738,16 +741,18 @@ async function JournalSayi({
   journal,
   issueId,
   segment,
+  locale,
 }: {
   journal: Journal
   issueId: number
   segment: string
+  locale: SiteLocale
 }) {
   const issue = await requireJournalIssue(journal.id, issueId)
   const articles = await getIssueArticles(issueId)
 
   const issueRow = issue
-  const journalTitle = journal.title_tr ?? journal.title_en ?? 'Dergi'
+  const journalTitle = pickLocalizedTitle(journal.title_tr, journal.title_en, locale) || 'Dergi'
   const journalHref = `/journals/${segment}`
   const arsivHref = `${journalHref}/arsiv`
   const issueSuffix = buildIssueHeadingSuffix(issueRow)
@@ -859,7 +864,7 @@ async function JournalSayi({
         ) : (
           <ul className="divide-y divide-border/80 min-w-0">
             {articles.map((a) => (
-              <IssueArticleRow key={a.id} article={a} />
+              <IssueArticleRow key={a.id} article={a} locale={locale} />
             ))}
           </ul>
         )}
@@ -900,8 +905,14 @@ function CmsSection({ title, html }: { title: string; html: string | null | unde
   )
 }
 
-function IssueArticleRow({ article }: { article: Partial<Article> }) {
-  const title = article.title_tr ?? article.title_en ?? 'Başlıksız'
+function IssueArticleRow({
+  article,
+  locale,
+}: {
+  article: Partial<Article>
+  locale: SiteLocale
+}) {
+  const title = pickLocalizedArticleDisplayTitle(article.title_tr, article.title_en, locale)
   const href = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
   const authors = formatAuthors(article.authors_raw)
   const pages = formatPageRange(article.page_start, article.page_end)
@@ -938,8 +949,14 @@ function IssueArticleRow({ article }: { article: Partial<Article> }) {
   )
 }
 
-function ArticleRow({ article }: { article: Partial<Article> }) {
-  const title = article.title_tr ?? article.title_en ?? 'Başlıksız'
+function ArticleRow({
+  article,
+  locale,
+}: {
+  article: Partial<Article>
+  locale: SiteLocale
+}) {
+  const title = pickLocalizedArticleDisplayTitle(article.title_tr, article.title_en, locale)
   const href = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
   const authors = formatAuthors(article.authors_raw)
   const pages = formatPageRange(article.page_start, article.page_end)

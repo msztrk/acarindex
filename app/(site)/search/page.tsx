@@ -17,6 +17,10 @@ import {
   getSessionInterestCategories,
   interestCategoryIds,
 } from '@/lib/personalization/interest-categories'
+import { getRequestLocale } from '@/lib/i18n/request-locale'
+import type { SiteLocale } from '@/lib/i18n/locale'
+import { pickLocalizedArticleDisplayTitle } from '@/lib/i18n/pick-localized-text'
+import { pickLocalizedTitle } from '@/lib/seo/hreflang'
 
 export const metadata: Metadata = {
   title: 'Arama — AcarIndex',
@@ -49,6 +53,7 @@ function formatAuthors(raw: string | null, max = 4): string {
 }
 
 export default async function SearchPage({ searchParams }: PageProps) {
+  const locale = await getRequestLocale()
   const sp = await searchParams
   const rawQ = (sp.q ?? '').trim()
   const type = (sp.type ?? 'article') as SearchType
@@ -281,7 +286,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                   </h3>
                   <ul className="catalog-list">
                     {interestArticleItems.map((a) => (
-                      <ArticleResultItem key={a.id} article={a} showCategory />
+                      <ArticleResultItem key={a.id} article={a} showCategory locale={locale} />
                     ))}
                   </ul>
                 </section>
@@ -293,7 +298,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                   </h3>
                   <ul className="catalog-list">
                     {otherArticleItems.map((a) => (
-                      <ArticleResultItem key={a.id} article={a} showCategory />
+                      <ArticleResultItem key={a.id} article={a} showCategory locale={locale} />
                     ))}
                   </ul>
                 </section>
@@ -301,7 +306,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               {!searchPersonalized && (
                 <ul className="catalog-list">
                   {articleResults.data.map((a) => (
-                    <ArticleResultItem key={a.id} article={a} />
+                    <ArticleResultItem key={a.id} article={a} locale={locale} />
                   ))}
                 </ul>
               )}
@@ -317,7 +322,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                   </h3>
                   <ul className="catalog-list">
                     {interestJournalItems.map((j) => (
-                      <JournalResultItem key={j.id} journal={j} showCategory />
+                      <JournalResultItem key={j.id} journal={j} showCategory locale={locale} />
                     ))}
                   </ul>
                 </section>
@@ -327,7 +332,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                   <h3 className="text-sm font-semibold text-foreground mb-3">Diğer dergiler</h3>
                   <ul className="catalog-list">
                     {otherJournalItems.map((j) => (
-                      <JournalResultItem key={j.id} journal={j} showCategory />
+                      <JournalResultItem key={j.id} journal={j} showCategory locale={locale} />
                     ))}
                   </ul>
                 </section>
@@ -335,7 +340,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               {!searchPersonalized && (
                 <ul className="catalog-list">
                   {journalResults.data.map((j) => (
-                    <JournalResultItem key={j.id} journal={j} />
+                    <JournalResultItem key={j.id} journal={j} locale={locale} />
                   ))}
                 </ul>
               )}
@@ -374,11 +379,13 @@ export default async function SearchPage({ searchParams }: PageProps) {
 function ArticleResultItem({
   article,
   showCategory = false,
+  locale,
 }: {
   article: Awaited<ReturnType<typeof searchArticles>>['data'][number]
   showCategory?: boolean
+  locale: SiteLocale
 }) {
-  const title = article.title_tr ?? article.title_en ?? 'Başlıksız'
+  const title = pickLocalizedArticleDisplayTitle(article.title_tr, article.title_en, locale)
   const href = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
   const authors = formatAuthors(article.authors_raw)
 
@@ -459,17 +466,20 @@ function ArticleResultItem({
 function JournalResultItem({
   journal,
   showCategory = false,
+  locale,
 }: {
   journal: Awaited<ReturnType<typeof searchJournals>>['data'][number]
   showCategory?: boolean
+  locale: SiteLocale
 }) {
+  const title = pickLocalizedTitle(journal.title_tr, journal.title_en, locale)
   return (
     <li className="catalog-list-item">
       <Link
         href={`/journals/${journal.slug}-${journal.id}`}
         className="font-medium text-foreground hover:text-primary transition-colors no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
-        {journal.title_tr ?? journal.title_en}
+        {title}
       </Link>
       <div className="flex flex-wrap gap-2 mt-1.5 text-xs text-muted-foreground">
         {journal.issn && <Badge variant="outline" className="text-xs">ISSN: {journal.issn}</Badge>}

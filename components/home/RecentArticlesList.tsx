@@ -1,5 +1,8 @@
 import Link from 'next/link'
 import { FileText } from 'lucide-react'
+import type { SiteLocale } from '@/lib/i18n/locale'
+import { pickLocalizedArticleDisplayTitle } from '@/lib/i18n/pick-localized-text'
+import { pickLocalizedTitle } from '@/lib/seo/hreflang'
 
 export interface RecentArticleItem {
   id: number
@@ -9,7 +12,7 @@ export interface RecentArticleItem {
   title_en: string | null
   authors_raw: string | null
   published_year: number | null
-  journal: { id: number; slug: string; title_tr: string | null } | null
+  journal: { id: number; slug: string; title_tr: string | null; title_en?: string | null } | null
 }
 
 function formatAuthors(raw: string | null): string {
@@ -22,7 +25,13 @@ function formatAuthors(raw: string | null): string {
     .join(', ')
 }
 
-export function RecentArticlesList({ articles }: { articles: RecentArticleItem[] }) {
+export function RecentArticlesList({
+  articles,
+  locale = 'tr',
+}: {
+  articles: RecentArticleItem[]
+  locale?: SiteLocale
+}) {
   if (articles.length === 0) {
     return (
       <div className="home-surface-card border-dashed px-4 py-8 text-center">
@@ -40,10 +49,12 @@ export function RecentArticlesList({ articles }: { articles: RecentArticleItem[]
       data-d2-recent-articles
     >
       {articles.map((a) => {
-        const title = a.title_tr ?? a.title_en ?? 'Başlıksız'
+        const title = pickLocalizedArticleDisplayTitle(a.title_tr, a.title_en, locale)
         const href = `/${a.legacy_journal_slug}/${a.slug}-${a.id}`
         const authors = formatAuthors(a.authors_raw)
-        const journalTitle = a.journal?.title_tr
+        const journalTitle = a.journal
+          ? pickLocalizedTitle(a.journal.title_tr, a.journal.title_en, locale)
+          : null
 
         return (
           <li key={a.id} className="group px-4 py-3.5 transition-colors hover:bg-brand-primary/[0.035] sm:px-5 sm:py-4">

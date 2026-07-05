@@ -28,6 +28,10 @@ import { recordRecentView } from '@/lib/user-panel/recent-views'
 import { isAuthorFollowed } from '@/lib/user-panel/follows'
 import { FollowAuthorButton } from '@/components/user-panel/FollowAuthorButton'
 import { buildLoginHref } from '@/lib/user-panel/login-redirect'
+import { getRequestLocale } from '@/lib/i18n/request-locale'
+import type { SiteLocale } from '@/lib/i18n/locale'
+import { pickLocalizedArticleDisplayTitle } from '@/lib/i18n/pick-localized-text'
+import { pickLocalizedTitle } from '@/lib/seo/hreflang'
 
 export interface AuthorArticleRow {
   id: number
@@ -90,10 +94,18 @@ export async function generateMetadata({
   }
 }
 
-function AuthorArticleListItem({ article }: { article: AuthorArticleRow }) {
-  const title = article.title_tr ?? article.title_en ?? 'Başlıksız'
+function AuthorArticleListItem({
+  article,
+  locale,
+}: {
+  article: AuthorArticleRow
+  locale: SiteLocale
+}) {
+  const title = pickLocalizedArticleDisplayTitle(article.title_tr, article.title_en, locale)
   const href = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
-  const journalTitle = article.journal?.title_tr?.trim()
+  const journalTitle = article.journal
+    ? pickLocalizedTitle(article.journal.title_tr, article.journal.title_en, locale)
+    : null
   const journalHref = article.journal
     ? `/journals/${article.journal.slug}-${article.journal.id}`
     : null
@@ -149,6 +161,7 @@ export default async function AuthorPage({
   params: Promise<{ slugAndId: string }>
 }) {
   const { slugAndId } = await params
+  const locale = await getRequestLocale()
   const parsed = parseAuthorSlugAndId(slugAndId)
   if (!parsed) notFound()
 
@@ -281,7 +294,7 @@ export default async function AuthorPage({
               ) : (
                 <ul className="catalog-list-container divide-y divide-border/60 min-w-0">
                   {articles.map((article) => (
-                    <AuthorArticleListItem key={article.id} article={article} />
+                    <AuthorArticleListItem key={article.id} article={article} locale={locale} />
                   ))}
                 </ul>
               )}
