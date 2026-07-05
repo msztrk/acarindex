@@ -104,7 +104,7 @@ function AuthorArticleListItem({
   const title = pickLocalizedArticleDisplayTitle(article.title_tr, article.title_en, locale)
   const href = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
   const journalTitle = article.journal
-    ? pickLocalizedTitle(article.journal.title_tr, article.journal.title_en, locale)
+    ? pickLocalizedTitle(article.journal.title_tr, null, locale)
     : null
   const journalHref = article.journal
     ? `/journals/${article.journal.slug}-${article.journal.id}`
