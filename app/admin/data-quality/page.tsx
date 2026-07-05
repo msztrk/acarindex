@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { loadDataQualitySummary, type DataQualityCategory } from '@/lib/admin/data-quality'
+import { requirePermission } from '@/lib/auth/guards'
 import { Card } from '@/components/ui/card'
 
 const CATEGORIES: Array<{ key: DataQualityCategory; label: string; summaryKey: keyof Awaited<ReturnType<typeof loadDataQualitySummary>> }> = [
@@ -14,6 +15,7 @@ const CATEGORIES: Array<{ key: DataQualityCategory; label: string; summaryKey: k
 ]
 
 export default async function DataQualityPage() {
+  await requirePermission('data_quality.read')
   const summary = await loadDataQualitySummary()
 
   return (

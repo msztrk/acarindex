@@ -3,6 +3,7 @@ import {
   loadDataQualityPage,
   type DataQualityCategory,
 } from '@/lib/admin/data-quality'
+import { requirePermission } from '@/lib/auth/guards'
 import { Card } from '@/components/ui/card'
 import Link from 'next/link'
 
@@ -24,6 +25,7 @@ export default async function DataQualityDetailPage({
   params: Promise<{ category: string }>
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
+  await requirePermission('data_quality.read')
   const { category } = await params
   if (!VALID.includes(category as DataQualityCategory)) notFound()
 
