@@ -149,7 +149,7 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
               placeholder={placeholder ?? defaultPlaceholder}
               className={cn(
                 'flex-1 min-w-0 bg-transparent outline-none placeholder:text-muted-foreground rounded-none',
-                isHero ? 'px-3 py-3 text-base min-h-[44px]' : 'px-2.5 py-2.5 text-base min-h-[44px]',
+                isHero ? 'px-3 py-3 text-base md:text-body min-h-[44px]' : 'px-2.5 py-2.5 text-base min-h-[44px]',
               )}
             />
             {q && (
@@ -169,7 +169,7 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
               'shrink-0 inline-flex items-center justify-center gap-1.5 font-semibold bg-brand-primary text-primary-foreground',
               'transition-colors hover:bg-brand-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               isHero
-                ? 'px-4 sm:px-5 min-h-[44px] min-w-[44px] rounded-none rounded-r-xl text-sm'
+                ? 'px-4 sm:px-5 min-h-[44px] min-w-[44px] rounded-none rounded-r-xl text-sm md:text-base'
                 : 'px-3.5 min-h-[44px] min-w-[44px] rounded-none rounded-r-xl text-sm',
             )}
             aria-label={m.search.search}

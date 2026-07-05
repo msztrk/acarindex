@@ -117,14 +117,14 @@ function AuthorArticleListItem({
       <Link
         href={href}
         className={cn(
-          'flex items-start gap-2 min-w-0 px-3 py-3 sm:px-4 text-sm font-medium text-foreground hover:text-primary hover:bg-brand-primary/[0.035] transition-colors no-underline',
+          'flex items-start gap-2 min-w-0 px-3 py-3 sm:px-4 type-list-title text-foreground hover:text-primary hover:bg-brand-primary/[0.035] transition-colors no-underline',
           linkFocusClass,
         )}
       >
         <FileText className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" aria-hidden />
         <span className="min-w-0 line-clamp-3 leading-snug">{title}</span>
       </Link>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-3 sm:px-4 text-sm text-muted-foreground">
+      <div className="type-card-meta flex flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-3 sm:px-4">
         {journalTitle && journalHref && (
           <Link
             href={journalHref}
@@ -235,7 +235,7 @@ export default async function AuthorPage({
                 <User className="h-8 w-8 text-muted-foreground" aria-hidden />
               </div>
               <div className="min-w-0 space-y-2">
-                <h1 className="font-serif text-2xl sm:text-[1.75rem] font-bold text-foreground leading-snug break-words">
+                <h1 className="type-page-heading leading-snug break-words">
                   {displayName}
                 </h1>
                 {authEnabled && (
@@ -248,9 +248,9 @@ export default async function AuthorPage({
                   />
                 )}
                 {institution && (
-                  <p className="text-sm text-muted-foreground break-words">{institution}</p>
+                  <p className="type-card-meta break-words">{institution}</p>
                 )}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                <div className="type-card-meta flex flex-wrap items-center gap-x-4 gap-y-2">
                   <span className="tabular-nums">
                     {articles.length.toLocaleString('tr-TR')} yayımlanmış makale
                   </span>
@@ -274,11 +274,11 @@ export default async function AuthorPage({
 
             <section className="min-w-0">
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-4">
-                <h2 className="text-lg font-serif font-semibold text-foreground">
+                <h2 className="type-section-title">
                   Makaleler
                 </h2>
                 {articles.length > 0 && (
-                  <p className="text-sm text-muted-foreground tabular-nums shrink-0">
+                  <p className="type-card-meta tabular-nums shrink-0">
                     {articles.length.toLocaleString('tr-TR')} makale
                   </p>
                 )}

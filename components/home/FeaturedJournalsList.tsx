@@ -20,9 +20,9 @@ export function FeaturedJournalsList({ journals }: { journals: FeaturedJournalIt
 
   if (journals.length === 0) {
     return (
-      <section className="home-surface-card p-4 sm:p-5">
-        <h2 className="text-base font-semibold text-foreground mb-1">{m.home.featuredJournals}</h2>
-        <p className="text-[0.9375rem] text-muted-foreground py-1">
+      <section className="home-surface-card">
+        <h2 className="type-card-title mb-1">{m.home.featuredJournals}</h2>
+        <p className="type-card-body py-1">
           {locale === 'en' ? 'Featured journal list is not ready yet.' : 'Öne çıkan dergi listesi henüz hazır değil.'}
         </p>
       </section>
@@ -30,10 +30,10 @@ export function FeaturedJournalsList({ journals }: { journals: FeaturedJournalIt
   }
 
   return (
-    <section className="home-surface-card p-4 sm:p-5">
+    <section className="home-surface-card">
       <div className="mb-3">
-        <h2 className="text-base font-semibold text-foreground">{m.home.featuredJournals}</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">{m.home.featuredJournalsDesc}</p>
+        <h2 className="type-card-title">{m.home.featuredJournals}</h2>
+        <p className="type-card-meta mt-0.5">{m.home.featuredJournalsDesc}</p>
       </div>
       <ol className="space-y-2.5">
         {journals.map((j, i) => {
@@ -45,7 +45,7 @@ export function FeaturedJournalsList({ journals }: { journals: FeaturedJournalIt
               className="flex items-start gap-2.5 rounded-lg px-1 py-0.5 hover:bg-brand-primary/5 transition-colors"
             >
               <span
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-primary/10 text-xs font-bold tabular-nums text-brand-primary"
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-primary/10 text-[0.8125rem] font-bold tabular-nums text-brand-primary"
                 aria-hidden
               >
                 {i + 1}
@@ -53,7 +53,7 @@ export function FeaturedJournalsList({ journals }: { journals: FeaturedJournalIt
               <Link
                 href={lp(`/journals/${j.slug}-${j.id}`)}
                 className={cn(
-                  'min-w-0 text-[0.9375rem] leading-snug text-foreground/85 hover:text-brand-primary no-underline line-clamp-2',
+                  'type-journal-list-title min-w-0 hover:text-brand-primary no-underline line-clamp-2',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm',
                 )}
                 title={title}

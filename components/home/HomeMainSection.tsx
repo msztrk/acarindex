@@ -69,10 +69,10 @@ export async function HomeMainSection({ qa }: { qa?: HomeQaMode }) {
 
                   <div>
 
-                    <h2 className="text-xl font-semibold text-foreground tracking-tight">
+                    <h2 className="type-section-title">
                       {ui.home.personalizedTitle.replace('{category}', section.categoryLabel)}
                     </h2>
-                    <p className="mt-1 text-base text-muted-foreground">
+                    <p className="type-section-desc mt-1">
                       {ui.home.personalizedDesc}
                     </p>
                   </div>
@@ -100,10 +100,10 @@ export async function HomeMainSection({ qa }: { qa?: HomeQaMode }) {
 
                 <div>
 
-                  <h2 className="text-xl font-semibold text-foreground tracking-tight">
+                  <h2 className="type-section-title">
                     {ui.home.recentArticles}
                   </h2>
-                  <p className="mt-1 text-base text-muted-foreground">
+                  <p className="type-section-desc mt-1">
                     {ui.home.recentArticlesDesc}
                   </p>
                 </div>

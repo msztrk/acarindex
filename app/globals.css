@@ -67,6 +67,26 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Typography scale (rem) */
+  --text-xs: var(--type-xs);
+  --text-xs--line-height: 1.4;
+  --text-sm: var(--type-sm);
+  --text-sm--line-height: 1.5;
+  --text-base: var(--type-base);
+  --text-base--line-height: 1.55;
+  --text-body: var(--type-body);
+  --text-body--line-height: 1.7;
+  --text-lg: var(--type-lg);
+  --text-lg--line-height: 1.5;
+  --text-xl: var(--type-xl);
+  --text-xl--line-height: 1.4;
+  --text-2xl: var(--type-2xl);
+  --text-2xl--line-height: 1.35;
+  --text-3xl: var(--type-3xl);
+  --text-3xl--line-height: 1.25;
+  --text-4xl: var(--type-4xl);
+  --text-4xl--line-height: 1.2;
 }
 
 :root {
@@ -118,7 +138,7 @@
   --secondary-foreground: var(--brand-800);
 
   --muted: var(--surface-soft);
-  --muted-foreground: #64748B;
+  --muted-foreground: #586575;
 
   --accent: var(--teal-500);
   --accent-foreground: #FFFFFF;
@@ -145,6 +165,18 @@
   --sidebar-accent-foreground: var(--brand-800);
   --sidebar-border: #E2E8F0;
   --sidebar-ring: var(--teal-500);
+
+  /* Typography tokens */
+  --type-xs: 0.8125rem;   /* 13px */
+  --type-sm: 0.9375rem;   /* 15px */
+  --type-base: 1rem;      /* 16px */
+  --type-body: 1.0625rem; /* 17px */
+  --type-lg: 1.125rem;    /* 18px */
+  --type-xl: 1.25rem;     /* 20px */
+  --type-2xl: 1.5rem;     /* 24px */
+  --type-3xl: 1.875rem;   /* 30px */
+  --type-4xl: 2.25rem;    /* 36px */
+  --type-hero: 2.375rem;  /* 38px */
 }
 
 .dark {
@@ -187,7 +219,7 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased text-[1.0625rem] leading-[1.6];
+    @apply bg-background text-foreground antialiased text-base leading-[1.55];
     font-feature-settings: "cv11", "ss01";
   }
 
@@ -223,65 +255,250 @@
   }
 
   /* ─── Tipografi hiyerarşisi ───────────────────────────────────
-     type-breadcrumb      : 15–16px, satır 1.45
-     type-page-title      : 26–34px, satır 1.2
-     type-alt-title       : 17–18px alt başlık
-     type-section-label   : 14–15px bölüm etiketi
-     type-meta-value      : 15–16px metadata değeri
-     type-meta-link       : 15–16px link metadata
-     type-reading-heading : 21–24px özet/bölüm başlığı
-     type-reading-body    : 16–18px okuma metni (tam sütun genişliği)
-     type-sidebar-heading : 16–17px sidebar kart başlığı
-     type-sidebar-body    : 14–15px sidebar açıklama
-     type-sidebar-link    : 15px sidebar link
-     type-sidebar-list-link : 15px liste başlığı
+     Merkezi type-* sınıfları — bileşenlerde doğrudan kullanın.
   ─────────────────────────────────────────────────────────────── */
-  .type-breadcrumb {
-    @apply text-[0.9375rem] md:text-base leading-[1.45] text-muted-foreground;
+
+  /* Hero & sayfa */
+  .type-hero-title {
+    @apply max-w-[40rem] text-balance font-serif font-semibold tracking-tight text-foreground;
+    font-size: clamp(1.625rem, 1.5rem + 1vw, 2.375rem);
+    line-height: 1.24;
+  }
+
+  .type-hero-lead {
+    @apply max-w-[40rem] text-muted-foreground;
+    font-size: var(--type-base);
+    line-height: 1.55;
+  }
+
+  @media (min-width: 768px) {
+    .type-hero-lead {
+      font-size: var(--type-body);
+      line-height: 1.7;
+    }
+  }
+
+  .type-page-heading {
+    @apply font-serif font-semibold tracking-tight text-balance text-foreground;
+    font-size: clamp(1.875rem, 1.65rem + 0.8vw, 2.25rem);
+    line-height: 1.2;
   }
 
   .type-page-title {
-    @apply text-[1.625rem] sm:text-[1.875rem] md:text-[2rem] lg:text-[2.125rem] font-semibold leading-[1.2] tracking-tight text-foreground;
+    @apply font-semibold tracking-tight text-foreground;
+    font-size: clamp(1.75rem, 1.5rem + 1vw, 2.375rem);
+    line-height: 1.2;
   }
 
   .type-alt-title {
-    @apply text-[1.0625rem] md:text-lg text-text-soft leading-normal;
+    @apply text-text-soft leading-normal;
+    font-size: var(--type-body);
+  }
+
+  @media (min-width: 768px) {
+    .type-alt-title {
+      font-size: var(--type-lg);
+    }
+  }
+
+  /* Bölüm & kart */
+  .type-section-title {
+    @apply font-semibold text-foreground tracking-tight;
+    font-size: clamp(1.625rem, 1.5rem + 0.5vw, 2rem);
+    line-height: 1.25;
+  }
+
+  .type-section-desc {
+    @apply text-muted-foreground;
+    font-size: var(--type-base);
+    line-height: 1.55;
   }
 
   .type-section-label {
-    @apply text-sm md:text-[0.9375rem] font-medium text-muted-foreground;
+    @apply font-medium text-muted-foreground;
+    font-size: var(--type-sm);
+    line-height: 1.5;
+  }
+
+  .type-stat-value {
+    @apply tabular-nums font-semibold leading-none text-brand-primary;
+    font-size: var(--type-xl);
+  }
+
+  @media (min-width: 640px) {
+    .type-stat-value {
+      font-size: var(--type-2xl);
+    }
+  }
+
+  .type-stat-label {
+    @apply font-medium text-muted-foreground;
+    font-size: var(--type-sm);
+    line-height: 1.5;
+  }
+
+  .type-card-title {
+    @apply font-semibold text-foreground;
+    font-size: var(--type-base);
+    line-height: 1.45;
+  }
+
+  .type-card-meta {
+    @apply text-muted-foreground;
+    font-size: var(--type-sm);
+    line-height: 1.5;
+  }
+
+  .type-card-body {
+    @apply text-muted-foreground;
+    font-size: var(--type-sm);
+    line-height: 1.55;
+  }
+
+  @media (min-width: 768px) {
+    .type-card-body {
+      font-size: var(--type-base);
+    }
+  }
+
+  /* Liste & katalog */
+  .type-list-title {
+    @apply font-medium text-foreground leading-snug;
+    font-size: clamp(1.125rem, 1.05rem + 0.35vw, 1.25rem);
+    line-height: 1.45;
+  }
+
+  .type-journal-list-title {
+    @apply font-medium text-foreground leading-snug;
+    font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+    line-height: 1.45;
+  }
+
+  .type-catalog-journal-title {
+    @apply font-medium text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2;
+    font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  }
+
+  /* Filtre & footer */
+  .type-filter-heading {
+    @apply font-semibold uppercase tracking-wider text-muted-foreground;
+    font-size: var(--type-sm);
+    line-height: 1.5;
+  }
+
+  .type-filter-option {
+    font-size: var(--type-sm);
+    line-height: 1.5;
+  }
+
+  .type-footer-heading {
+    @apply font-bold uppercase tracking-[0.12em] text-foreground/70;
+    font-size: var(--type-sm);
+    line-height: 1.5;
+  }
+
+  .type-footer-link {
+    @apply text-muted-foreground hover:text-brand-primary transition-colors;
+    font-size: var(--type-sm);
+    line-height: 1.5;
+  }
+
+  @media (min-width: 768px) {
+    .type-footer-link {
+      font-size: var(--type-base);
+    }
+  }
+
+  .type-footer-caption {
+    @apply text-muted-foreground;
+    font-size: var(--type-sm);
+    line-height: 1.5;
+  }
+
+  /* Makale detay & metadata */
+  .type-breadcrumb {
+    @apply text-muted-foreground;
+    font-size: var(--type-sm);
+    line-height: 1.45;
+  }
+
+  @media (min-width: 768px) {
+    .type-breadcrumb {
+      font-size: var(--type-base);
+    }
   }
 
   .type-meta-value {
-    @apply text-[0.9375rem] md:text-base leading-normal text-foreground;
+    @apply leading-normal text-foreground;
+    font-size: var(--type-sm);
+  }
+
+  @media (min-width: 768px) {
+    .type-meta-value {
+      font-size: var(--type-base);
+    }
   }
 
   .type-meta-link {
-    @apply text-[0.9375rem] md:text-base leading-normal font-medium;
+    @apply leading-normal font-medium;
+    font-size: var(--type-base);
+  }
+
+  @media (min-width: 768px) {
+    .type-meta-link {
+      font-size: var(--type-body);
+    }
   }
 
   .type-reading-heading {
-    @apply text-xl md:text-[1.375rem] lg:text-[1.5rem] font-serif font-semibold leading-snug text-foreground;
+    @apply font-serif font-semibold text-foreground;
+    font-size: clamp(1.375rem, 1.25rem + 0.5vw, 1.625rem);
+    line-height: 1.35;
   }
 
   .type-reading-body {
-    @apply text-base md:text-[1.0625rem] leading-[1.7] text-foreground/90 text-justify hyphens-auto whitespace-pre-line;
+    @apply text-foreground/90 text-justify hyphens-auto whitespace-pre-line;
+    font-size: var(--type-base);
+    line-height: 1.7;
+  }
+
+  @media (min-width: 768px) {
+    .type-reading-body {
+      font-size: var(--type-body);
+    }
   }
 
   .type-sidebar-heading {
-    @apply text-base md:text-[1.0625rem] font-semibold leading-snug text-foreground;
+    @apply font-semibold leading-snug text-foreground;
+    font-size: var(--type-base);
+  }
+
+  @media (min-width: 768px) {
+    .type-sidebar-heading {
+      font-size: var(--type-body);
+    }
   }
 
   .type-sidebar-body {
-    @apply text-sm md:text-[0.9375rem] leading-normal text-muted-foreground;
+    @apply leading-normal text-muted-foreground;
+    font-size: var(--type-sm);
   }
 
   .type-sidebar-link {
-    @apply text-[0.9375rem] md:text-base leading-snug font-medium;
+    @apply leading-snug font-medium;
+    font-size: var(--type-sm);
+  }
+
+  @media (min-width: 768px) {
+    .type-sidebar-link {
+      font-size: var(--type-base);
+    }
   }
 
   .type-sidebar-list-link {
-    @apply text-[0.9375rem] leading-[1.45] text-foreground/85;
+    @apply text-foreground/85;
+    font-size: var(--type-sm);
+    line-height: 1.45;
   }
 
   /* Ana içerik + sağ sidebar (ana sayfa, dergi detay, yazar) */
@@ -312,7 +529,7 @@
   }
 
   .home-surface-card {
-    @apply rounded-xl border border-border/80 bg-surface shadow-sm;
+    @apply rounded-xl border border-border/80 bg-surface shadow-sm p-5 md:p-6;
   }
 
   .hero-surface {
@@ -339,7 +556,7 @@
   }
 
   .catalog-list-item {
-    @apply py-3.5 sm:py-4 min-w-0 transition-colors hover:bg-brand-primary/[0.035];
+    @apply py-4 sm:py-[1.125rem] md:py-5 min-w-0 transition-colors hover:bg-brand-primary/[0.035];
   }
 
   .catalog-list-item:first-child {
@@ -365,6 +582,6 @@
 
   /* Sidebar / aside panel — lighter than home-surface-card, no shadow */
   .aside-panel {
-    @apply rounded-xl border border-border/60 bg-surface p-[1.125rem] md:p-5;
+    @apply rounded-xl border border-border/60 bg-surface p-5 md:p-[1.375rem];
   }
 }

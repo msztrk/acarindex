@@ -17,11 +17,11 @@ export function SitePageHeader({
     <header className={cn('site-page-header', className)}>
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
-          <h1 className="font-serif text-2xl sm:text-[1.75rem] font-semibold text-foreground tracking-tight text-balance">
+          <h1 className="type-page-heading break-words">
             {title}
           </h1>
           {description && (
-            <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed max-w-3xl">
+            <p className="type-section-desc mt-1.5 max-w-3xl">
               {description}
             </p>
           )}

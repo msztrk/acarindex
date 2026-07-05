@@ -28,7 +28,7 @@ export function LocaleSwitcher({ className }: { className?: string }) {
 
   const linkClass = (active: boolean) =>
     cn(
-      'px-2.5 py-1.5 text-sm font-semibold rounded-md border transition-colors no-underline',
+      'px-2.5 py-1.5 text-[0.875rem] font-semibold rounded-md border transition-colors no-underline',
       active
         ? 'bg-brand-primary/10 text-brand-primary border-brand-primary/30'
         : 'text-muted-foreground border-border hover:text-foreground hover:border-foreground/20',

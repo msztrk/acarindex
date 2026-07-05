@@ -254,7 +254,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
             className="mb-4 md:mb-5 pb-4 border-b border-border/80"
             id="search-results-heading"
           >
-            <p className="text-sm text-muted-foreground">
+            <p className="type-meta-value text-muted-foreground">
               <span className="font-semibold text-foreground tabular-nums">
                 {total.toLocaleString('tr-TR')}
               </span>
@@ -267,7 +267,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               </span>
             </p>
             {searchPersonalized && (
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="type-card-meta mt-2">
                 Sonuçlar ilgi alanlarınıza göre önceliklendirildi.
                 {' '}
                 <Link href={qs({ personalize: '0', page: '1' })} className="text-primary hover:underline">
@@ -281,7 +281,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
             <>
               {searchPersonalized && interestArticleItems.length > 0 && (
                 <section className="mb-6">
-                  <h3 className="text-sm font-semibold text-foreground mb-3">
+                  <h3 className="type-filter-heading mb-3">
                     İlgi alanlarınıza uygun sonuçlar ({articleResults.interestTotal?.toLocaleString('tr-TR') ?? interestArticleItems.length})
                   </h3>
                   <ul className="catalog-list">
@@ -293,7 +293,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               )}
               {searchPersonalized && otherArticleItems.length > 0 && (
                 <section className={interestArticleItems.length > 0 ? 'pt-4 border-t border-border/80' : ''}>
-                  <h3 className="text-sm font-semibold text-foreground mb-3">
+                  <h3 className="type-filter-heading mb-3">
                     Diğer sonuçlar
                   </h3>
                   <ul className="catalog-list">
@@ -317,7 +317,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
             <>
               {searchPersonalized && interestJournalItems.length > 0 && (
                 <section className="mb-6">
-                  <h3 className="text-sm font-semibold text-foreground mb-3">
+                  <h3 className="type-filter-heading mb-3">
                     İlgi alanlarınıza uygun dergiler ({journalResults.interestTotal?.toLocaleString('tr-TR') ?? interestJournalItems.length})
                   </h3>
                   <ul className="catalog-list">
@@ -329,7 +329,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               )}
               {searchPersonalized && otherJournalItems.length > 0 && (
                 <section className={interestJournalItems.length > 0 ? 'pt-4 border-t border-border/80' : ''}>
-                  <h3 className="text-sm font-semibold text-foreground mb-3">Diğer dergiler</h3>
+                  <h3 className="type-filter-heading mb-3">Diğer dergiler</h3>
                   <ul className="catalog-list">
                     {otherJournalItems.map((j) => (
                       <JournalResultItem key={j.id} journal={j} showCategory locale={locale} />
@@ -358,7 +358,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                     <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center shrink-0">
                       <User className="h-4 w-4 text-muted-foreground" aria-hidden />
                     </div>
-                    <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                    <span className="type-list-title group-hover:text-primary transition-colors">
                       {a.name}
                     </span>
                   </Link>
@@ -402,14 +402,14 @@ function ArticleResultItem({
         href={href}
         className="block no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
-        <h2 className="text-base font-medium text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-3">
+        <h2 className="type-list-title group-hover:text-primary transition-colors line-clamp-3">
           {title}
         </h2>
       </Link>
 
       <div className="mt-2.5 space-y-1.5 min-w-0">
         {(authors || article.published_year) && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-sm text-foreground/70">
+          <div className="type-card-meta flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
             {authors && <span className="min-w-0">{authors}</span>}
             {authors && article.published_year && (
               <span className="text-muted-foreground" aria-hidden>·</span>
@@ -427,7 +427,7 @@ function ArticleResultItem({
             <Link
               href={`/journals/${article.journal_slug}-${article.journal_id}`}
               title={article.journal_title}
-              className="min-w-0 flex-1 text-sm leading-snug text-foreground/75 hover:text-foreground line-clamp-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
+              className="type-journal-list-title min-w-0 flex-1 text-foreground/75 hover:text-foreground line-clamp-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
             >
               {article.journal_title}
             </Link>
@@ -477,11 +477,11 @@ function JournalResultItem({
     <li className="catalog-list-item">
       <Link
         href={`/journals/${journal.slug}-${journal.id}`}
-        className="font-medium text-foreground hover:text-primary transition-colors no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="type-journal-list-title text-foreground hover:text-primary transition-colors no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         {title}
       </Link>
-          <div className="flex flex-wrap gap-2 mt-1.5 text-sm text-muted-foreground">
+          <div className="type-card-meta flex flex-wrap gap-2 mt-1.5">
         {journal.issn && <Badge variant="outline" className="text-[0.8125rem]">ISSN: {journal.issn}</Badge>}
         {showCategory && journal.category_label && (
           <Badge variant="secondary" className="text-[0.8125rem]">{journal.category_label}</Badge>
@@ -573,8 +573,8 @@ function EmptySearch() {
       <p className="text-muted-foreground text-sm leading-relaxed">
         Makale başlığı, yazar adı, ISSN veya anahtar kelime ile arama yapabilirsiniz.
         Gelişmiş arama için{' '}
-        <code className="bg-secondary px-1.5 py-0.5 rounded text-xs">author:Smith</code> veya{' '}
-        <code className="bg-secondary px-1.5 py-0.5 rounded text-xs">title:makale</code> kullanın.
+        <code className="bg-secondary px-1.5 py-0.5 rounded text-[0.8125rem]">author:Smith</code> veya{' '}
+        <code className="bg-secondary px-1.5 py-0.5 rounded text-[0.8125rem]">title:makale</code> kullanın.
       </p>
     </div>
   )

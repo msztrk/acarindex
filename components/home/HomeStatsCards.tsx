@@ -65,10 +65,10 @@ export function HomeStatsCards({
             <>
               <Icon className="h-4 w-4 shrink-0 text-brand-accent sm:h-4 sm:w-4" aria-hidden />
               <div className="min-w-0">
-                <p className="tabular-nums text-lg font-semibold leading-none text-brand-primary sm:text-xl">
+                <p className="type-stat-value">
                   {item.value}
                 </p>
-                <p className="mt-0.5 text-xs font-medium text-muted-foreground sm:mt-1 sm:text-sm">
+                <p className="type-stat-label mt-0.5 sm:mt-1">
                   {item.label}
                 </p>
               </div>
@@ -98,7 +98,7 @@ export function HomeStatsCards({
           )
         })}
       </div>
-      <p className="mt-1.5 text-center text-xs text-muted-foreground sm:mt-2 sm:text-left sm:text-sm">
+      <p className="type-card-meta mt-1.5 text-center sm:mt-2 sm:text-left">
         ({approxNote})
       </p>
     </div>

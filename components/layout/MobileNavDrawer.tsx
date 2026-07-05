@@ -119,7 +119,7 @@ function MobileNavLink({
       href={href}
       onClick={onNavigate}
       className={cn(
-        'block px-3 py-2.5 text-[0.9375rem] font-medium rounded-md transition-colors',
+        'flex min-h-[44px] items-center px-3 py-2.5 text-base font-medium rounded-md transition-colors',
         active
           ? 'text-foreground bg-secondary'
           : 'text-muted-foreground hover:text-foreground hover:bg-secondary',

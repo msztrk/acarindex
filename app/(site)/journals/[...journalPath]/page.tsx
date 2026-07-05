@@ -402,7 +402,7 @@ export default async function JournalPage({
                 )}
               </div>
               <div className="flex-1 min-w-0 space-y-3">
-                <h1 className="font-serif text-2xl sm:text-[1.75rem] font-bold text-foreground leading-snug">
+                <h1 className="type-page-heading leading-snug">
                   {title}
                 </h1>
                 {authEnabled && (
@@ -482,7 +482,7 @@ function JournalNav({ segment, active }: { segment: string; active: SubPage }) {
           href={href}
           aria-current={active === key ? 'page' : undefined}
           className={cn(
-            'text-sm px-3 py-2 min-h-[36px] inline-flex items-center rounded-md transition-colors no-underline',
+            'type-filter-option px-3 py-2 min-h-[36px] inline-flex items-center rounded-md transition-colors no-underline',
             linkFocusClass,
             active === key
               ? 'bg-brand-primary/10 text-brand-primary font-medium'
@@ -498,7 +498,7 @@ function JournalNav({ segment, active }: { segment: string; active: SubPage }) {
 
 function TrOnlyContentNotice({ trHref }: { trHref: string }) {
   return (
-    <p className="text-sm text-muted-foreground leading-relaxed">
+    <p className="type-section-desc leading-relaxed">
       This section is available in Turkish.{' '}
       <Link href={trHref} hrefLang="tr" className={cn('text-primary hover:text-accent no-underline', linkFocusClass)}>
         View Turkish page
@@ -531,10 +531,10 @@ async function JournalHome({
         {issues.length > 0 && (
           <section className="min-w-0">
             <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-              <h2 className="text-lg font-serif font-semibold text-foreground">Sayılar</h2>
+              <h2 className="type-section-title">Sayılar</h2>
               <Link
                 href={arsivHref}
-                className={cn('text-sm text-primary hover:text-accent no-underline inline-flex items-center gap-0.5', linkFocusClass)}
+                className={cn('type-sidebar-link text-primary hover:text-accent no-underline inline-flex items-center gap-0.5', linkFocusClass)}
               >
                 Tüm arşiv
                 <ChevronRight className="h-3.5 w-3.5" aria-hidden />
@@ -546,7 +546,7 @@ async function JournalHome({
                   <Link
                     href={`/journals/${segment}/sayi/${issue.id}`}
                     className={cn(
-                      'flex flex-wrap items-center justify-between gap-2 py-3 text-sm no-underline group',
+                      'type-filter-option flex flex-wrap items-center justify-between gap-2 py-3 no-underline group',
                       linkFocusClass,
                     )}
                   >
@@ -554,7 +554,7 @@ async function JournalHome({
                       {issue.issue_label ?? (issue.year ? String(issue.year) : 'Sayı')}
                     </span>
                     {issue.year && issue.issue_label && (
-                      <span className="text-sm text-muted-foreground tabular-nums shrink-0">
+                      <span className="type-card-meta tabular-nums shrink-0">
                         {issue.year}
                       </span>
                     )}
@@ -566,9 +566,9 @@ async function JournalHome({
         )}
 
         <section className="min-w-0">
-          <h2 className="text-lg font-serif font-semibold text-foreground mb-4">Son makaleler</h2>
+          <h2 className="type-section-title mb-4">Son makaleler</h2>
           {articles.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">
+            <p className="type-card-meta py-4">
               Bu dergide henüz listelenecek makale bulunmuyor.
             </p>
           ) : (
@@ -582,7 +582,7 @@ async function JournalHome({
             <Link
               href={arsivHref}
               className={cn(
-                'inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-accent mt-4 no-underline',
+                'type-sidebar-link inline-flex items-center gap-1 text-primary hover:text-accent mt-4 no-underline',
                 linkFocusClass,
               )}
             >
@@ -594,8 +594,8 @@ async function JournalHome({
 
         {locale !== 'en' && journal.description?.trim() && (
           <section className="min-w-0">
-            <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Dergi hakkında</h2>
-            <p className="text-sm sm:text-base leading-relaxed text-foreground/85 max-w-3xl text-justify hyphens-auto">
+            <h2 className="type-section-title mb-3">Dergi hakkında</h2>
+            <p className="type-reading-body max-w-3xl">
               {journal.description.trim()}
             </p>
           </section>
@@ -620,7 +620,7 @@ async function JournalHome({
 
         <div className="aside-panel min-w-0">
           <h3 className="type-sidebar-heading mb-3">Hızlı bağlantılar</h3>
-          <ul className="space-y-2.5 text-[0.9375rem] md:text-base">
+          <ul className="space-y-2.5 type-sidebar-link">
             <li>
               <Link href={arsivHref} className={cn('text-primary hover:text-accent no-underline', linkFocusClass)}>
                 Arşiv ve sayılar
@@ -678,21 +678,21 @@ async function JournalArsiv({
       <JsonLd data={archiveJsonLd} />
       <section className="min-w-0 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
         <header className="mb-6 md:mb-8 space-y-2 min-w-0">
-          <h2 className="text-lg font-serif font-semibold text-foreground">Arşiv</h2>
-          <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">
+          <h2 className="type-section-title">Arşiv</h2>
+          <p className="type-section-desc max-w-3xl">
             {journalTitle} dergisinin yayımlanmış sayılarını yıllara göre inceleyin.
           </p>
         </header>
 
         {grouped.totalIssues === 0 ? (
-          <p className="text-sm text-muted-foreground py-6">
+          <p className="type-card-meta py-6">
             Bu dergi için henüz arşivlenmiş sayı bulunmuyor.
           </p>
         ) : (
           <div className="space-y-8 min-w-0">
             {grouped.groups.map((group) => (
               <div key={group.yearKey} className="min-w-0">
-                <h3 className="text-sm font-semibold text-foreground mb-3 pb-2 border-b border-border/80">
+                <h3 className="type-filter-heading mb-3 pb-2 border-b border-border/80 text-foreground">
                   {group.heading}
                 </h3>
                 <ul className="catalog-list-container divide-y divide-border/60 min-w-0">
@@ -701,7 +701,7 @@ async function JournalArsiv({
                       <Link
                         href={buildArchiveIssueHref(segment, issue.id)}
                         className={cn(
-                          'flex items-center gap-2 min-w-0 px-3 py-3 sm:px-4 text-sm font-medium text-foreground hover:text-primary hover:bg-brand-primary/[0.035] transition-colors no-underline',
+                          'type-filter-option flex items-center gap-2 min-w-0 px-3 py-3 sm:px-4 font-medium text-foreground hover:text-primary hover:bg-brand-primary/[0.035] transition-colors no-underline',
                           linkFocusClass,
                         )}
                       >
@@ -815,7 +815,7 @@ async function JournalSayi({
 
       <header className="mb-6 md:mb-8 space-y-4 min-w-0">
         <div className="space-y-2 min-w-0">
-          <h1 className="font-serif text-2xl sm:text-[1.75rem] font-bold text-foreground leading-snug">
+          <h1 className="type-page-heading leading-snug">
             <Link
               href={journalHref}
               className={cn(
@@ -847,18 +847,18 @@ async function JournalSayi({
 
       <section className="min-w-0 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-4">
-          <h2 className="text-lg font-serif font-semibold text-foreground">
+          <h2 className="type-section-title">
             Bu sayıdaki makaleler
           </h2>
           {articleCount > 0 && (
-            <p className="text-sm text-muted-foreground tabular-nums shrink-0">
+            <p className="type-card-meta tabular-nums shrink-0">
               {articleCount.toLocaleString('tr-TR')} makale
             </p>
           )}
         </div>
 
         {articleCount === 0 ? (
-          <p className="text-sm text-muted-foreground py-6">
+          <p className="type-card-meta py-6">
             Bu sayıda listelenecek makale bulunmuyor.
           </p>
         ) : (
@@ -873,7 +873,7 @@ async function JournalSayi({
       <Link
         href={arsivHref}
         className={cn(
-          'inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-accent mt-6 no-underline',
+          'type-sidebar-link inline-flex items-center gap-1 text-primary hover:text-accent mt-6 no-underline',
           linkFocusClass,
         )}
       >
@@ -890,13 +890,13 @@ function CmsSection({ title, html }: { title: string; html: string | null | unde
     return (
       <div className="catalog-empty-panel">
         <p className="font-medium text-foreground">{title}</p>
-        <p className="mt-2 text-sm text-muted-foreground">Bu bölüm için içerik henüz eklenmemiş.</p>
+        <p className="type-card-meta mt-2">Bu bölüm için içerik henüz eklenmemiş.</p>
       </div>
     )
   }
   return (
     <section className="min-w-0 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
-      <h2 className="text-lg font-serif font-semibold text-foreground mb-4">{title}</h2>
+      <h2 className="type-section-title mb-4">{title}</h2>
       <div
         className="prose prose-sm max-w-3xl text-foreground/90 text-justify hyphens-auto"
         dangerouslySetInnerHTML={{ __html: html }}
@@ -920,13 +920,13 @@ function IssueArticleRow({
   return (
     <li className="group py-4 first:pt-0 last:pb-0 min-w-0">
       <Link href={href} className={cn('block no-underline', linkFocusClass)}>
-        <h3 className="text-base font-medium text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-3">
+        <h3 className="type-list-title group-hover:text-primary transition-colors line-clamp-3">
           {title}
         </h3>
       </Link>
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
         {(authors || pages) && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-sm text-foreground/70">
+          <div className="type-card-meta flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
             {authors && <span className="min-w-0">{authors}</span>}
             {authors && pages && (
               <span className="text-muted-foreground" aria-hidden>·</span>
@@ -967,13 +967,13 @@ function ArticleRow({
         href={href}
         className={cn('block no-underline', linkFocusClass)}
       >
-        <span className="text-base font-medium text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-3">
+        <span className="type-list-title group-hover:text-primary transition-colors line-clamp-3">
           {title}
         </span>
       </Link>
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 min-w-0">
         {(authors || article.published_year) && (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-sm text-foreground/70">
+          <div className="type-card-meta flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
             {authors && <span className="min-w-0">{authors}</span>}
             {authors && article.published_year && (
               <span className="text-muted-foreground" aria-hidden>·</span>

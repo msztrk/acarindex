@@ -73,7 +73,7 @@ export function SiteHeader({
           <BrandWordmark variant="compact" className="shrink-0" />
 
           <nav
-            className="hidden lg:flex items-center gap-1 text-base font-semibold"
+            className="hidden lg:flex items-center gap-1 text-base md:text-[1.0625rem] font-semibold"
             aria-label={m.nav.mainMenu}
           >
             {navLinks.map((item) => {

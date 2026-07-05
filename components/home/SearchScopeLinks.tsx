@@ -27,7 +27,7 @@ export function SearchScopeLinks({ className }: { className?: string }) {
           key={item.href}
           href={item.href}
           className={cn(
-            'inline-flex min-h-8 shrink-0 items-center rounded-full px-2.5 py-1 text-[0.9375rem] font-medium no-underline transition-colors sm:px-3',
+            'type-filter-option inline-flex min-h-8 shrink-0 items-center rounded-full px-2.5 py-1 font-medium no-underline transition-colors sm:px-3',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
             item.label === m.home.scopeAll
               ? 'bg-brand-primary/10 text-brand-primary font-semibold'

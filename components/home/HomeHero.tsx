@@ -35,13 +35,11 @@ export function HomeHero({
             <p className="mb-2 text-sm font-semibold uppercase tracking-[0.16em] text-brand-600 md:mb-3">
               {ui.home.eyebrow}
             </p>
-            <h1
-              className="mb-2 max-w-[40rem] text-balance font-serif text-2xl font-semibold leading-[1.24] tracking-tight text-foreground sm:text-[1.875rem] md:mb-3 lg:mb-4 lg:text-[2.125rem] lg:leading-[1.3] xl:max-w-[44rem]"
-            >
+            <h1 className="type-hero-title mb-2 md:mb-3 lg:mb-4">
               {heroTitle}
             </h1>
             {heroSubtitle && (
-              <p className="mb-3 max-w-[40rem] text-base leading-relaxed text-muted-foreground md:mb-5">
+              <p className="type-hero-lead mb-3 md:mb-5">
                 {heroSubtitle}
               </p>
             )}

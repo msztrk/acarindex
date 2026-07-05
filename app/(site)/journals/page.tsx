@@ -35,7 +35,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
   if (result.status === 'error') {
     return (
       <div className="content-width-wide py-8">
-        <h1 className="font-serif text-3xl font-bold mb-6">Dergiler</h1>
+        <h1 className="type-page-heading mb-6">Dergiler</h1>
         <CatalogErrorAlert message={catalogErrorMessage(result)} />
       </div>
     )
@@ -44,7 +44,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
   if (result.status === 'empty') {
     return (
       <div className="content-width-wide py-8">
-        <h1 className="font-serif text-3xl font-bold mb-6">Dergiler</h1>
+        <h1 className="type-page-heading mb-6">Dergiler</h1>
         <CatalogEmptyState icon={BookOpen} title="Dergi bulunamadı" />
       </div>
     )
@@ -66,8 +66,8 @@ export default async function JournalsPage({ searchParams }: PageProps) {
   return (
     <div className="content-width-wide py-8">
       <div className="mb-8">
-        <h1 className="font-serif text-2xl font-semibold mb-2">Dergiler</h1>
-        <p className="text-muted-foreground">
+        <h1 className="type-page-heading mb-2">Dergiler</h1>
+        <p className="type-meta-value text-muted-foreground">
           {total.toLocaleString('tr-TR')} dergi • Sayfa {page}/{totalPages}
         </p>
       </div>
@@ -85,7 +85,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
                 defaultValue={q}
                 type="search"
                 placeholder="Dergi ara…"
-                className="flex-1 px-2 py-2 text-sm bg-transparent outline-none"
+                className="flex-1 px-2 py-2 text-base bg-transparent outline-none placeholder:text-sm placeholder:text-muted-foreground"
               />
             </div>
           </form>
@@ -93,14 +93,14 @@ export default async function JournalsPage({ searchParams }: PageProps) {
           {/* Kategoriler */}
           {categories.length > 0 && (
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+              <h2 className="type-filter-heading mb-3">
                 Kategoriler
               </h2>
               <ul className="space-y-0.5">
                 <li>
                   <Link
                     href="/journals"
-                    className={`block text-sm px-2 py-1.5 rounded-lg transition-colors ${!category ? 'text-brand-primary font-medium bg-brand-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-brand-primary/[0.035]'}`}
+                    className={`type-filter-option block px-2 py-1.5 rounded-lg transition-colors ${!category ? 'text-brand-primary font-medium bg-brand-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-brand-primary/[0.035]'}`}
                   >
                     Tümü
                   </Link>
@@ -109,7 +109,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
                   <li key={cat.id}>
                     <Link
                       href={`/journals?category=${cat.id}`}
-                      className={`block text-sm px-2 py-1.5 rounded-lg transition-colors ${String(categoryId) === String(cat.id) ? 'text-brand-primary font-medium bg-brand-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-brand-primary/[0.035]'}`}
+                      className={`type-filter-option block px-2 py-1.5 rounded-lg transition-colors ${String(categoryId) === String(cat.id) ? 'text-brand-primary font-medium bg-brand-primary/10' : 'text-muted-foreground hover:text-foreground hover:bg-brand-primary/[0.035]'}`}
                     >
                       {cat.name_tr ?? cat.name_en}
                     </Link>
@@ -203,14 +203,14 @@ function JournalCard({ journal }: { journal: Partial<Journal> }) {
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <h2 className="text-base font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug mb-1">
+        <h2 className="type-catalog-journal-title mb-1">
           {title}
         </h2>
         {journal.issn && (
-          <p className="text-sm text-muted-foreground">ISSN: {journal.issn}</p>
+          <p className="type-card-meta">ISSN: {journal.issn}</p>
         )}
         {journal.publisher && (
-          <p className="text-sm text-muted-foreground truncate">{journal.publisher}</p>
+          <p className="type-card-meta truncate">{journal.publisher}</p>
         )}
         {journal.frequency && (
           <Badge variant="secondary" className="text-[0.8125rem] mt-1">{journal.frequency}</Badge>

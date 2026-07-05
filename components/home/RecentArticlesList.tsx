@@ -35,8 +35,8 @@ export function RecentArticlesList({
   if (articles.length === 0) {
     return (
       <div className="home-surface-card border-dashed px-4 py-8 text-center">
-        <p className="text-sm font-medium text-foreground mb-1">Henüz makale listelenmiyor</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="type-card-title mb-1">Henüz makale listelenmiyor</p>
+        <p className="type-card-meta">
           Yeni makaleler eklendiğinde burada görünecek.
         </p>
       </div>
@@ -62,15 +62,13 @@ export function RecentArticlesList({
               href={href}
               className="block no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <span
-                className="text-[1.0625rem] font-medium text-foreground group-hover:text-brand-primary transition-colors leading-[1.45] line-clamp-2"
-              >
+              <span className="type-list-title group-hover:text-brand-primary transition-colors line-clamp-2">
                 {title}
               </span>
             </Link>
             <div className="mt-2.5 space-y-2">
               {(authors || a.published_year) && (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0 text-[0.8125rem] text-muted-foreground">
+                <div className="type-card-meta flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
                   {authors && <span className="min-w-0">{authors}</span>}
                   {authors && a.published_year && (
                     <span className="text-border" aria-hidden>·</span>
@@ -85,7 +83,7 @@ export function RecentArticlesList({
                   <Link
                     href={`/journals/${a.journal.slug}-${a.journal.id}`}
                     title={journalTitle}
-                    className="min-w-0 flex-1 text-[0.8125rem] leading-snug text-foreground/70 hover:text-brand-secondary line-clamp-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
+                    className="type-journal-list-title min-w-0 flex-1 text-foreground/70 hover:text-brand-secondary line-clamp-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
                   >
                     {journalTitle}
                   </Link>
@@ -93,7 +91,7 @@ export function RecentArticlesList({
                 <Link
                   href={`/pdfs/${a.id}`}
                   aria-label={`${title} — tam metin PDF`}
-                  className="inline-flex items-center gap-1.5 shrink-0 rounded-md border border-brand-accent/30 bg-brand-accent/10 px-2.5 py-1 text-xs font-semibold text-brand-primary hover:bg-brand-accent/18 hover:border-brand-accent/45 transition-colors no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="catalog-pdf-badge inline-flex items-center gap-1.5 shrink-0 no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <FileText className="h-3.5 w-3.5 shrink-0 text-brand-accent" aria-hidden />
                   PDF
