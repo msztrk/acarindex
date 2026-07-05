@@ -469,8 +469,8 @@ export default async function ArticlePage({ params }: PageProps) {
           </BreadcrumbList>
         </Breadcrumb>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_340px] gap-6 lg:gap-8 min-w-0">
-          <article className="min-w-0 rounded-xl border border-border/80 bg-surface p-5 sm:p-7 lg:p-8">
+        <div className="layout-article-detail">
+          <article className="layout-reading-column min-w-0 rounded-xl border border-border/80 bg-surface p-5 sm:p-7 lg:p-8">
             <header className="mb-6 md:mb-8 space-y-4">
               <div className="space-y-2 min-w-0">
                 <h1 className="text-2xl sm:text-3xl font-semibold leading-tight tracking-tight text-foreground max-w-5xl">
@@ -616,7 +616,7 @@ export default async function ArticlePage({ params }: PageProps) {
             </header>
 
             {abstractSections.map((section) => (
-              <section key={section.heading} className="mb-8 min-w-0 max-w-[900px]">
+              <section key={section.heading} className="mb-8 min-w-0">
                 <h2 className="text-lg font-serif font-semibold text-foreground mb-3">
                   {section.heading}
                 </h2>
@@ -663,7 +663,7 @@ export default async function ArticlePage({ params }: PageProps) {
             )}
 
             {article.references_raw?.trim() && (
-              <section className="min-w-0 max-w-[900px]">
+              <section className="min-w-0">
                 <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Kaynakça</h2>
                 <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                   {article.references_raw}
@@ -672,7 +672,7 @@ export default async function ArticlePage({ params }: PageProps) {
             )}
           </article>
 
-          <aside className="space-y-5 min-w-0 lg:pt-1">
+          <aside className="layout-sidebar-column space-y-5 lg:pt-1">
             {pdfAvailable && (
               <div className="aside-panel min-w-0">
                 <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">

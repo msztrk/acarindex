@@ -228,7 +228,7 @@ export default async function AuthorPage({
           </BreadcrumbList>
         </Breadcrumb>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_340px] gap-8 min-w-0">
+        <div className="layout-with-sidebar min-w-0">
           <div className="min-w-0 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
             <header className="flex items-start gap-5 mb-6 md:mb-8 min-w-0">
               <div className="h-16 w-16 rounded-full bg-secondary border border-border/80 flex items-center justify-center shrink-0">

@@ -206,31 +206,52 @@
 
 @layer utilities {
   /* ─── Container Sistemi ───────────────────────────────────────
-     standard : 1440px — site geneli tek standart dış kapsayıcı
-     wide     : 1440px — arama/listeleme (aynı dış sınır, anlam farkı)
-     reading  : 85ch   — uzun metin paragrafları
-     Padding  : responsive clamp(1rem → 3rem)
+     site-container : 1660px max, ortalanmış, responsive yatay boşluk
+     content-width  : site geneli (header, footer, çoğu sayfa)
+     content-width-wide : listeleme/arama (aynı dış sınır)
+     reading-width  : uzun metin paragrafları (~85ch)
   ─────────────────────────────────────────────────────────────── */
+  .site-container {
+    @apply mx-auto w-full max-w-[1660px] px-4 md:px-6 xl:px-8;
+  }
+
   .content-width {
-    @apply w-full mx-auto;
-    max-width: 1440px;
-    padding-inline: clamp(1rem, 2.5vw, 3rem);
+    @apply site-container;
   }
 
   .content-width-wide {
-    @apply w-full mx-auto;
-    max-width: 1440px;
-    padding-inline: clamp(1rem, 2.5vw, 3rem);
+    @apply site-container;
+  }
+
+  .account-panel-width {
+    @apply site-container;
   }
 
   .reading-width {
     @apply max-w-[85ch] mx-auto;
   }
 
-  .account-panel-width {
-    @apply w-full mx-auto;
-    max-width: 1440px;
-    padding-inline: clamp(1rem, 2.5vw, 3rem);
+  /* Ana içerik + sağ sidebar (ana sayfa, dergi detay, yazar) */
+  .layout-with-sidebar {
+    @apply grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-9 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-10;
+  }
+
+  /* Makale detay: okuma sütunu (~900px) + sidebar (280–320px) */
+  .layout-article-detail {
+    @apply grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,min(900px,100%))_minmax(280px,300px)] lg:gap-9 xl:grid-cols-[minmax(0,min(900px,100%))_320px] xl:gap-10;
+  }
+
+  /* Dergi listesi: sol filtre + sağ liste */
+  .layout-with-filter-sidebar {
+    @apply grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(260px,280px)_minmax(0,1fr)] lg:gap-9 xl:gap-10;
+  }
+
+  .layout-reading-column {
+    @apply min-w-0 max-w-[900px];
+  }
+
+  .layout-sidebar-column {
+    @apply min-w-0 lg:max-w-[320px];
   }
 
   .home-surface-card {

@@ -106,7 +106,7 @@ export default async function IstatistiklerPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-[1200px]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-9 xl:gap-10">
         {/* Yıllık makale bar chart (CSS-only) */}
         {yearlyData.length > 0 && (
           <section className="rounded-xl border border-border/80 bg-surface shadow-sm p-5">

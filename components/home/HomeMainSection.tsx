@@ -51,7 +51,7 @@ export async function HomeMainSection({ qa }: { qa?: HomeQaMode }) {
 
     <section className="content-width py-8 md:py-10 lg:py-12">
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-8 lg:gap-10 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="layout-with-sidebar">
 
         <div className="min-w-0 space-y-10">
 
@@ -145,7 +145,7 @@ export async function HomeMainSection({ qa }: { qa?: HomeQaMode }) {
 
 
 
-        <aside className="min-w-0 space-y-0 lg:pt-0">
+        <aside className="layout-sidebar-column min-w-0 space-y-0 lg:pt-0">
 
           <FeaturedJournalsList journals={featuredJournals} />
 

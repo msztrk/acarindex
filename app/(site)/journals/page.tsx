@@ -72,7 +72,7 @@ export default async function JournalsPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)] gap-8">
+      <div className="layout-with-filter-sidebar">
         {/* Filtre sidebar */}
         <aside className="rounded-xl border border-border/80 bg-surface shadow-sm p-4 h-fit">
           {/* Arama */}

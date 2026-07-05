@@ -27,8 +27,8 @@ export function HomeHero({
   return (
     <section className="relative border-b border-border/70 hero-surface overflow-hidden">
       <div className="content-width relative py-5 md:py-9 lg:py-10">
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
-          <div className="min-w-0 lg:max-w-[52rem]">
+        <div className="layout-with-sidebar">
+          <div className="min-w-0">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-brand-600 md:mb-3">
               Akademik arama ve keşif
             </p>
@@ -43,7 +43,7 @@ export function HomeHero({
               </p>
             )}
 
-            <div className="max-w-[840px]">
+            <div className="max-w-[920px]">
               <SearchBar
                 variant="hero"
                 placeholder="Makale, yazar veya anahtar kelime…"
@@ -78,7 +78,7 @@ export function HomeHero({
             </div>
           </div>
 
-          <aside className="hidden lg:block lg:pt-2">
+          <aside className="layout-sidebar-column hidden lg:block lg:pt-2">
             <PopularSearchesCard />
           </aside>
         </div>

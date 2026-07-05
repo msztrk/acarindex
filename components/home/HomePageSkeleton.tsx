@@ -2,11 +2,11 @@ export function HomeHeroSkeleton() {
   return (
     <section className="border-b border-border bg-background" aria-busy="true" aria-label="Yükleniyor">
       <div className="content-width py-7 md:py-9">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-8 lg:gap-10">
+        <div className="layout-with-sidebar">
           <div className="min-w-0">
             <div className="h-3 w-32 rounded bg-muted animate-pulse mb-3" />
             <div className="h-7 sm:h-8 w-full max-w-xl rounded bg-muted animate-pulse mb-5" />
-            <div className="h-11 w-full max-w-[820px] rounded-lg bg-muted animate-pulse" />
+            <div className="h-11 w-full max-w-[920px] rounded-lg bg-muted animate-pulse" />
             <div className="h-3 w-48 rounded bg-muted animate-pulse mt-2" />
             <div className="mt-5 grid grid-cols-2 gap-3 max-w-sm">
               <div className="h-8 rounded bg-muted animate-pulse" />
@@ -23,7 +23,7 @@ export function HomeHeroSkeleton() {
 export function HomeContentSkeleton() {
   return (
     <section className="content-width py-8 md:py-10" aria-busy="true" aria-label="İçerik yükleniyor">
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-8 lg:gap-10">
+      <div className="layout-with-sidebar">
         <div>
           <div className="flex justify-between mb-4">
             <div className="h-6 w-40 rounded bg-muted animate-pulse" />
