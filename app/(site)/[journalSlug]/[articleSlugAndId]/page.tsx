@@ -687,7 +687,7 @@ export default async function ArticlePage({ params }: PageProps) {
             )}
           </article>
 
-          <aside className="layout-sidebar-column space-y-5 lg:pt-1">
+          <aside className="layout-article-sidebar space-y-5 lg:pt-1">
             {pdfAvailable && (
               <div className="aside-panel min-w-0">
                 <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">

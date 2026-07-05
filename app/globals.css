@@ -227,9 +227,9 @@
     @apply grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-9 xl:grid-cols-[minmax(0,1fr)_300px] xl:gap-10;
   }
 
-  /* Makale detay: okuma sütunu (max 900px) + sidebar sağda (280–320px) */
+  /* Makale detay: ana içerik (kalan alan) + sidebar (340–380px) */
   .layout-article-detail {
-    @apply grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] lg:gap-9 xl:gap-10;
+    @apply grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:gap-9;
   }
 
   /* Dergi listesi: sol filtre + sağ liste */
@@ -238,7 +238,11 @@
   }
 
   .layout-reading-column {
-    @apply min-w-0 w-full max-w-[900px];
+    @apply min-w-0 w-full;
+  }
+
+  .layout-article-sidebar {
+    @apply min-w-0 w-full;
   }
 
   .layout-sidebar-column {
