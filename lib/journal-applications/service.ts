@@ -132,34 +132,62 @@ export async function getJournalApplicationForUser(contentApplicationId: string,
   }
 }
 
-function journalDraftData(journal: JournalApplicationDraftInput): Prisma.JournalApplicationUncheckedUpdateInput {
-  return {
-    nameTr: journal.nameTr?.trim() || null,
-    nameEn: journal.nameEn?.trim() || null,
-    abbreviation: journal.abbreviation?.trim() || null,
-    publisherInstitutionId: journal.publisherInstitutionId ?? null,
-    proposedInstitutionName: journal.proposedInstitutionName?.trim() || null,
-    journalType: journal.journalType?.trim() || null,
-    publishingPlatform: journal.publishingPlatform?.trim() || null,
-    websiteUrl: journal.websiteUrl?.trim() || null,
-    pIssn: journal.pIssn?.trim() || null,
-    eIssn: journal.eIssn?.trim() || null,
-    firstPublicationYear: journal.firstPublicationYear ?? null,
-    publicationFrequency: journal.publicationFrequency ?? null,
-    publicationMonths: journal.publicationMonths ?? [],
-    correspondenceAddress: journal.correspondenceAddress?.trim() || null,
-    editorName: journal.editorName?.trim() || null,
-    editorTitle: journal.editorTitle?.trim() || null,
-    editorEmail: journal.editorEmail?.trim() || null,
-    editorOrcid: journal.editorOrcid?.trim() || null,
-    editorProfileUrl: journal.editorProfileUrl?.trim() || null,
-    officialJournalUrl: journal.officialJournalUrl?.trim() || null,
-    editorialBoardUrl: journal.editorialBoardUrl?.trim() || null,
-    latestIssueUrl: journal.latestIssueUrl?.trim() || null,
-    platformProfileUrl: journal.platformProfileUrl?.trim() || null,
-    publisherPageUrl: journal.publisherPageUrl?.trim() || null,
-    keywords: journal.keywords ?? [],
+function journalDraftPatchData(
+  journal: JournalApplicationDraftInput,
+): Prisma.JournalApplicationUncheckedUpdateInput {
+  const data: Prisma.JournalApplicationUncheckedUpdateInput = {}
+  if (journal.nameTr !== undefined) data.nameTr = journal.nameTr?.trim() || null
+  if (journal.nameEn !== undefined) data.nameEn = journal.nameEn?.trim() || null
+  if (journal.abbreviation !== undefined) data.abbreviation = journal.abbreviation?.trim() || null
+  if (journal.publisherInstitutionId !== undefined) {
+    data.publisherInstitutionId = journal.publisherInstitutionId ?? null
   }
+  if (journal.proposedInstitutionName !== undefined) {
+    data.proposedInstitutionName = journal.proposedInstitutionName?.trim() || null
+  }
+  if (journal.journalType !== undefined) data.journalType = journal.journalType?.trim() || null
+  if (journal.publishingPlatform !== undefined) {
+    data.publishingPlatform = journal.publishingPlatform?.trim() || null
+  }
+  if (journal.websiteUrl !== undefined) data.websiteUrl = journal.websiteUrl?.trim() || null
+  if (journal.pIssn !== undefined) data.pIssn = journal.pIssn?.trim() || null
+  if (journal.eIssn !== undefined) data.eIssn = journal.eIssn?.trim() || null
+  if (journal.firstPublicationYear !== undefined) {
+    data.firstPublicationYear = journal.firstPublicationYear ?? null
+  }
+  if (journal.publicationFrequency !== undefined) {
+    data.publicationFrequency = journal.publicationFrequency ?? null
+  }
+  if (journal.publicationMonths !== undefined) {
+    data.publicationMonths = journal.publicationMonths ?? []
+  }
+  if (journal.correspondenceAddress !== undefined) {
+    data.correspondenceAddress = journal.correspondenceAddress?.trim() || null
+  }
+  if (journal.editorName !== undefined) data.editorName = journal.editorName?.trim() || null
+  if (journal.editorTitle !== undefined) data.editorTitle = journal.editorTitle?.trim() || null
+  if (journal.editorEmail !== undefined) data.editorEmail = journal.editorEmail?.trim() || null
+  if (journal.editorOrcid !== undefined) data.editorOrcid = journal.editorOrcid?.trim() || null
+  if (journal.editorProfileUrl !== undefined) {
+    data.editorProfileUrl = journal.editorProfileUrl?.trim() || null
+  }
+  if (journal.officialJournalUrl !== undefined) {
+    data.officialJournalUrl = journal.officialJournalUrl?.trim() || null
+  }
+  if (journal.editorialBoardUrl !== undefined) {
+    data.editorialBoardUrl = journal.editorialBoardUrl?.trim() || null
+  }
+  if (journal.latestIssueUrl !== undefined) {
+    data.latestIssueUrl = journal.latestIssueUrl?.trim() || null
+  }
+  if (journal.platformProfileUrl !== undefined) {
+    data.platformProfileUrl = journal.platformProfileUrl?.trim() || null
+  }
+  if (journal.publisherPageUrl !== undefined) {
+    data.publisherPageUrl = journal.publisherPageUrl?.trim() || null
+  }
+  if (journal.keywords !== undefined) data.keywords = journal.keywords ?? []
+  return data
 }
 
 export async function saveJournalApplicationDraft(input: SaveJournalApplicationDraftInput) {
@@ -168,10 +196,11 @@ export async function saveJournalApplicationDraft(input: SaveJournalApplicationD
 
   await prisma.$transaction(async (tx) => {
     if (input.journal) {
+      const patch = journalDraftPatchData(input.journal)
       await tx.journalApplication.update({
         where: { id: journalId },
         data: {
-          ...journalDraftData(input.journal),
+          ...patch,
           duplicateContinueReason:
             input.duplicateContinueReason !== undefined
               ? input.duplicateContinueReason?.trim() || null
