@@ -53,9 +53,9 @@ Legacy matrix maps `data_quality.read` → `review_change_requests` + `view_audi
 |------------|:----:|:---------------:|:---------:|:-----:|:-----------:|:--------------:|:---------------:|
 | Admin panel layout | ✗ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ |
 | User management pages | ✗ | ✗ | ✗ | ✓ | ✓ | ✗ | ✗ |
-| Data quality page | ✗ | **✓ gap** | ✓ | ✓ | ✓ | ✗ | ✗ |
-| ETL page | ✗ | **✓ gap** | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Catalog lists (issues/articles) | ✗ | ✓ layout | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Data quality page | ✗ | **✓ fixed** | ✓ | ✓ | ✓ | ✗ | ✗ |
+| ETL page | ✗ | **✓ fixed** | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Catalog lists (issues/articles) | ✗ | **✓ blocked*** | ✓ | ✓ | ✓ | ✗ | ✗ |
 | Content app review | ✗ | ✗* | ✓ | ✓ | ✓ | ✗ | ✗ |
 | Change request review | ✗ | ✗ | ✓ | ✓ | ✓ | ✗ | ✗ |
 | Journal publish API | ✗ | ✗ | ✓ | ✓ | ✓ | ✗ | ✗ |
@@ -64,8 +64,7 @@ Legacy matrix maps `data_quality.read` → `review_change_requests` + `view_audi
 | Own applications | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Own change requests | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-\* Legacy EDITOR has `legacy_admin_access` but not `review_content_applications` unless dual-read maps it.  
-\*\* Legacy global EDITOR ≠ journal-scoped editor membership.
+\* Legacy EDITOR blocked from issues/articles via explicit `manage_journals` / `manage_articles` guards (Jul 2026 audit fix).
 
 ---
 

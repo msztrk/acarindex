@@ -14,7 +14,7 @@
 | MariaDB (ETL) | `acarindex_pilot_mysql` — `mariadb:10.11`, healthy |
 | Prod (same host) | `acarindex_prod_app`, `acarindex_prod_pg` — **not in audit scope** |
 | Compose | `docker-compose.pilot.yml` + `/etc/acarindex/pilot.env` |
-| Disk `/` | **86%** (62G / 75G) |
+| Disk `/` | **69%** (50G / 75G) — was 86%; cleaned Jul 5 |
 | Volumes | `acarindex-pilot_pilot_pg_data`, `acarindex-pilot_pilot_mysql_data` |
 
 ---
@@ -38,7 +38,7 @@
 | Retention | `pilot-backup-retention` policy in deploy scripts |
 | Off-site B2 | **BLOCKED** — AUD-018 |
 
-**AUD-004 (P1):** 86% disk + large local backups on same volume.
+**AUD-004 (P1):** Was 86%; **closed** at 69% after `pilot-disk-cleanup.sh` (reclaimed ~2.9GB build cache + retention).
 
 ---
 

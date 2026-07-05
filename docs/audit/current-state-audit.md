@@ -1,9 +1,9 @@
 # AcarIndex Current State Audit
 
-**Audit date:** 2026-07-05  
+**Audit date:** 2026-07-05 (revision)  
 **Scope:** Local repository (`D:\acarindex-web`, branch `redesign-v2`) and beta pilot (`acarindex-beta`, `/opt/acarindex`, `/etc/acarindex/pilot.env`)  
-**Mode:** Read-only inspection — no production changes, migrations, or data modifications  
-**Prior baseline:** `docs/audit/` @ `c968070` + hotfixes `f3d0965`
+**Mode:** Read-only inspection + targeted security fixes (admin guards) + beta operational actions  
+**Local HEAD:** `4798bf4` + pending guard/audit commit
 
 ---
 
@@ -11,14 +11,29 @@
 
 | Metric | Value |
 |--------|-------|
-| Local HEAD | `f3d0965` — clean working tree, aligned with `origin/redesign-v2` |
-| Beta HEAD | `95152ba` — **1 commit behind** local (`f3d0965` hotfixes not deployed) |
+| Local HEAD | `4798bf4` — audit docs; guard commit pending push |
+| Beta HEAD (pre-deploy) | `95152ba` — **behind** origin `4798bf4` |
 | Vitest | 52 files / **517 passed**, 17 skipped |
 | npm audit | 2 moderate (postcss XSS via Next.js) |
-| Issue register | **P0: 2 · P1: 7 · P2: 10 · P3: 9** (28 total) |
-| Faz B closure gate | **`CLOSURE=HAYIR`** (Jul 4 22:27 UTC — full 12-step run) |
+| Issue register | **P0: 0 · P1: 5 open · P2: 10 · P3: 10** |
+| Gate status | **`GATE-001` CLOSURE=HAYIR** (operational, not P0) |
+| Beta disk | **69%** (was 86%; cleanup this audit) |
 
-**Verdict:** **P0–P1 first** — resolve memory attachment storage, B2 configuration, and incomplete Faz B closure before Faz C or new feature work. Architecture is sound; blockers are operational and RBAC hardening.
+**Verdict:** Resolve **application attachment durability** (B2 pilot bucket OR disable upload) and re-run Faz B gate before new features. **No 1TB PDF migration.**
+
+---
+
+## Attachment Storage Decision
+
+| Layer | Decision |
+|-------|----------|
+| Application uploads | Private B2 `acarindex-applications-pilot` (preferred) OR disable upload temporarily |
+| PG off-site backup | B2 backup scripts — database dumps only |
+| 1TB PDF archive | **Deferred** — do not change live PDF URLs |
+
+Beta verification: 4 attachments, all from `msztrk@gmail.com` (E2E/test) → memory storage severity **P1** not P0.
+
+Faz B **not closed** with memory provider + upload enabled.
 
 ---
 
@@ -34,7 +49,7 @@
 | Postgres | — | `acarindex_pilot_pg` (`postgres:16-alpine`, healthy) |
 | MariaDB (ETL source) | — | `acarindex_pilot_mysql` (`mariadb:10.11`, healthy) |
 | Prod containers (same host) | — | `acarindex_prod_app`, `acarindex_prod_pg` (not audited) |
-| Disk `/` | — | **86% used** (62G / 75G) |
+| Disk `/` | — | **69% used** (50G / 75G) — cleaned from 86% |
 | Docker volumes | — | `acarindex-pilot_pilot_pg_data`, `acarindex-pilot_pilot_mysql_data` |
 | Migrations | 15 (schema) | 15 applied, **0 pending**; latest: `20260714100000_notification_outbox_faz_b5` |
 | Backups | — | `/var/backups/acarindex-pilot` ≈ **7.5G** |
@@ -90,20 +105,19 @@ Blocker note in log: B2 browser setup blocked by unavailable Cursor IDE Browser 
 
 ---
 
-## Critical Risks (Confirmed)
+## Critical Risks (Reclassified)
 
 | Risk | Severity | Status | Evidence |
 |------|----------|--------|----------|
-| `APPLICATION_STORAGE_PROVIDER=memory` on beta | P0 | **TRUE** | Container env; 3 attachments `pending`, non-durable across restart |
-| Faz B operational closure incomplete | P0 | **TRUE** | Gate report `CLOSURE=HAYIR`; B2/storage/E2E/email failures |
-| Disk usage high | P1 | **TRUE** | 86% on `/`; backups grew to **7.5G** |
-| Beta deploy lag | P1 | **TRUE** | `95152ba` vs `f3d0965` |
-| B2 credentials absent | P1 | **TRUE** | Storage + off-site backup BLOCKED in closure |
-| Admin DQ/ETL page guard gaps | P1 | **TRUE** | Layout-only `requireAdminSession` |
-| 736 draft journals (E2E residue) | P1 | **TRUE** | Beta SQL; public routes filter correctly |
-| Duplicate journal slugs | P2 | **TRUE** | 49 slug groups with count > 1 |
-| Draft journal public leak | — | **FALSE (code)** | Public loaders filter `status: 'published'` |
-| Git dirty local tree | — | **FALSE** | `git status --short` empty |
+| `APPLICATION_STORAGE_PROVIDER=memory` on beta | **P1** | open | Test/E2E attachments only; still blocks Faz B |
+| Faz B closure `CLOSURE=HAYIR` | **gate-status** | open | GATE-001 — outcome of storage/E2E/outbox gaps |
+| Disk usage high | P1 | **closed** | 86% → 69% via pilot-disk-cleanup |
+| Beta deploy lag | P1 | open | Pending deploy of audit + guards |
+| B2 app storage credentials absent | P1 | open | Application bucket only |
+| Admin DQ/ETL guard gaps | P1 | **closed** | Guards added this audit |
+| 736 draft journals (E2E residue) | P1 | open | Read-only SQL analysis complete |
+| Duplicate journal slugs | **P2** | open | ID-in-URL routing prevents collision |
+| PG off-site backup | P2 | open | Separate from PDF archive |
 
 ---
 
@@ -159,11 +173,11 @@ No `--force` fix applied during audit.
 |----------|---------------|
 | Audit sections covered | 25 / 25 |
 | Deliverable files | 10 (+ `scripts/audit/beta-db-integrity.sql`, enhanced `collect-routes.ts`) |
-| P0 | 2 |
-| P1 | 7 |
+| P0 | 0 |
+| P1 | 5 open (2 closed) |
 | P2 | 10 |
-| P3 | 9 |
-| Beta closure gate | **HAYIR** |
+| P3 | 10 |
+| Gate status | GATE-001 **HAYIR** |
 | Recommended path | **P0–P1 first** (not architectural rewrite) |
 | Blockers | B2 credentials, memory storage, closure gate failures (storage/E2E/email) |
 

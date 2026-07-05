@@ -1,39 +1,38 @@
 # AcarIndex Recommended Roadmap
 
-**Audit date:** 2026-07-05  
-**Based on:** Expanded read-only audit — 28 issues (P0=2, P1=7, P2=10, P3=9)  
-**Closure gate:** **`CLOSURE=HAYIR`** (Jul 4 22:27 UTC full run)
+**Audit date:** 2026-07-05 (revision)  
+**Based on:** Reclassified audit — **P0: 0 · P1: 5 open · P2: 10 · P3: 10** + gate-status `GATE-001`  
+**Closure gate:** **`CLOSURE=HAYIR`** (gate-status only — not a P0 finding)
 
 ---
 
 ## §22 Guiding Principle
 
-**Complete Faz B operational closure first.** Do not start Faz C or major feature work until the gate reports `CLOSURE=EVET` and P0/P1 blockers are resolved.
+**Complete Faz B operational closure first**, but distinguish:
 
-B2 credential setup is the primary external blocker (automated browser setup failed in closure environment).
+1. **Application attachment storage** — private B2 bucket `acarindex-applications-pilot` (small files only)
+2. **PG off-site backup** — B2 for database dumps
+3. **1TB PDF archive migration** — **DEFERRED**; do not change live PDF URLs
+
+Do not start Faz C until durable attachments (or upload disabled) and gate reports `CLOSURE=EVET`.
 
 ---
 
 ## Phase 0 — Unblock Faz B Closure (1–3 Days)
 
-**Goal:** `CLOSURE=EVET` on beta with all gate steps passing.
+**Goal:** `CLOSURE=EVET` on beta with gate steps passing (except deferred PDF archive).
 
 | Step | Action | Issues |
 |------|--------|--------|
-| 1 | Deploy `f3d0965` to beta (`redesign-v2`) | AUD-003 |
-| 2 | Configure B2 application storage — `configure-pilot-b2-storage.sh` | AUD-001, AUD-005, AUD-015, AUD-028 |
-| 3 | Re-run `deploy/scripts/beta/faz-b-operational-closure-gate.sh` | AUD-002 |
-| 4 | Verify gate outputs: | |
-| | — 18 storage integration tests PASS | AUD-015 |
-| | — Outbox real email PASS | AUD-016 |
-| | — E2E journal application + publish PASS | AUD-017 |
-| | — i18n validate PASS (already passed Jul 4) | — |
-| | — Regression smoke PASS | — |
-| | — Final `CLOSURE=EVET` | AUD-002 |
+| 1 | Deploy latest `redesign-v2` to beta (audit + guard commits) | AUD-003 |
+| 2 | **Application storage only:** configure B2 via `configure-pilot-b2-storage.sh` OR disable upload | AUD-001, AUD-005, AUD-015, AUD-028 |
+| 3 | Configure PG off-site backup via `configure-pilot-b2-backup.sh` | AUD-018 |
+| 4 | Re-run `faz-b-operational-closure-gate.sh` | GATE-001 |
+| 5 | Verify: storage tests PASS, outbox email PASS, E2E journal flow PASS | AUD-015–017 |
 
-**Exit criteria:** Attachments survive container restart; gate log shows `CLOSURE=EVET`; `Faz C başlatılabilir: EVET`.
+**Exit criteria:** Attachments survive restart OR upload disabled with notice; gate log `CLOSURE=EVET`.
 
-**Out of scope:** Faz C features, editor/institution implementation, announcement/data_correction wizards.
+**Out of scope:** 1TB PDF B2 migration, Faz C features, slug auto-fixes.
 
 ---
 
@@ -41,14 +40,11 @@ B2 credential setup is the primary external blocker (automated browser setup fai
 
 | Step | Action | Issues |
 |------|--------|--------|
-| 5 | Add guards: `data-quality/page.tsx`, `etl/page.tsx` | AUD-006, AUD-007 |
-| 6 | Disk/backup hygiene — retention on 7.5G backups; monitor 86% volume | AUD-004 |
-| 7 | Configure B2 off-site backup | AUD-018 |
-| 8 | Clean draft journals — `faz6b2-cleanup-smoke-artifacts.sh` | AUD-008 |
-| 9 | Investigate duplicate slug groups (49) — ETL or merge policy | AUD-009 |
-| 10 | Rate-limit or auth-gate `/api/institutions/search` | AUD-013 |
-
-**Exit criteria:** All P1 closed or documented exception; disk trending below 80%; admin DQ/ETL require explicit permissions.
+| 6 | Admin guards (data-quality, ETL, issues, articles) | AUD-006, AUD-007 — **done** |
+| 7 | Disk/backup hygiene | AUD-004 — **done** (69%) |
+| 8 | Draft journal controlled cleanup (after E2E stable) | AUD-008 |
+| 9 | Duplicate slug data quality review (no auto changes) | AUD-009 |
+| 10 | Optional: rate limit institutions search | AUD-013 |
 
 ---
 
@@ -56,36 +52,54 @@ B2 credential setup is the primary external blocker (automated browser setup fai
 
 | Step | Action | Issues |
 |------|--------|--------|
-| 11 | Disable `LEGACY_DUAL_READ`; migrate admin routes to `admin_permissions` | AUD-010 |
-| 12 | Search performance — profile `/search` (~2.6s beta) | AUD-011 |
+| 11 | Disable `LEGACY_DUAL_READ` | AUD-010 |
+| 12 | Search performance | AUD-011 |
 | 13 | Track Next.js/postcss patch | AUD-014 |
 | 14 | PDF proxy rate limiting | AUD-019 |
-| 15 | Establish performance baselines (home warm/cold) | AUD-012 |
-
-**Exit criteria:** Single authorization path; search TTFB < 1s warm on beta; npm audit tracked.
 
 ---
 
-## Phase 3 — Product (After `CLOSURE=EVET` Only)
+## Phase 3 — Product (After Gate Criteria Met)
 
-| Step | Action | Issues |
-|------|--------|--------|
-| 16 | Editor panel direct edit | AUD-021 |
-| 17 | Institution panel management | AUD-022 |
-| 18 | Announcement + data_correction application flows | AUD-023 |
-| 19 | Editor draft journal link UX | AUD-020 |
-| 20 | Deprecate global EDITOR role | AUD-024 |
-| 21 | PG-native consolidation; reduce Supabase references | AUD-025 |
-| 22 | Generate `types/database.ts` from Prisma | AUD-026 |
-| 23 | Fix docker compose env-file warnings | AUD-027 |
+Editor panel, institution panel, announcement/data_correction flows — AUD-020–023.
 
 ### Faz C — Do Not Start Now
 
-Infrastructure exists (`playwright.beta-responsive.config.ts`, `faz6c-beta-c-responsive.sh`) but requires:
+Requires Phase 0 gate `CLOSURE=EVET` and P1 attachment/backup resolved.
 
-1. Phase 0 `CLOSURE=EVET`
-2. P0/P1 resolved
-3. B2 durable storage verified
+---
+
+## §8 Transition Criteria (Yeni Özelliklere Geçiş)
+
+| Criterion | Required | Current |
+|-----------|----------|---------|
+| Application attachment durable OR upload disabled | EVET | HAYIR — memory + upload open |
+| Admin DQ/ETL/issues/articles explicit guards | EVET | **EVET** (this audit) |
+| Beta disk <80% | EVET | **EVET** (69%) |
+| Beta deployed to latest SHA | EVET | Pending deploy |
+| PG off-site backup configured | EVET | HAYIR |
+| Outbox all trigger paths verified | EVET | HAYIR (8 pass / 4 fail) |
+| E2E journal application + publish verified | EVET | HAYIR (submit 422) |
+| Faz B gate `CLOSURE=EVET` | EVET | HAYIR |
+| 1TB PDF B2 migration | **HAYIR — not required** | Deferred |
+
+**Ready for new features: HAYIR** until attachment durability (or upload off) + outbox/E2E + off-site backup.
+
+**Full PDF/B2 migration needed now: HAYIR**
+
+---
+
+## §9 Functional Development Order
+
+1. **Deploy + admin permission guards** (this audit)
+2. **Application attachment persistence** — B2 `acarindex-applications-pilot` OR disable upload + pilot notice
+3. **PG off-site backup** — separate from PDF archive
+4. **Re-run closure gate** — storage, outbox, E2E steps
+5. **Controlled draft cleanup** — dry-run doc; test artifacts only after backup
+6. **Slug data quality** — analysis only; fix only canonical/sitemap conflicts
+7. **Institutions search hardening** — optional rate limit (P3)
+8. **Faz C / new product features** — after §8 criteria met
+9. **Post-product final audit** — 1TB PDF archive migration evaluation
 
 ---
 
@@ -94,22 +108,19 @@ Infrastructure exists (`playwright.beta-responsive.config.ts`, `faz6c-beta-c-res
 | Metric | Current | Target |
 |--------|---------|--------|
 | Closure gate | `CLOSURE=HAYIR` | `CLOSURE=EVET` |
-| Local SHA | `f3d0965` | Deployed to beta |
-| Beta SHA | `95152ba` | `f3d0965` |
-| Storage provider | `memory` | `b2` + restart test |
-| Application attachments | 4 (3 pending) | Committed + downloadable post-restart |
-| Draft journals | 736 | <50 post-cleanup |
-| Duplicate slug groups | 49 | 0 for published |
-| Admin DQ/ETL guards | Missing | Required permissions |
-| Vitest | 517 passed | Maintain/increase |
-| npm audit moderate | 2 | 0 or tracked exception |
-| Beta disk | 86% | <80% |
+| P0 count | 0 | 0 |
+| P1 open | 5 | 0 |
+| Storage provider | `memory` | `b2` OR upload disabled |
+| Beta disk | **69%** | <80% |
+| Admin guards | **Fixed** | Required permissions |
+| Draft journals | 736 | Controlled cleanup post-E2E |
+| Duplicate slug groups | 49 | No route collision (ID-in-URL OK) |
 
 ---
 
 ## Verdict
 
-**P0–P1 first** — not an architectural rewrite. Core catalog, auth, and application code are production-grade; beta operational validation and storage durability are the gating items.
+**P1 first** — not an architectural rewrite. Attachment storage decision and gate verification are the gating items; PDF archive migration is explicitly out of scope.
 
 ---
 
@@ -117,4 +128,4 @@ Infrastructure exists (`playwright.beta-responsive.config.ts`, `faz6c-beta-c-res
 
 - [Issue register](./issue-register.csv)
 - [Current state audit](./current-state-audit.md)
-- [Operations review](./operations-review.md)
+- [Security review](./security-review.md)

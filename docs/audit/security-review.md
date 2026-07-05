@@ -1,50 +1,40 @@
 # AcarIndex Security Review
 
-**Audit date:** 2026-07-05  
-**Scope:** Local repository @ `f3d0965` and beta pilot @ `95152ba` (read-only)  
-**Issue counts:** P0: 2 · P1: 7 · P2: 10 · P3: 9 (28 total)
+**Audit date:** 2026-07-05 (revision)  
+**Scope:** Local repository @ `4798bf4` + guard commit; beta pilot @ pre-deploy `95152ba`  
+**Issue counts:** **P0: 0 · P1: 5 open (2 closed) · P2: 10 · P3: 10** (28 technical + 1 gate-status)  
+**Gate status:** `GATE-001` — **`CLOSURE=HAYIR`** (operational outcome, not P0 root cause)
 
 ---
 
 ## §15 Executive Summary
 
-Strong auth fundamentals: PG-native sessions, CSRF on auth mutations, rate limits, 517 passing tests, correct published-only public filtering. Critical gaps are **operational** (memory storage, incomplete Faz B closure, B2 absent) and **RBAC page guard gaps** on admin ETL/data-quality pages. Several P2 hardening items remain before production.
+Strong auth fundamentals: PG-native sessions, CSRF on auth mutations, rate limits, 517 passing tests, correct published-only public filtering. **P0 reclassification:** memory storage downgraded to **P1** after beta verification showed all 4 attachments are E2E/test artifacts (`msztrk@gmail.com`); `CLOSURE=HAYIR` moved to **gate-status** record `GATE-001`.
 
-**Do not start Faz C** until `CLOSURE=EVET` and P0/P1 resolved.
+**Admin permission guards implemented** for data-quality, ETL, issues, and articles pages — legacy global EDITOR blocked from DQ/ETL; issues/articles require explicit `manage_journals` / `manage_articles`.
+
+**Do not start Faz C** until application attachment durability (or upload disabled) and gate steps pass. **Do not start 1TB PDF/B2 migration** — separate from application attachment bucket.
 
 ---
 
 ## P0 Findings
 
-### AUD-001 — Memory Attachment Storage on Beta
-
-| Field | Detail |
-|-------|--------|
-| Evidence | `APPLICATION_STORAGE_PROVIDER=memory`; 3 attachments `pending`; `lib/applications/storage/index.ts` Map store |
-| Impact | Uploads lost on container restart; storage integration tests fail |
-| Recommendation | Configure B2; run `configure-pilot-b2-storage.sh`; verify restart persistence |
-
-### AUD-002 — Faz B Closure CLOSURE=HAYIR
-
-| Field | Detail |
-|-------|--------|
-| Evidence | Gate log `20260704_222004`; B2 BLOCKED; storage/E2E/email FAIL |
-| Impact | Beta not validated for production-like journal application operations |
-| Recommendation | Complete B2 setup; re-run full closure gate |
+**None** after reclassification. Memory storage is P1 on beta (test uploads only). Production is out of scope.
 
 ---
 
 ## P1 Findings
 
-| ID | Title | Area |
-|----|-------|------|
-| AUD-003 | Beta 1 commit behind local (`f3d0965`) | Deploy |
-| AUD-004 | Disk 86%; backups 7.5G | Infra |
-| AUD-005 | B2 credentials absent (app + backup) | Infra |
-| AUD-006 | Data quality page lacks permission guard | Security |
-| AUD-007 | ETL page lacks permission guard | Security |
-| AUD-008 | 736 draft journals (E2E residue) | Data |
-| AUD-009 | 49 duplicate journal slug groups | Data |
+| ID | Title | Status | Notes |
+|----|-------|--------|-------|
+| AUD-001 | Memory attachment storage on beta | open | P1 — test/E2E uploads only; still blocks Faz B |
+| AUD-003 | Beta deploy lag | open | Deploy pending this audit commit |
+| AUD-004 | Disk >80% | **closed** | 86% → **69%** after `pilot-disk-cleanup.sh` |
+| AUD-005 | B2 creds absent (app storage) | open | `acarindex-applications-pilot` only |
+| AUD-006 | Data quality guard gap | **closed** | `requirePermission('data_quality.read')` |
+| AUD-007 | ETL guard gap | **closed** | `requirePermission('etl.read')` |
+| AUD-008 | 736 draft journals | open | E2E residue; read-only analysis done |
+| AUD-018 | Off-site PG backup BLOCKED | open | Separate from PDF archive |
 
 ---
 
@@ -52,22 +42,43 @@ Strong auth fundamentals: PG-native sessions, CSRF on auth mutations, rate limit
 
 | ID | Title | Area |
 |----|-------|------|
+| AUD-009 | 49 duplicate journal slug groups | Data — **downgraded** (ID-in-URL routing) |
 | AUD-010 | LEGACY_DUAL_READ dual authorization path | Security |
 | AUD-011 | Search page ~2.6s on beta | Performance |
 | AUD-012 | Home page cold/warm variance | Performance |
-| AUD-013 | Unauthenticated `/api/institutions/search` | Security |
 | AUD-014 | npm audit 2 moderate (postcss) | Security |
 | AUD-015 | Storage integration tests FAIL | Operations |
-| AUD-016 | Outbox real email FAIL | Operations |
+| AUD-016 | Outbox real email partial FAIL | Operations |
 | AUD-017 | E2E journal flow FAIL | Operations |
-| AUD-018 | B2 off-site backup BLOCKED | Operations |
 | AUD-019 | PDF proxy no rate limit | Security |
 
 ---
 
 ## P3 Findings
 
-AUD-020 through AUD-028 — see [issue register](./issue-register.csv).
+AUD-013 (institutions search — **downgraded** from P2; public catalog names only), AUD-020 through AUD-028 — see [issue register](./issue-register.csv).
+
+---
+
+## Gate Status (Separate from P0)
+
+| ID | Status | Meaning |
+|----|--------|---------|
+| GATE-001 | `CLOSURE=HAYIR` | Faz B operational closure gate failed storage/E2E/outbox/B2 steps; **aggregate outcome** of AUD-001, AUD-005, AUD-015–018 |
+
+Faz B is **not closed** with `memory` provider + uploads enabled.
+
+---
+
+## Attachment Storage Decision
+
+| Layer | Scope | Decision |
+|-------|-------|----------|
+| Application files | Journal application uploads (~MB) | **Preferred:** private B2 bucket `acarindex-applications-pilot` |
+| PG off-site backup | Database dumps | Separate B2 backup config — NOT PDF archive |
+| 1TB PDF archive | Catalog PDFs on live URLs | **Deferred** to post-product final audit — do NOT migrate now |
+
+**Temporary without B2 keys:** disable upload via feature flag OR docker persistent volume provider; verify no data loss on restart; optional pilot UI notice.
 
 ---
 
@@ -81,76 +92,32 @@ AUD-020 through AUD-028 — see [issue register](./issue-register.csv).
 | Session fixation / lifecycle | ✓ | `auth-lifecycle.test.ts` |
 | IDOR — user APIs | ✓ | Owner scoping in application routes |
 | IDOR — admin APIs | ✓ | Permission session required |
-| CSRF — user JSON APIs | Partial | Cookie SameSite; no explicit CSRF token on all user POSTs |
-| Admin page authorization | **Gap** | DQ/ETL pages (P1) |
+| Admin page authorization | **Fixed** | DQ/ETL/issues/articles explicit guards |
 | Public data leak (drafts) | ✓ None | Published filters |
 | Beta HTTP basic auth | ✓ | External access gated |
-| Beta noindex | ✓ | `X-Robots-Tag: noindex` |
-| Webhook signature (Resend) | ✓ When configured | Svix verification |
-| Internal revalidate bearer | ✓ | `REVALIDATE_SECRET` |
-| Secrets in git | ✓ Clean | See secret scan below |
-| npm vulnerabilities | 2 moderate | postcss via Next |
+| Institutions search | Public | id + nameTr/nameEn only; min 2 chars; limit 10 |
 
 ---
 
-## IDOR Analysis
+## Admin Authorization (Fixed)
 
-| Surface | Mitigation |
-|---------|------------|
-| `/api/applications/[id]/*` | Session user must own application |
-| `/api/applications/[id]/attachments/[attachmentId]/download` | Ownership + upload status check |
-| `/api/user/reading-lists/[listId]` | List owned by session user |
-| `/api/admin/*` | Admin permission session |
-| `/api/pdf-proxy/[id]` | Published article only; no user-specific data |
-| `/api/institutions/search` | **No auth** — returns institution metadata (enumeration) |
+| Page | Guard | Permission |
+|------|-------|------------|
+| data-quality (+ detail) | `requirePermission('data_quality.read')` | review_change_requests OR view_audit_logs |
+| etl | `requirePermission('etl.read')` | manage_system_settings |
+| issues | `requireAdminPermissionGuard('manage_journals')` | explicit DB permission |
+| articles | `requireAdminPermissionGuard('manage_articles')` | explicit DB permission |
+| journals, applications, change-requests | ✓ (prior) | — |
 
----
-
-## CSRF Analysis
-
-| Endpoint class | Protection |
-|----------------|------------|
-| `/api/auth/login`, register, reset, verify | CSRF token required |
-| `/api/user/*` POST/PATCH/DELETE | Session cookie; relies on SameSite=Lax/Strict |
-| `/api/applications/*` mutations | Session + ownership |
-| `/api/admin/*` mutations | Admin session |
-
-Recommendation: Document SameSite policy; consider CSRF tokens for sensitive user mutations if cross-site risk increases.
+Legacy global **EDITOR** blocked from DQ/ETL; issues/articles require explicit permissions (not `legacy_admin_access` alone).
 
 ---
 
-## Secret Scan
+## Institution Search Assessment
 
-**Command:** `npm run source:audit-secrets`
+`GET /api/institutions/search` — returns `{ id, nameTr, nameEn }` only; min query length 2; limit 10; no auth; no rate limit.
 
-| Location | Pattern | Risk |
-|----------|---------|------|
-| `.env.example` | postgresql_url_with_password | Low (placeholder) |
-| `staging.env.example` | postgresql_url_with_password | Low |
-| `tests/database-url.test.ts` | Masked fixtures | None |
-
-5 hits, 3 locations, 0 git history commits with secrets. **No secret values printed.**
-
----
-
-## npm Audit (§15)
-
-```
-2 moderate — postcss GHSA-qx2v-qp2m-jg93 via next@16.2.9
-CVSS 6.1 — XSS via unescaped </style> in CSS stringify
-```
-
-Track Next.js releases; do not force major downgrade.
-
----
-
-## Admin Authorization Gaps
-
-| Page | Explicit guard | Issue |
-|------|:--------------:|-------|
-| users, audit, journals, applications, change-requests, membership-applications | ✓ | — |
-| data-quality, etl | ✗ | P1 AUD-006, AUD-007 |
-| issues, articles, authors, pdfs, health, site-content | ✗ layout | Lower severity read-only |
+**Severity: P3** — public catalog institution names (same as browse data). Recommend rate limit + min length if staying public.
 
 ---
 
@@ -159,3 +126,4 @@ Track Next.js releases; do not force major downgrade.
 - [Authorization matrix](./authorization-matrix.md)
 - [Issue register](./issue-register.csv)
 - [Operations review](./operations-review.md)
+- [Recommended roadmap](./recommended-roadmap.md)
