@@ -127,6 +127,48 @@ export type UiMessages = {
   common: {
     loading: string
   }
+  journalPage: {
+    home: string
+    archive: string
+    aimScope: string
+    editorialBoard: string
+    writingRules: string
+    contact: string
+    recentArticles: string
+    noRecentArticles: string
+    issues: string
+    allArchive: string
+    viewAllIssues: string
+    aboutJournal: string
+    searchInJournal: string
+    searchPlaceholder: string
+    searchSubmit: string
+    latestIssue: string
+    quickLinks: string
+    archiveAndIssues: string
+    issueFallback: string
+    publisher: string
+    publishLanguage: string
+    frequency: string
+    startYear: string
+    subjectCategory: string
+    website: string
+    publicationYear: string
+    volume: string
+    issueNumber: string
+    articleCount: string
+    articlesLabel: string
+    backToArchive: string
+    emptySection: string
+    viewTurkishPage: string
+    trOnlySection: string
+    archivePageTitle: string
+    archiveIntro: string
+    noArchivedIssues: string
+    noArticlesInIssue: string
+    pagesShort: string
+    journalMenu: string
+  }
 }
 
 export const trMessages: UiMessages = {
@@ -259,5 +301,47 @@ export const trMessages: UiMessages = {
   },
   common: {
     loading: 'Yükleniyor…',
+  },
+  journalPage: {
+    home: 'Dergi',
+    archive: 'Arşiv',
+    aimScope: 'Amaç & Kapsam',
+    editorialBoard: 'Editör Kurulu',
+    writingRules: 'Yazım Kuralları',
+    contact: 'İletişim',
+    recentArticles: 'Son makaleler',
+    noRecentArticles: 'Bu dergide henüz listelenecek makale bulunmuyor.',
+    issues: 'Sayılar',
+    allArchive: 'Tüm arşiv',
+    viewAllIssues: 'Tüm sayıları gör',
+    aboutJournal: 'Dergi hakkında',
+    searchInJournal: 'Dergide ara',
+    searchPlaceholder: 'Bu dergide ara…',
+    searchSubmit: 'Ara',
+    latestIssue: 'Son sayı',
+    quickLinks: 'Hızlı bağlantılar',
+    archiveAndIssues: 'Arşiv ve sayılar',
+    issueFallback: 'Sayı',
+    publisher: 'Yayıncı',
+    publishLanguage: 'Yayın dili',
+    frequency: 'Yayın periyodu',
+    startYear: 'Başlangıç yılı',
+    subjectCategory: 'Konu alanı',
+    website: 'Web sitesi',
+    publicationYear: 'Yayın yılı',
+    volume: 'Cilt',
+    issueNumber: 'Sayı',
+    articleCount: 'Makale sayısı',
+    articlesLabel: 'makale',
+    backToArchive: 'Arşive dön',
+    emptySection: 'Bu bölüm için içerik henüz eklenmemiş.',
+    viewTurkishPage: 'Türkçe sayfayı görüntüle',
+    trOnlySection: 'Bu bölüm Türkçe olarak sunulmaktadır.',
+    archivePageTitle: '{title} Arşivi',
+    archiveIntro: '{title} dergisinin yayımlanmış sayılarını yıllara göre inceleyin.',
+    noArchivedIssues: 'Bu dergi için henüz arşivlenmiş sayı bulunmuyor.',
+    noArticlesInIssue: 'Bu sayıda listelenecek makale bulunmuyor.',
+    pagesShort: 'ss.',
+    journalMenu: 'Dergi menüsü',
   },
 }

@@ -69,12 +69,11 @@ export function pickLocalizedAbstract(
   return en && en !== '-' ? en : undefined
 }
 
-/** Journal description is TR-only in DB — never expose as EN metadata. */
+/** Journal description — TR-only in DB; shown on EN pages as fallback until EN copy exists. */
 export function pickLocalizedJournalDescription(
   description: string | null | undefined,
-  locale: SiteLocale,
+  _locale: SiteLocale,
 ): string | undefined {
-  if (locale === 'en') return undefined
   const text = description?.trim()
   return text || undefined
 }

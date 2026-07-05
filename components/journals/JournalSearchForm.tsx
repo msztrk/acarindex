@@ -4,12 +4,19 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { SiteLocale } from '@/lib/i18n/locale'
+import { withLocalePath } from '@/lib/i18n/locale'
+import type { UiMessages } from '@/lib/i18n/ui-messages'
 
 export function JournalSearchForm({
   journalId,
+  locale,
+  ui,
   className,
 }: {
   journalId: number
+  locale: SiteLocale
+  ui: UiMessages
   className?: string
 }) {
   const router = useRouter()
@@ -24,7 +31,7 @@ export function JournalSearchForm({
       type: 'article',
       journal_id: String(journalId),
     })
-    router.push(`/search?${params.toString()}`)
+    router.push(withLocalePath(`/search?${params.toString()}`, locale))
   }
 
   return (
@@ -42,17 +49,17 @@ export function JournalSearchForm({
             onChange={(e) => setQ(e.target.value)}
             type="search"
             autoComplete="off"
-            aria-label="Bu dergide makale ara"
-            placeholder="Bu dergide ara…"
+            aria-label={ui.journalPage.searchInJournal}
+            placeholder={ui.journalPage.searchPlaceholder}
             className="min-w-0 flex-1 bg-transparent px-2.5 py-2.5 text-base outline-none placeholder:text-muted-foreground"
           />
         </div>
         <button
           type="submit"
           className="inline-flex min-h-[44px] shrink-0 items-center justify-center bg-brand-primary px-3.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-brand-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          aria-label="Dergide ara"
+          aria-label={ui.journalPage.searchSubmit}
         >
-          Ara
+          {ui.journalPage.searchSubmit}
         </button>
       </div>
     </form>

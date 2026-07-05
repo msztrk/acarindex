@@ -2,6 +2,9 @@ import type { SiteLocale } from '@/lib/i18n/locale'
 import {
   computeArticleHasEnglishContent,
   computeJournalHasEnglishContent,
+  hasEnglishJournalContent,
+  hasMeaningfulText,
+  hasTurkishJournalContent,
   type ArticleContentFields,
   type JournalContentFields,
 } from '@/lib/i18n/content-availability'
@@ -24,6 +27,13 @@ export function journalHasEnIndexAccess(journal: JournalEnRouteFields): boolean 
   return computeJournalHasEnglishContent(journal)
 }
 
+/** EN locale UI for published journal catalog (localized fields + TR fallbacks). */
+export function journalAllowsEnglishLocale(journal: JournalEnRouteFields): boolean {
+  if (journal.has_en_content === true) return true
+  if (hasEnglishJournalContent(journal)) return true
+  return hasTurkishJournalContent(journal) || hasMeaningfulText(journal.titleTr)
+}
+
 export function shouldRedirectEnArticleToTr(
   locale: SiteLocale,
   article: ArticleEnRouteFields,
@@ -35,5 +45,5 @@ export function shouldRedirectEnJournalToTr(
   locale: SiteLocale,
   journal: JournalEnRouteFields,
 ): boolean {
-  return locale === 'en' && !journalHasEnIndexAccess(journal)
+  return locale === 'en' && !journalAllowsEnglishLocale(journal)
 }

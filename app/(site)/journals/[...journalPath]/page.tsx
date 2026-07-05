@@ -37,6 +37,9 @@ import { buildJournalCatalogPath } from '@/lib/i18n/slugs'
 import { shouldRedirectEnJournalToTr } from '@/lib/i18n/en-route-guard'
 import { pickLocalizedArticleDisplayTitle, pickLocalizedJournalDescription } from '@/lib/i18n/pick-localized-text'
 import { buildJournalMetadataAlternates, pickLocalizedTitle } from '@/lib/seo/hreflang'
+import { getUiMessages } from '@/lib/i18n/ui-messages'
+import type { UiMessages } from '@/lib/i18n/ui-messages'
+import { withLocalePath } from '@/lib/i18n/locale'
 
 // ─── URL çözümleme ───────────────────────────────────────────────────────────
 
@@ -141,8 +144,9 @@ export async function generateMetadata({
   const journal = await getJournal(parsed.journalId)
   if (!journal) return {}
 
-  const journalTitle = journal.title_tr ?? journal.title_en ?? 'Dergi'
   const locale = await getRequestLocale()
+  const ui = getUiMessages(locale)
+  const journalTitle = pickLocalizedTitle(journal.title_tr, journal.title_en, locale) || (locale === 'en' ? 'Journal' : 'Dergi')
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
   const subPath =
     resolved.subPage === 'home'
@@ -188,8 +192,8 @@ export async function generateMetadata({
   }
 
   if (resolved.subPage === 'arsiv') {
-    const archiveTitle = `${journalTitle} Arşivi`
-    const archiveDescription = `${journalTitle} dergisinin yayımlanmış sayılarını yıllara göre inceleyin.`
+    const archiveTitle = ui.journalPage.archivePageTitle.replace('{title}', journalTitle)
+    const archiveDescription = ui.journalPage.archiveIntro.replace('{title}', journalTitle)
 
     return {
       title: archiveTitle,
@@ -238,10 +242,12 @@ function AuthorNameLinks({
   authorsRaw,
   max = 4,
   className,
+  lp,
 }: {
   authorsRaw: string | null | undefined
   max?: number
   className?: string
+  lp: (path: string) => string
 }) {
   const names = parseAuthorNames(authorsRaw, max)
   if (names.length === 0) return null
@@ -251,7 +257,7 @@ function AuthorNameLinks({
       {names.map((name, index) => (
         <span key={`${name}-${index}`} className="inline-flex items-center gap-1 min-w-0">
           <Link
-            href={`/search?q=${encodeURIComponent(name)}&type=article&area=author`}
+            href={lp(`/search?q=${encodeURIComponent(name)}&type=article&area=author`)}
             className={cn('type-meta-link text-primary hover:text-accent no-underline', linkFocusClass)}
           >
             {name}
@@ -281,20 +287,20 @@ function MetadataItem({ label, children }: { label: string; children: ReactNode 
   )
 }
 
-function JournalMetadataGrid({ journal }: { journal: Journal }) {
+function JournalMetadataGrid({ journal, ui }: { journal: Journal; ui: UiMessages }) {
   const website = journal.legacy_link?.trim()
   const hasWebsite = website && /^https?:\/\//i.test(website)
 
   const items = [
-    journal.publisher && { label: 'Yayıncı', value: journal.publisher },
+    journal.publisher && { label: ui.journalPage.publisher, value: journal.publisher },
     journal.issn && { label: 'ISSN', value: journal.issn },
     journal.eissn && { label: 'e-ISSN', value: journal.eissn },
-    journal.publish_language && { label: 'Yayın dili', value: journal.publish_language },
-    journal.frequency && { label: 'Yayın periyodu', value: journal.frequency },
-    journal.start_year && { label: 'Başlangıç yılı', value: journal.start_year },
-    journal.subject_category && { label: 'Konu alanı', value: journal.subject_category },
+    journal.publish_language && { label: ui.journalPage.publishLanguage, value: journal.publish_language },
+    journal.frequency && { label: ui.journalPage.frequency, value: journal.frequency },
+    journal.start_year && { label: ui.journalPage.startYear, value: journal.start_year },
+    journal.subject_category && { label: ui.journalPage.subjectCategory, value: journal.subject_category },
     hasWebsite && {
-      label: 'Web sitesi',
+      label: ui.journalPage.website,
       value: (
         <a
           href={website}
@@ -338,6 +344,8 @@ export default async function JournalPage({
   if (!journal) notFound()
 
   const locale = await getRequestLocale()
+  const ui = getUiMessages(locale)
+  const lp = (path: string) => withLocalePath(path, locale)
   if (
     shouldRedirectEnJournalToTr(locale, {
       has_en_content: journal.has_en_content,
@@ -386,8 +394,8 @@ export default async function JournalPage({
   const authEnabled = isUserAuthEnabled()
   const session = authEnabled ? await getServerSession() : null
   const isLoggedIn = session?.user.status === 'active'
-  const journalPublicPath = `/journals/${resolved.journalSegment}`
-  const loginHref = buildLoginHref(journalPublicPath)
+  const journalPublicPath = lp(`/journals/${resolved.journalSegment}`)
+  const loginHref = buildLoginHref(`/journals/${resolved.journalSegment}`)
 
   if (isLoggedIn && session) {
     await recordRecentView(session.user.id, 'journal', parsed.journalId)
@@ -404,13 +412,15 @@ export default async function JournalPage({
       <div className="content-width py-6 lg:py-10 min-w-0">
         {resolved.subPage === 'sayi' && resolved.issueId ? (
           <>
-            <JournalNav segment={resolved.journalSegment} active={resolved.subPage} journal={journal} />
+            <JournalNav segment={resolved.journalSegment} active={resolved.subPage} journal={journal} ui={ui} lp={lp} />
             <div className="border-b border-border/80 mb-6 md:mb-8" />
             <JournalSayi
               journal={journal}
               issueId={resolved.issueId}
               segment={resolved.journalSegment}
               locale={locale}
+              ui={ui}
+              lp={lp}
             />
           </>
         ) : (
@@ -418,11 +428,11 @@ export default async function JournalPage({
             <Breadcrumb className="mb-5 md:mb-6 min-w-0" aria-label="Breadcrumb">
               <BreadcrumbList className="min-w-0">
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/" className={linkFocusClass}>Ana Sayfa</BreadcrumbLink>
+                  <BreadcrumbLink href={lp('/')} className={linkFocusClass}>{ui.article.home}</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/journals" className={linkFocusClass}>Dergiler</BreadcrumbLink>
+                  <BreadcrumbLink href={lp('/journals')} className={linkFocusClass}>{ui.nav.journals}</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem className="min-w-0 max-w-[50%] sm:max-w-md">
@@ -457,11 +467,11 @@ export default async function JournalPage({
                     loginHref={loginHref}
                   />
                 )}
-                <JournalMetadataGrid journal={journal} />
+                <JournalMetadataGrid journal={journal} ui={ui} />
               </div>
             </header>
 
-            <JournalNav segment={resolved.journalSegment} active={resolved.subPage} journal={journal} />
+            <JournalNav segment={resolved.journalSegment} active={resolved.subPage} journal={journal} ui={ui} lp={lp} />
 
             <div className="border-b border-border/80 mb-6 md:mb-8" />
 
@@ -471,42 +481,36 @@ export default async function JournalPage({
                 journalId={parsed.journalId}
                 segment={resolved.journalSegment}
                 locale={locale}
+                ui={ui}
+                lp={lp}
               />
             )}
             {resolved.subPage === 'arsiv' && (
-              <JournalArsiv journal={journal} segment={resolved.journalSegment} locale={locale} />
+              <JournalArsiv journal={journal} segment={resolved.journalSegment} locale={locale} ui={ui} lp={lp} />
             )}
             {resolved.subPage === 'amac-kapsam' &&
-              (locale === 'en' ? (
-                <TrOnlyContentNotice trHref={`/journals/${resolved.journalSegment}/amac-kapsam`} />
-              ) : hasCmsContent(journal.aim_and_scope) ? (
-                <CmsSection title="Amaç ve Kapsam" html={journal.aim_and_scope} />
+              (hasCmsContent(journal.aim_and_scope) ? (
+                <CmsSection title={ui.journalPage.aimScope} html={journal.aim_and_scope} ui={ui} />
               ) : (
-                redirect(`/journals/${resolved.journalSegment}`)
+                redirect(lp(`/journals/${resolved.journalSegment}`))
               ))}
             {resolved.subPage === 'editor-kurulu' &&
-              (locale === 'en' ? (
-                <TrOnlyContentNotice trHref={`/journals/${resolved.journalSegment}/editor-kurulu`} />
-              ) : hasCmsContent(journal.editorial_board) ? (
-                <CmsSection title="Editör Kurulu" html={journal.editorial_board} />
+              (hasCmsContent(journal.editorial_board) ? (
+                <CmsSection title={ui.journalPage.editorialBoard} html={journal.editorial_board} ui={ui} />
               ) : (
-                redirect(`/journals/${resolved.journalSegment}`)
+                redirect(lp(`/journals/${resolved.journalSegment}`))
               ))}
             {resolved.subPage === 'yazim-kurallari' &&
-              (locale === 'en' ? (
-                <TrOnlyContentNotice trHref={`/journals/${resolved.journalSegment}/yazim-kurallari`} />
-              ) : hasCmsContent(journal.writing_rules) ? (
-                <CmsSection title="Yazım Kuralları" html={journal.writing_rules} />
+              (hasCmsContent(journal.writing_rules) ? (
+                <CmsSection title={ui.journalPage.writingRules} html={journal.writing_rules} ui={ui} />
               ) : (
-                redirect(`/journals/${resolved.journalSegment}`)
+                redirect(lp(`/journals/${resolved.journalSegment}`))
               ))}
             {resolved.subPage === 'iletisim' &&
-              (locale === 'en' ? (
-                <TrOnlyContentNotice trHref={`/journals/${resolved.journalSegment}/iletisim`} />
-              ) : hasCmsContent(journal.contact_text) ? (
-                <CmsSection title="İletişim" html={journal.contact_text} />
+              (hasCmsContent(journal.contact_text) ? (
+                <CmsSection title={ui.journalPage.contact} html={journal.contact_text} ui={ui} />
               ) : (
-                redirect(`/journals/${resolved.journalSegment}`)
+                redirect(lp(`/journals/${resolved.journalSegment}`))
               ))}
           </>
         )}
@@ -521,35 +525,39 @@ function JournalNav({
   segment,
   active,
   journal,
+  ui,
+  lp,
 }: {
   segment: string
   active: SubPage
   journal: Journal
+  ui: UiMessages
+  lp: (path: string) => string
 }) {
-  const base = `/journals/${segment}`
+  const base = lp(`/journals/${segment}`)
   const allLinks: { label: string; href: string; key: SubPage; visible: boolean }[] = [
-    { label: 'Dergi', href: base, key: 'home', visible: true },
-    { label: 'Arşiv', href: `${base}/arsiv`, key: 'arsiv', visible: true },
+    { label: ui.journalPage.home, href: base, key: 'home', visible: true },
+    { label: ui.journalPage.archive, href: `${base}/arsiv`, key: 'arsiv', visible: true },
     {
-      label: 'Amaç & Kapsam',
+      label: ui.journalPage.aimScope,
       href: `${base}/amac-kapsam`,
       key: 'amac-kapsam',
       visible: hasCmsContent(journal.aim_and_scope),
     },
     {
-      label: 'Editör Kurulu',
+      label: ui.journalPage.editorialBoard,
       href: `${base}/editor-kurulu`,
       key: 'editor-kurulu',
       visible: hasCmsContent(journal.editorial_board),
     },
     {
-      label: 'Yazım Kuralları',
+      label: ui.journalPage.writingRules,
       href: `${base}/yazim-kurallari`,
       key: 'yazim-kurallari',
       visible: hasCmsContent(journal.writing_rules),
     },
     {
-      label: 'İletişim',
+      label: ui.journalPage.contact,
       href: `${base}/iletisim`,
       key: 'iletisim',
       visible: hasCmsContent(journal.contact_text),
@@ -558,7 +566,7 @@ function JournalNav({
   const links = allLinks.filter((link) => link.visible)
 
   return (
-    <nav className="flex flex-wrap gap-1.5 mb-4 min-w-0" aria-label="Dergi menüsü">
+    <nav className="flex flex-wrap gap-1.5 mb-4 min-w-0" aria-label={ui.journalPage.journalMenu}>
       {links.map(({ label, href, key }) => (
         <Link
           key={key}
@@ -579,44 +587,38 @@ function JournalNav({
   )
 }
 
-function TrOnlyContentNotice({ trHref }: { trHref: string }) {
-  return (
-    <p className="type-section-desc leading-relaxed">
-      This section is available in Turkish.{' '}
-      <Link href={trHref} hrefLang="tr" className={cn('text-primary hover:text-accent no-underline', linkFocusClass)}>
-        View Turkish page
-      </Link>
-    </p>
-  )
-}
-
 async function JournalHome({
   journal,
   journalId,
   segment,
   locale,
+  ui,
+  lp,
 }: {
   journal: Journal
   journalId: number
   segment: string
   locale: SiteLocale
+  ui: UiMessages
+  lp: (path: string) => string
 }) {
   const [issues, articles] = await Promise.all([
     getIssues(journalId),
     getLatestArticles(journalId, 10),
   ])
 
-  const arsivHref = `/journals/${segment}/arsiv`
+  const arsivHref = lp(`/journals/${segment}/arsiv`)
+  const aboutText = pickLocalizedJournalDescription(journal.description, locale)
   const quickLinks = [
-    { label: 'Arşiv ve sayılar', href: arsivHref, visible: true },
+    { label: ui.journalPage.archiveAndIssues, href: arsivHref, visible: true },
     {
-      label: 'Amaç ve kapsam',
-      href: `/journals/${segment}/amac-kapsam`,
+      label: ui.journalPage.aimScope,
+      href: lp(`/journals/${segment}/amac-kapsam`),
       visible: hasCmsContent(journal.aim_and_scope),
     },
     {
-      label: 'İletişim',
-      href: `/journals/${segment}/iletisim`,
+      label: ui.journalPage.contact,
+      href: lp(`/journals/${segment}/iletisim`),
       visible: hasCmsContent(journal.contact_text),
     },
   ].filter((link) => link.visible)
@@ -625,15 +627,15 @@ async function JournalHome({
     <div className="layout-journal-detail min-w-0">
       <div className="min-w-0 space-y-8 md:space-y-10 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
         <section className="min-w-0">
-          <h2 className="type-section-title mb-4">Son makaleler</h2>
+          <h2 className="type-section-title mb-4">{ui.journalPage.recentArticles}</h2>
           {articles.length === 0 ? (
             <p className="type-card-meta py-4">
-              Bu dergide henüz listelenecek makale bulunmuyor.
+              {ui.journalPage.noRecentArticles}
             </p>
           ) : (
             <ul className="divide-y divide-border/80 min-w-0">
               {articles.map((a) => (
-                <ArticleRow key={a.id} article={a} locale={locale} />
+                <ArticleRow key={a.id} article={a} locale={locale} lp={lp} ui={ui} />
               ))}
             </ul>
           )}
@@ -645,7 +647,7 @@ async function JournalHome({
                 linkFocusClass,
               )}
             >
-              Tüm sayıları gör
+              {ui.journalPage.viewAllIssues}
               <ChevronRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
           )}
@@ -654,12 +656,12 @@ async function JournalHome({
         {issues.length > 0 && (
           <section className="min-w-0">
             <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-              <h2 className="type-section-title">Sayılar</h2>
+              <h2 className="type-section-title">{ui.journalPage.issues}</h2>
               <Link
                 href={arsivHref}
                 className={cn('type-sidebar-link text-primary hover:text-accent no-underline inline-flex items-center gap-0.5', linkFocusClass)}
               >
-                Tüm arşiv
+                {ui.journalPage.allArchive}
                 <ChevronRight className="h-3.5 w-3.5" aria-hidden />
               </Link>
             </div>
@@ -667,14 +669,14 @@ async function JournalHome({
               {issues.slice(0, 8).map((issue) => (
                 <li key={issue.id}>
                   <Link
-                    href={`/journals/${segment}/sayi/${issue.id}`}
+                    href={lp(`/journals/${segment}/sayi/${issue.id}`)}
                     className={cn(
                       'type-filter-option flex flex-wrap items-center justify-between gap-2 py-3 no-underline group',
                       linkFocusClass,
                     )}
                   >
                     <span className="font-medium text-foreground group-hover:text-primary transition-colors min-w-0 line-clamp-2">
-                      {issue.issue_label ?? (issue.year ? String(issue.year) : 'Sayı')}
+                      {issue.issue_label ?? (issue.year ? String(issue.year) : ui.journalPage.issueFallback)}
                     </span>
                     {issue.year && issue.issue_label && (
                       <span className="type-card-meta tabular-nums shrink-0">
@@ -688,11 +690,11 @@ async function JournalHome({
           </section>
         )}
 
-        {locale !== 'en' && journal.description?.trim() && (
+        {aboutText && (
           <section className="min-w-0">
-            <h2 className="type-section-title mb-3">Dergi hakkında</h2>
+            <h2 className="type-section-title mb-3">{ui.journalPage.aboutJournal}</h2>
             <p className="type-reading-body max-w-3xl">
-              {journal.description.trim()}
+              {aboutText}
             </p>
           </section>
         )}
@@ -700,28 +702,28 @@ async function JournalHome({
 
       <aside className="layout-sidebar-column space-y-5 min-w-0 lg:pt-0">
         <div className="aside-panel min-w-0">
-          <h3 className="type-sidebar-heading mb-3">Dergide ara</h3>
-          <JournalSearchForm journalId={journalId} />
+          <h3 className="type-sidebar-heading mb-3">{ui.journalPage.searchInJournal}</h3>
+          <JournalSearchForm journalId={journalId} locale={locale} ui={ui} />
         </div>
 
         {issues[0] && (
           <div className="aside-panel min-w-0">
-            <h3 className="type-sidebar-heading mb-2">Son sayı</h3>
+            <h3 className="type-sidebar-heading mb-2">{ui.journalPage.latestIssue}</h3>
             <Link
-              href={`/journals/${segment}/sayi/${issues[0].id}`}
+              href={lp(`/journals/${segment}/sayi/${issues[0].id}`)}
               className={cn(
                 'type-sidebar-link text-primary hover:text-accent line-clamp-3 no-underline',
                 linkFocusClass,
               )}
             >
-              {issues[0].issue_label ?? (issues[0].year ? String(issues[0].year) : 'Son sayı')}
+              {issues[0].issue_label ?? (issues[0].year ? String(issues[0].year) : ui.journalPage.latestIssue)}
             </Link>
           </div>
         )}
 
         {quickLinks.length > 0 && (
           <div className="aside-panel min-w-0">
-            <h3 className="type-sidebar-heading mb-3">Hızlı bağlantılar</h3>
+            <h3 className="type-sidebar-heading mb-3">{ui.journalPage.quickLinks}</h3>
             <ul className="space-y-2.5 type-sidebar-link">
               {quickLinks.map((link) => (
                 <li key={link.href}>
@@ -742,17 +744,21 @@ async function JournalArsiv({
   journal,
   segment,
   locale,
+  ui,
+  lp,
 }: {
   journal: Journal
   segment: string
   locale: SiteLocale
+  ui: UiMessages
+  lp: (path: string) => string
 }) {
   const issues = await getIssues(journal.id)
   const grouped = groupArchiveIssues(issues)
-  const journalTitle = pickLocalizedTitle(journal.title_tr, journal.title_en, locale) || 'Dergi'
+  const journalTitle = pickLocalizedTitle(journal.title_tr, journal.title_en, locale) || (locale === 'en' ? 'Journal' : 'Dergi')
+  const archiveTitle = ui.journalPage.archivePageTitle.replace('{title}', journalTitle)
+  const archiveDescription = ui.journalPage.archiveIntro.replace('{title}', journalTitle)
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
-  const archiveTitle = `${journalTitle} Arşivi`
-  const archiveDescription = `${journalTitle} dergisinin yayımlanmış sayılarını yıllara göre inceleyin.`
   const archiveJsonLd = buildArchivePageJsonLd({
     canonicalBase,
     journalSegment: segment,
@@ -767,15 +773,15 @@ async function JournalArsiv({
       <JsonLd data={archiveJsonLd} />
       <section className="min-w-0 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
         <header className="mb-6 md:mb-8 space-y-2 min-w-0">
-          <h2 className="type-section-title">Arşiv</h2>
+          <h2 className="type-section-title">{ui.journalPage.archive}</h2>
           <p className="type-section-desc max-w-3xl">
-            {journalTitle} dergisinin yayımlanmış sayılarını yıllara göre inceleyin.
+            {archiveDescription}
           </p>
         </header>
 
         {grouped.totalIssues === 0 ? (
           <p className="type-card-meta py-6">
-            Bu dergi için henüz arşivlenmiş sayı bulunmuyor.
+            {ui.journalPage.noArchivedIssues}
           </p>
         ) : (
           <div className="space-y-8 min-w-0">
@@ -788,7 +794,7 @@ async function JournalArsiv({
                   {group.issues.map((issue) => (
                     <li key={issue.id}>
                       <Link
-                        href={buildArchiveIssueHref(segment, issue.id)}
+                        href={lp(buildArchiveIssueHref(segment, issue.id))}
                         className={cn(
                           'type-filter-option flex items-center gap-2 min-w-0 px-3 py-3 sm:px-4 font-medium text-foreground hover:text-primary hover:bg-brand-primary/[0.035] transition-colors no-underline',
                           linkFocusClass,
@@ -811,15 +817,15 @@ async function JournalArsiv({
   )
 }
 
-function formatIssueBreadcrumbLabel(issue: Issue): string {
-  const raw = issue.issue_number ?? issue.issue_label ?? (issue.year ? String(issue.year) : 'Sayı')
+function formatIssueBreadcrumbLabel(issue: Issue, fallback: string): string {
+  const raw = issue.issue_number ?? issue.issue_label ?? (issue.year ? String(issue.year) : fallback)
   return raw.length > 40 ? `${raw.slice(0, 37).trimEnd()}…` : raw
 }
 
-function buildIssueHeadingSuffix(issue: Issue): string | null {
+function buildIssueHeadingSuffix(issue: Issue, ui: UiMessages): string | null {
   if (issue.issue_number?.trim()) return issue.issue_number.trim()
   const parts: string[] = []
-  if (issue.volume?.trim()) parts.push(`Cilt ${issue.volume.trim()}`)
+  if (issue.volume?.trim()) parts.push(`${ui.journalPage.volume} ${issue.volume.trim()}`)
   if (issue.year) parts.push(String(issue.year))
   if (parts.length > 0) return parts.join(', ')
   if (issue.issue_label?.trim()) return issue.issue_label.trim()
@@ -831,21 +837,26 @@ async function JournalSayi({
   issueId,
   segment,
   locale,
+  ui,
+  lp,
 }: {
   journal: Journal
   issueId: number
   segment: string
   locale: SiteLocale
+  ui: UiMessages
+  lp: (path: string) => string
 }) {
   const issue = await requireJournalIssue(journal.id, issueId)
   const articles = await getIssueArticles(issueId)
+  const numberLocale = locale === 'en' ? 'en-US' : 'tr-TR'
 
   const issueRow = issue
-  const journalTitle = pickLocalizedTitle(journal.title_tr, journal.title_en, locale) || 'Dergi'
-  const journalHref = `/journals/${segment}`
-  const arsivHref = `${journalHref}/arsiv`
-  const issueSuffix = buildIssueHeadingSuffix(issueRow)
-  const breadcrumbIssueLabel = formatIssueBreadcrumbLabel(issueRow)
+  const journalTitle = pickLocalizedTitle(journal.title_tr, journal.title_en, locale) || (locale === 'en' ? 'Journal' : 'Dergi')
+  const journalHref = lp(`/journals/${segment}`)
+  const arsivHref = lp(`/journals/${segment}/arsiv`)
+  const issueSuffix = buildIssueHeadingSuffix(issueRow, ui)
+  const breadcrumbIssueLabel = formatIssueBreadcrumbLabel(issueRow, ui.journalPage.issueFallback)
   const articleCount = articles.length
   const canonicalBase = process.env.NEXT_PUBLIC_CANONICAL_BASE ?? 'https://www.acarindex.com'
   const pageTitle = buildIssueMetadataTitle(journalTitle, issueRow)
@@ -861,12 +872,12 @@ async function JournalSayi({
   })
 
   const metadataItems = [
-    issueRow.year && { label: 'Yayın yılı', value: String(issueRow.year) },
-    issueRow.volume?.trim() && { label: 'Cilt', value: issueRow.volume.trim() },
-    issueRow.issue_number?.trim() && { label: 'Sayı', value: issueRow.issue_number.trim() },
+    issueRow.year && { label: ui.journalPage.publicationYear, value: String(issueRow.year) },
+    issueRow.volume?.trim() && { label: ui.journalPage.volume, value: issueRow.volume.trim() },
+    issueRow.issue_number?.trim() && { label: ui.journalPage.issueNumber, value: issueRow.issue_number.trim() },
     articleCount > 0 && {
-      label: 'Makale sayısı',
-      value: articleCount.toLocaleString('tr-TR'),
+      label: ui.journalPage.articleCount,
+      value: articleCount.toLocaleString(numberLocale),
     },
   ].filter(Boolean) as Array<{ label: string; value: string }>
 
@@ -874,14 +885,14 @@ async function JournalSayi({
     <>
       <JsonLd data={issueJsonLd} />
       <div className="min-w-0">
-      <Breadcrumb className="mb-5 md:mb-6 min-w-0" aria-label="Breadcrumb">
+      <Breadcrumb className="mb-5 md:mb-6 min-w-0" aria-label={ui.article.breadcrumb}>
         <BreadcrumbList className="min-w-0 flex-wrap">
           <BreadcrumbItem>
-            <BreadcrumbLink href="/" className={linkFocusClass}>Ana Sayfa</BreadcrumbLink>
+            <BreadcrumbLink href={lp('/')} className={linkFocusClass}>{ui.article.home}</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbLink href="/journals" className={linkFocusClass}>Dergiler</BreadcrumbLink>
+            <BreadcrumbLink href={lp('/journals')} className={linkFocusClass}>{ui.nav.journals}</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem className="min-w-0 max-w-[38%] sm:max-w-xs">
@@ -937,23 +948,23 @@ async function JournalSayi({
       <section className="min-w-0 rounded-xl border border-border/80 bg-surface shadow-sm p-5 sm:p-7">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-4">
           <h2 className="type-section-title">
-            Bu sayıdaki makaleler
+            {ui.article.articlesInIssue}
           </h2>
           {articleCount > 0 && (
             <p className="type-card-meta tabular-nums shrink-0">
-              {articleCount.toLocaleString('tr-TR')} makale
+              {articleCount.toLocaleString(numberLocale)} {ui.journalPage.articlesLabel}
             </p>
           )}
         </div>
 
         {articleCount === 0 ? (
           <p className="type-card-meta py-6">
-            Bu sayıda listelenecek makale bulunmuyor.
+            {ui.journalPage.noArticlesInIssue}
           </p>
         ) : (
           <ul className="divide-y divide-border/80 min-w-0">
             {articles.map((a) => (
-              <IssueArticleRow key={a.id} article={a} locale={locale} />
+              <IssueArticleRow key={a.id} article={a} locale={locale} lp={lp} ui={ui} />
             ))}
           </ul>
         )}
@@ -966,7 +977,7 @@ async function JournalSayi({
           linkFocusClass,
         )}
       >
-        Arşive dön
+        {ui.journalPage.backToArchive}
         <ChevronRight className="h-3.5 w-3.5" aria-hidden />
       </Link>
     </div>
@@ -974,12 +985,12 @@ async function JournalSayi({
   )
 }
 
-function CmsSection({ title, html }: { title: string; html: string | null | undefined }) {
+function CmsSection({ title, html, ui }: { title: string; html: string | null | undefined; ui: UiMessages }) {
   if (!html?.trim()) {
     return (
       <div className="catalog-empty-panel">
         <p className="font-medium text-foreground">{title}</p>
-        <p className="type-card-meta mt-2">Bu bölüm için içerik henüz eklenmemiş.</p>
+        <p className="type-card-meta mt-2">{ui.journalPage.emptySection}</p>
       </div>
     )
   }
@@ -997,12 +1008,16 @@ function CmsSection({ title, html }: { title: string; html: string | null | unde
 function IssueArticleRow({
   article,
   locale,
+  lp,
+  ui,
 }: {
   article: Partial<Article>
   locale: SiteLocale
+  lp: (path: string) => string
+  ui: UiMessages
 }) {
   const title = pickLocalizedArticleDisplayTitle(article.title_tr, article.title_en, locale)
-  const href = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
+  const href = lp(`/${article.legacy_journal_slug}/${article.slug}-${article.id}`)
   const pages = formatPageRange(article.page_start, article.page_end)
   const authorNames = parseAuthorNames(article.authors_raw)
 
@@ -1017,19 +1032,19 @@ function IssueArticleRow({
         <div className="min-w-0 flex-1">
           {(authorNames.length > 0 || pages) && (
             <div className="type-card-meta flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-              {authorNames.length > 0 && <AuthorNameLinks authorsRaw={article.authors_raw} />}
+              {authorNames.length > 0 && <AuthorNameLinks authorsRaw={article.authors_raw} lp={lp} />}
               {authorNames.length > 0 && pages && (
                 <span className="text-muted-foreground" aria-hidden>·</span>
               )}
               {pages && (
-                <span className="tabular-nums shrink-0 text-muted-foreground">ss. {pages}</span>
+                <span className="tabular-nums shrink-0 text-muted-foreground">{ui.journalPage.pagesShort} {pages}</span>
               )}
             </div>
           )}
         </div>
         <Link
-          href={`/pdfs/${article.id}`}
-          aria-label={`${title} — tam metin PDF`}
+          href={lp(`/pdfs/${article.id}`)}
+          aria-label={`${title} — ${ui.article.viewPdf}`}
           className={cn('catalog-pdf-badge shrink-0', linkFocusClass)}
         >
           <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
@@ -1043,12 +1058,16 @@ function IssueArticleRow({
 function ArticleRow({
   article,
   locale,
+  lp,
+  ui,
 }: {
   article: Partial<Article>
   locale: SiteLocale
+  lp: (path: string) => string
+  ui: UiMessages
 }) {
   const title = pickLocalizedArticleDisplayTitle(article.title_tr, article.title_en, locale)
-  const href = `/${article.legacy_journal_slug}/${article.slug}-${article.id}`
+  const href = lp(`/${article.legacy_journal_slug}/${article.slug}-${article.id}`)
   const pages = formatPageRange(article.page_start, article.page_end)
   const authorNames = parseAuthorNames(article.authors_raw)
 
@@ -1066,7 +1085,7 @@ function ArticleRow({
         <div className="min-w-0 flex-1">
           {(authorNames.length > 0 || article.published_year || pages) && (
             <div className="type-card-meta flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-              {authorNames.length > 0 && <AuthorNameLinks authorsRaw={article.authors_raw} />}
+              {authorNames.length > 0 && <AuthorNameLinks authorsRaw={article.authors_raw} lp={lp} />}
               {authorNames.length > 0 && article.published_year && (
                 <span className="text-muted-foreground" aria-hidden>·</span>
               )}
@@ -1078,15 +1097,15 @@ function ArticleRow({
               {pages && (
                 <>
                   <span className="text-muted-foreground" aria-hidden>·</span>
-                  <span className="tabular-nums shrink-0 text-muted-foreground">ss. {pages}</span>
+                  <span className="tabular-nums shrink-0 text-muted-foreground">{ui.journalPage.pagesShort} {pages}</span>
                 </>
               )}
             </div>
           )}
         </div>
         <Link
-          href={`/pdfs/${article.id}`}
-          aria-label={`${title} — tam metin PDF`}
+          href={lp(`/pdfs/${article.id}`)}
+          aria-label={`${title} — ${ui.article.viewPdf}`}
           className={cn('catalog-pdf-badge shrink-0', linkFocusClass)}
         >
           <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
