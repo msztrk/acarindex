@@ -211,20 +211,11 @@
      content-width-wide : listeleme/arama (aynı dış sınır)
      reading-width  : uzun metin paragrafları (~85ch)
   ─────────────────────────────────────────────────────────────── */
-  .site-container {
-    @apply mx-auto w-full max-w-[1660px] px-4 md:px-6 xl:px-8;
-  }
-
-  .content-width {
-    @apply site-container;
-  }
-
-  .content-width-wide {
-    @apply site-container;
-  }
-
+  .site-container,
+  .content-width,
+  .content-width-wide,
   .account-panel-width {
-    @apply site-container;
+    @apply mx-auto w-full max-w-[1660px] px-4 md:px-6 xl:px-8;
   }
 
   .reading-width {
