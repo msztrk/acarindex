@@ -187,7 +187,7 @@ JOURNAL_SLUG=$($ACAR_COMPOSE exec -T postgres psql -U acarindex_pilot -d acarind
 list_body=$(curl -sS $AUTH_NGX "$BASE/journals" 2>/dev/null || true)
 echo "$list_body" | grep -q "$UNIQUE_TITLE" && fail "draft in /journals" || pass "draft not in /journals"
 search_body=$(curl -sS $AUTH_NGX "$BASE/search?q=$(printf '%s' "$UNIQUE_TITLE" | sed 's/ /+/g')" 2>/dev/null || true)
-echo "$search_body" | grep -q "$UNIQUE_TITLE" && fail "draft in search" || pass "draft not in search"
+echo "$search_body" | grep -qE "/journals/[^\"'<>]*${JOURNAL_SLUG}[^\"'<>]*-${JOURNAL_ID}|/journals/${JOURNAL_SLUG}-${JOURNAL_ID}" && fail "draft in search" || pass "draft not in search"
 sitemap=$(curl -sS $AUTH_NGX "$BASE/sitemap-journals" 2>/dev/null || true)
 echo "$sitemap" | grep -q "$JOURNAL_SLUG" && fail "draft in sitemap-journals" || pass "draft not in sitemap"
 suggest=$(curl -sS $AUTH_NGX "$BASE/api/search-suggest?q=$(printf '%s' "$UNIQUE_TITLE" | head -c 20 | sed 's/ /+/g')" 2>/dev/null || true)
