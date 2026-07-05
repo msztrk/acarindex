@@ -12,37 +12,9 @@ import {
 import { HeaderAuthNav, HeaderAuthSkeleton } from '@/components/layout/HeaderAuthNav'
 import { LocaleSwitcher } from '@/components/layout/LocaleSwitcher'
 import { BrandWordmark } from '@/components/layout/BrandWordmark'
+import { useUi } from '@/components/i18n/LocaleProvider'
 import type { PublicAuthState } from '@/lib/auth/public-session'
 import { cn } from '@/lib/utils'
-
-type NavLink = {
-  href: string
-  label: string
-  match: (pathname: string, searchType: string | null) => boolean
-}
-
-const NAV_LINKS: NavLink[] = [
-  {
-    href: '/journals',
-    label: 'Dergiler',
-    match: (p) => p.startsWith('/journals'),
-  },
-  {
-    href: '/search?type=article',
-    label: 'Makaleler',
-    match: (p, type) => p === '/search' && (type === 'article' || type === null),
-  },
-  {
-    href: '/search?type=author',
-    label: 'Yazarlar',
-    match: (p, type) => p === '/search' && type === 'author',
-  },
-  {
-    href: '/istatistikler',
-    label: 'İstatistikler',
-    match: (p) => p === '/istatistikler',
-  },
-]
 
 export function SiteHeader({
   showAuth = false,
@@ -51,12 +23,37 @@ export function SiteHeader({
   showAuth?: boolean
   initialAuth?: PublicAuthState
 }) {
+  const { m, lp } = useUi()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const searchType = searchParams.get('type')
-  const isHome = pathname === '/'
+  const isHome = pathname === '/' || pathname === '/en'
+
+  const navLinks = [
+    {
+      href: lp('/journals'),
+      label: m.nav.journals,
+      match: (p: string) => p.startsWith('/journals'),
+    },
+    {
+      href: lp('/search?type=article'),
+      label: m.nav.articles,
+      match: (p: string, type: string | null) =>
+        p === '/search' && (type === 'article' || type === null),
+    },
+    {
+      href: lp('/search?type=author'),
+      label: m.nav.authors,
+      match: (p: string, type: string | null) => p === '/search' && type === 'author',
+    },
+    {
+      href: lp('/istatistikler'),
+      label: m.nav.statistics,
+      match: (p: string) => p === '/istatistikler',
+    },
+  ]
 
   const handleMenuOpenChange = (open: boolean) => {
     setMobileMenuOpen(open)
@@ -76,10 +73,10 @@ export function SiteHeader({
           <BrandWordmark variant="compact" className="shrink-0" />
 
           <nav
-            className="hidden lg:flex items-center gap-1 text-[0.9375rem] font-semibold"
-            aria-label="Ana menü"
+            className="hidden lg:flex items-center gap-1 text-base font-semibold"
+            aria-label={m.nav.mainMenu}
           >
-            {NAV_LINKS.map((item) => {
+            {navLinks.map((item) => {
               const active = item.match(pathname, searchType)
               return (
                 <Link
@@ -107,11 +104,12 @@ export function SiteHeader({
           <div className="hidden lg:flex items-center gap-3 flex-1 max-w-lg justify-end min-w-0">
             {!isHome && <SearchBar variant="compact" className="flex-1 max-w-sm min-w-0" />}
             <LocaleSwitcher className="shrink-0" />
-            {showAuth && (
-              authReady && initialAuth
-                ? <HeaderAuthNav initialAuth={initialAuth} />
-                : <HeaderAuthSkeleton />
-            )}
+            {showAuth &&
+              (authReady && initialAuth ? (
+                <HeaderAuthNav initialAuth={initialAuth} />
+              ) : (
+                <HeaderAuthSkeleton />
+              ))}
           </div>
 
           <div className="flex lg:hidden items-center gap-1 shrink-0 min-w-0">
@@ -128,7 +126,7 @@ export function SiteHeader({
               aria-expanded={mobileMenuOpen}
               aria-controls={MOBILE_NAV_DRAWER_ID}
               aria-haspopup="dialog"
-              aria-label="Menüyü aç"
+              aria-label={m.nav.openMenu}
             >
               <Menu className="h-5 w-5" />
             </button>

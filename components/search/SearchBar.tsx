@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Search, FileText, BookOpen, User, ArrowRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useUi } from '@/components/i18n/LocaleProvider'
 import type { SuggestItem } from '@/app/api/search-suggest/route'
 
 interface Props {
@@ -20,13 +21,8 @@ const TYPE_ICONS = {
   author: User,
 }
 
-const TYPE_LABELS = {
-  article: 'Makale',
-  journal: 'Dergi',
-  author: 'Yazar',
-}
-
 export function SearchBar({ variant = 'compact', placeholder, className }: Props) {
+  const { m, lp } = useUi()
   const router = useRouter()
   const [q, setQ] = useState('')
   const [results, setResults] = useState<SuggestItem[]>([])
@@ -84,7 +80,7 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
     e.preventDefault()
     if (!q.trim()) return
     setOpen(false)
-    router.push(`/search?q=${encodeURIComponent(q.trim())}`)
+    router.push(lp(`/search?q=${encodeURIComponent(q.trim())}`))
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -115,6 +111,12 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
   }
 
   const isHero = variant === 'hero'
+  const typeLabels = {
+    article: m.search.typeArticle,
+    journal: m.search.typeJournal,
+    author: m.search.typeAuthor,
+  } as const
+  const defaultPlaceholder = isHero ? m.search.placeholderFull : m.search.placeholder
 
   return (
     <div className={cn('relative', className)}>
@@ -143,11 +145,11 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
               onFocus={() => q.length >= 2 && results.length > 0 && setOpen(true)}
               type="search"
               autoComplete="off"
-              aria-label={placeholder ?? (isHero ? 'Makale, yazar veya anahtar kelime' : 'Ara')}
-              placeholder={placeholder ?? (isHero ? 'Makale, yazar, dergi veya konu ara…' : 'Ara…')}
+              aria-label={placeholder ?? defaultPlaceholder}
+              placeholder={placeholder ?? defaultPlaceholder}
               className={cn(
                 'flex-1 min-w-0 bg-transparent outline-none placeholder:text-muted-foreground rounded-none',
-                isHero ? 'px-3 py-3 text-base min-h-[44px]' : 'px-2 py-2 text-sm',
+                isHero ? 'px-3 py-3 text-base min-h-[44px]' : 'px-2 py-2 text-[0.9375rem]',
               )}
             />
             {q && (
@@ -155,7 +157,7 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
                 type="button"
                 onClick={handleClear}
                 className="p-2 text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                aria-label="Temizle"
+                aria-label={m.search.clear}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -170,12 +172,12 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
                 ? 'px-4 sm:px-5 min-h-[44px] min-w-[44px] rounded-none rounded-r-xl text-sm'
                 : 'px-3 py-2 min-h-[36px] rounded-none rounded-r-xl text-xs',
             )}
-            aria-label="Ara"
+            aria-label={m.search.search}
           >
             {isHero ? (
               <>
                 <Search className="h-4 w-4 shrink-0" aria-hidden />
-                <span className="hidden sm:inline">Ara</span>
+                <span className="hidden sm:inline">{m.search.search}</span>
               </>
             ) : (
               <ArrowRight className="h-4 w-4" aria-hidden />
@@ -213,7 +215,7 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground shrink-0 self-center">
-                      {TYPE_LABELS[item.type]}
+                      {typeLabels[item.type]}
                     </span>
                   </Link>
                 </li>
@@ -223,11 +225,11 @@ export function SearchBar({ variant = 'compact', placeholder, className }: Props
           {/* Tam arama bağlantısı */}
           <div className="border-t border-border px-4 py-2">
             <Link
-              href={`/search?q=${encodeURIComponent(q)}`}
+              href={lp(`/search?q=${encodeURIComponent(q)}`)}
               onClick={() => setOpen(false)}
-              className="text-xs text-accent hover:underline flex items-center gap-1"
+              className="text-sm text-accent hover:underline flex items-center gap-1"
             >
-              &ldquo;{q}&rdquo; için tüm sonuçları gör
+              {m.search.viewAllResults}: &ldquo;{q}&rdquo;
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>

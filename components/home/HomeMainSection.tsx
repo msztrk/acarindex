@@ -22,9 +22,13 @@ import {
 
 import { getSessionInterestCategories } from '@/lib/personalization/interest-categories'
 import { getRequestLocale } from '@/lib/i18n/request-locale'
+import { getUiMessages } from '@/lib/i18n/ui-messages'
+import { withLocalePath } from '@/lib/i18n/locale'
 
 export async function HomeMainSection({ qa }: { qa?: HomeQaMode }) {
   const locale = await getRequestLocale()
+  const ui = getUiMessages(locale)
+  const lp = (path: string) => withLocalePath(path, locale)
   const interests = qa ? [] : await getSessionInterestCategories()
 
 
@@ -66,28 +70,17 @@ export async function HomeMainSection({ qa }: { qa?: HomeQaMode }) {
                   <div>
 
                     <h2 className="text-xl font-semibold text-foreground tracking-tight">
-
-                      {section.categoryLabel} alanında son eklenen makaleler
-
+                      {ui.home.personalizedTitle.replace('{category}', section.categoryLabel)}
                     </h2>
-
-                    <p className="mt-1 text-sm text-muted-foreground">
-
-                      İlgi alanınıza göre seçilmiş yeni yayınlar
-
+                    <p className="mt-1 text-base text-muted-foreground">
+                      {ui.home.personalizedDesc}
                     </p>
-
                   </div>
-
                   <Link
-
-                    href={`/journals?category=${section.categoryId}`}
-
-                    className="text-sm font-semibold text-brand-secondary hover:text-brand-primary transition-colors shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
-
+                    href={lp(`/journals?category=${section.categoryId}`)}
+                    className="text-[0.9375rem] font-semibold text-brand-secondary hover:text-brand-primary transition-colors shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
                   >
-
-                    Bu alandaki dergiler →
+                    {ui.home.journalsInField}
 
                   </Link>
 
@@ -108,28 +101,17 @@ export async function HomeMainSection({ qa }: { qa?: HomeQaMode }) {
                 <div>
 
                   <h2 className="text-xl font-semibold text-foreground tracking-tight">
-
-                    Son eklenen makaleler
-
+                    {ui.home.recentArticles}
                   </h2>
-
-                  <p className="mt-1 text-sm text-muted-foreground">
-
-                    Kataloga yeni eklenen akademik yayınlar
-
+                  <p className="mt-1 text-base text-muted-foreground">
+                    {ui.home.recentArticlesDesc}
                   </p>
-
                 </div>
-
                 <Link
-
-                  href="/search?type=article"
-
-                  className="text-sm font-semibold text-brand-secondary hover:text-brand-primary transition-colors shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
-
+                  href={lp('/search?type=article')}
+                  className="text-[0.9375rem] font-semibold text-brand-secondary hover:text-brand-primary transition-colors shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
                 >
-
-                  Tüm makaleleri görüntüle →
+                  {ui.home.viewAllArticles}
 
                 </Link>
 

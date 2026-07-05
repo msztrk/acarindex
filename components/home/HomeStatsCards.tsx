@@ -1,10 +1,13 @@
+'use client'
+
 import Link from 'next/link'
 import { BookOpen, FileText, Files, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useUi } from '@/components/i18n/LocaleProvider'
 
-function fmt(n: number | null): string {
+function fmt(n: number | null, locale: string): string {
   if (!n) return '—'
-  return n.toLocaleString('tr-TR')
+  return n.toLocaleString(locale === 'en' ? 'en-US' : 'tr-TR')
 }
 
 type StatItem = {
@@ -25,10 +28,26 @@ export function HomeStatsCards({
   pdfCount: number | null
   approxNote: string
 }) {
+  const { m, lp, locale } = useUi()
+
   const items: StatItem[] = [
-    { label: 'Dergi', value: fmt(journalCount), href: '/journals', icon: BookOpen },
-    { label: 'Makale', value: fmt(articleCount), href: '/search?type=article', icon: FileText },
-    { label: 'Tam metin', value: fmt(pdfCount), icon: Files },
+    {
+      label: m.home.journals,
+      value: fmt(journalCount, locale),
+      href: lp('/journals'),
+      icon: BookOpen,
+    },
+    {
+      label: m.home.articles,
+      value: fmt(articleCount, locale),
+      href: lp('/search?type=article'),
+      icon: FileText,
+    },
+    {
+      label: m.home.fullText,
+      value: fmt(pdfCount, locale),
+      icon: Files,
+    },
   ]
 
   const itemClass =
@@ -44,12 +63,12 @@ export function HomeStatsCards({
           const Icon = item.icon
           const inner = (
             <>
-              <Icon className="h-3.5 w-3.5 shrink-0 text-brand-accent sm:h-4 sm:w-4" aria-hidden />
+              <Icon className="h-4 w-4 shrink-0 text-brand-accent sm:h-4 sm:w-4" aria-hidden />
               <div className="min-w-0">
-                <p className="tabular-nums text-base font-semibold leading-none text-brand-primary sm:text-xl">
+                <p className="tabular-nums text-lg font-semibold leading-none text-brand-primary sm:text-xl">
                   {item.value}
                 </p>
-                <p className="mt-0.5 text-[0.6875rem] font-medium text-muted-foreground sm:mt-1 sm:text-xs">
+                <p className="mt-0.5 text-xs font-medium text-muted-foreground sm:mt-1 sm:text-sm">
                   {item.label}
                 </p>
               </div>
@@ -79,7 +98,7 @@ export function HomeStatsCards({
           )
         })}
       </div>
-      <p className="mt-1.5 text-center text-[0.6875rem] text-muted-foreground sm:mt-2 sm:text-left">
+      <p className="mt-1.5 text-center text-xs text-muted-foreground sm:mt-2 sm:text-left sm:text-sm">
         ({approxNote})
       </p>
     </div>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { deleteWithCsrf, postWithCsrf } from '@/lib/auth/csrf-client'
+import { useUi } from '@/components/i18n/LocaleProvider'
 
 type ListOption = { id: string; name: string; itemCount: number }
 
@@ -22,6 +23,7 @@ export function ArticleSaveActions({
   isLoggedIn: boolean
   loginHref: string
 }) {
+  const { m, lp } = useUi()
   const [saved, setSaved] = useState(initialSaved)
   const [lists, setLists] = useState(initialLists)
   const [modalOpen, setModalOpen] = useState(false)
@@ -40,8 +42,8 @@ export function ArticleSaveActions({
 
   if (!isLoggedIn) {
     return (
-      <Link href={loginHref} className="text-sm text-primary hover:underline">
-        Makaleyi kaydetmek için giriş yapın
+      <Link href={loginHref} className="text-[0.9375rem] text-primary hover:underline">
+        {m.article.loginToSave}
       </Link>
     )
   }
@@ -97,7 +99,7 @@ export function ArticleSaveActions({
         onClick={toggleSave}
         aria-pressed={saved}
       >
-        {saved ? 'Kaydedildi' : 'Makaleyi Kaydet'}
+        {saved ? m.article.saved : m.article.saveArticle}
       </Button>
       <Button
         type="button"
@@ -108,7 +110,7 @@ export function ArticleSaveActions({
         aria-haspopup="dialog"
         aria-expanded={modalOpen}
       >
-        Listeme Ekle
+        {m.article.addToList}
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}
       {modalOpen && (
@@ -127,7 +129,7 @@ export function ArticleSaveActions({
             {lists.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Henüz liste yok.{' '}
-                <Link href="/hesabim/listeler" className="text-primary hover:underline">
+                <Link href={lp('/hesabim/listeler')} className="text-primary hover:underline">
                   Liste oluştur
                 </Link>
               </p>

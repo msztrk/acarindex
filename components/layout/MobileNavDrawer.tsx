@@ -10,6 +10,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { SearchBar } from '@/components/search/SearchBar'
+import { useUi } from '@/components/i18n/LocaleProvider'
 import type { PublicAuthState } from '@/lib/auth/public-session'
 import { buttonVariants } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -31,8 +32,8 @@ export function MobileNavDrawer({
   showAuth = false,
   initialAuth,
 }: MobileNavDrawerProps) {
+  const { m, lp } = useUi()
   const pathname = usePathname()
-
   const close = () => onOpenChange(false)
 
   return (
@@ -44,49 +45,51 @@ export function MobileNavDrawer({
         aria-describedby={undefined}
       >
         <SheetHeader className="border-b border-border px-4 py-3">
-          <SheetTitle className="text-base font-serif font-bold text-primary">Menü</SheetTitle>
+          <SheetTitle className="text-base font-serif font-bold text-primary">
+            {m.nav.menu}
+          </SheetTitle>
         </SheetHeader>
 
-        <nav className="flex flex-col px-2 py-3" aria-label="Mobil menü">
+        <nav className="flex flex-col px-2 py-3" aria-label={m.nav.mobileMenu}>
           {showSearch && (
             <div className="px-1 pb-3 mb-1 border-b border-border">
-              <SearchBar variant="compact" placeholder="Ara…" />
+              <SearchBar variant="compact" />
             </div>
           )}
-          <MobileNavLink href="/journals" active={pathname.startsWith('/journals')} onNavigate={close}>
-            Dergiler
+          <MobileNavLink href={lp('/journals')} active={pathname.startsWith('/journals')} onNavigate={close}>
+            {m.nav.journals}
           </MobileNavLink>
           <MobileNavLink
-            href="/search?type=article"
+            href={lp('/search?type=article')}
             active={pathname === '/search'}
             onNavigate={close}
           >
-            Makaleler
+            {m.nav.articles}
           </MobileNavLink>
-          <MobileNavLink href="/search?type=author" onNavigate={close}>
-            Yazarlar
+          <MobileNavLink href={lp('/search?type=author')} onNavigate={close}>
+            {m.nav.authors}
           </MobileNavLink>
-          <MobileNavLink href="/istatistikler" active={pathname === '/istatistikler'} onNavigate={close}>
-            İstatistikler
+          <MobileNavLink href={lp('/istatistikler')} active={pathname === '/istatistikler'} onNavigate={close}>
+            {m.nav.statistics}
           </MobileNavLink>
           {showAuth && initialAuth !== undefined && (
             <div className="mt-2 pt-2 border-t border-border space-y-1">
               {initialAuth.authenticated ? (
                 <>
-                  <MobileNavLink href="/hesabim" onNavigate={close}>Hesabım</MobileNavLink>
-                  <MobileNavLink href="/hesabim/kaydedilen" onNavigate={close}>Kaydettiklerim</MobileNavLink>
-                  <MobileNavLink href="/hesabim/listeler" onNavigate={close}>Listelerim</MobileNavLink>
-                  <MobileNavLink href="/profile" onNavigate={close}>Profilim</MobileNavLink>
+                  <MobileNavLink href={lp('/hesabim')} onNavigate={close}>{m.auth.myAccount}</MobileNavLink>
+                  <MobileNavLink href={lp('/hesabim/kaydedilen')} onNavigate={close}>{m.auth.saved}</MobileNavLink>
+                  <MobileNavLink href={lp('/hesabim/listeler')} onNavigate={close}>{m.auth.lists}</MobileNavLink>
+                  <MobileNavLink href={lp('/profile')} onNavigate={close}>{m.auth.profile}</MobileNavLink>
                 </>
               ) : (
                 <>
-                  <MobileNavLink href="/login" onNavigate={close}>Giriş Yap</MobileNavLink>
+                  <MobileNavLink href={lp('/login')} onNavigate={close}>{m.auth.loginFull}</MobileNavLink>
                   <Link
-                    href="/register"
+                    href={lp('/register')}
                     onClick={close}
                     className={cn(buttonVariants({ size: 'sm' }), 'w-full mt-2')}
                   >
-                    Kayıt Ol
+                    {m.auth.register}
                   </Link>
                 </>
               )}
@@ -115,11 +118,12 @@ function MobileNavLink({
     <Link
       href={href}
       onClick={onNavigate}
-      className={`block px-3 py-2.5 text-sm font-medium rounded-md transition-colors ${
+      className={cn(
+        'block px-3 py-2.5 text-[0.9375rem] font-medium rounded-md transition-colors',
         active
           ? 'text-foreground bg-secondary'
-          : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-      }`}
+          : 'text-muted-foreground hover:text-foreground hover:bg-secondary',
+      )}
     >
       {children}
     </Link>

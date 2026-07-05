@@ -39,6 +39,8 @@ import {
   pickLocalizedAbstract,
   pickLocalizedArticleDisplayTitle,
 } from '@/lib/i18n/pick-localized-text'
+import { getUiMessages } from '@/lib/i18n/ui-messages'
+import { withLocalePath } from '@/lib/i18n/locale'
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
 interface ArticleRow {
@@ -263,6 +265,8 @@ export default async function ArticlePage({ params }: PageProps) {
   if (!article) notFound()
 
   const locale = await getRequestLocale()
+  const ui = getUiMessages(locale)
+  const lp = (path: string) => withLocalePath(path, locale)
   if (
     shouldRedirectEnArticleToTr(locale, {
       has_en_content: article.has_en_content,
@@ -372,7 +376,7 @@ export default async function ArticlePage({ params }: PageProps) {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, item: { '@id': canonicalBase + '/', name: 'Ana Sayfa' } },
+      { '@type': 'ListItem', position: 1, item: { '@id': canonicalBase + '/', name: ui.article.home } },
       { '@type': 'ListItem', position: 2, item: { '@id': journalUrl, name: journalTitle } },
       { '@type': 'ListItem', position: 3, item: { '@id': canonicalUrl, name: title } },
     ],
@@ -428,10 +432,10 @@ export default async function ArticlePage({ params }: PageProps) {
       <JsonLd data={[articleSchema, breadcrumbSchema]} />
 
       <div className="content-width py-6 lg:py-10 min-w-0">
-        <Breadcrumb className="mb-5 md:mb-6 min-w-0" aria-label="Gezinme yolu">
+        <Breadcrumb className="mb-5 md:mb-6 min-w-0" aria-label={ui.article.breadcrumb}>
           <BreadcrumbList className="min-w-0">
             <BreadcrumbItem>
-              <BreadcrumbLink href="/" className={linkFocusClass}>Ana Sayfa</BreadcrumbLink>
+              <BreadcrumbLink href={lp('/')} className={linkFocusClass}>{ui.article.home}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             {journal && journalHref && (
@@ -493,17 +497,28 @@ export default async function ArticlePage({ params }: PageProps) {
 
               {hasAuthors && (
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Yazarlar</p>
+                  <p className="text-sm font-medium text-muted-foreground mb-1.5">{ui.article.authors}</p>
                   <AuthorLinks authorLinks={authorLinks} authorsList={authorsList} />
                 </div>
               )}
 
-              <ArticleSocialShare pageUrl={canonicalUrl} title={title} className="pt-1" />
+              <ArticleSocialShare
+                pageUrl={canonicalUrl}
+                title={title}
+                className="pt-1"
+                labels={{
+                  share: ui.article.share,
+                  facebook: ui.article.shareFacebook,
+                  twitter: ui.article.shareX,
+                  linkedin: ui.article.shareLinkedIn,
+                  whatsapp: ui.article.shareWhatsApp,
+                }}
+              />
 
               {hasPublicationMeta && (
                 <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-4 pt-1 min-w-0">
                   {journalTitle && journalHref && (
-                    <MetadataItem label="Dergi">
+                    <MetadataItem label={ui.article.journal}>
                       <Link
                         href={journalHref}
                         className={cn(
@@ -517,12 +532,12 @@ export default async function ArticlePage({ params }: PageProps) {
                     </MetadataItem>
                   )}
                   {article.published_year && (
-                    <MetadataItem label="Yayın yılı">
+                    <MetadataItem label={ui.article.year}>
                       {article.published_year}
                     </MetadataItem>
                   )}
                   {issue?.volume && (
-                    <MetadataItem label="Cilt">
+                    <MetadataItem label={ui.article.volume}>
                       {issueHref ? (
                         <Link
                           href={issueHref}
@@ -536,7 +551,7 @@ export default async function ArticlePage({ params }: PageProps) {
                     </MetadataItem>
                   )}
                   {(issue?.issue_number || issue?.issue_label) && (
-                    <MetadataItem label="Sayı">
+                    <MetadataItem label={ui.article.issue}>
                       {issueHref ? (
                         <Link
                           href={issueHref}
@@ -554,12 +569,12 @@ export default async function ArticlePage({ params }: PageProps) {
                     </MetadataItem>
                   )}
                   {pageRange && (
-                    <MetadataItem label="Sayfalar">
+                    <MetadataItem label={ui.article.pages}>
                       <span className="tabular-nums">{pageRange}</span>
                     </MetadataItem>
                   )}
                   {article.language && (
-                    <MetadataItem label="Dil">
+                    <MetadataItem label={ui.article.language}>
                       {article.language.toUpperCase()}
                     </MetadataItem>
                   )}
@@ -586,7 +601,7 @@ export default async function ArticlePage({ params }: PageProps) {
                 <div className="flex flex-wrap items-center gap-3 pt-1 lg:hidden">
                   <Link
                     href={pdfViewerUrl}
-                    aria-label={`${title} — PDF görüntüle`}
+                    aria-label={`${title} — ${ui.article.viewPdf}`}
                     className={cn(
                       buttonVariants(),
                       'inline-flex items-center gap-2 min-h-[44px] px-5 no-underline',
@@ -594,7 +609,7 @@ export default async function ArticlePage({ params }: PageProps) {
                     )}
                   >
                     <FileText className="h-4 w-4 shrink-0" aria-hidden />
-                    PDF Görüntüle
+                    {ui.article.viewPdf}
                   </Link>
                   {pdfDirectUrl && (
                     <a
@@ -606,9 +621,9 @@ export default async function ArticlePage({ params }: PageProps) {
                         'inline-flex items-center gap-2 min-h-[44px] px-4 no-underline',
                         linkFocusClass,
                       )}
-                      aria-label={`${title} — PDF indir`}
+                      aria-label={`${title} — ${ui.article.downloadPdf}`}
                     >
-                      PDF İndir
+                      {ui.article.downloadPdf}
                     </a>
                   )}
                 </div>
@@ -635,7 +650,7 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {keywords.length > 0 && (
               <section className="mb-8 min-w-0">
-                <h2 className="text-sm font-medium text-muted-foreground mb-2">Anahtar kelimeler</h2>
+                <h2 className="text-sm font-medium text-muted-foreground mb-2">{ui.article.keywords}</h2>
                 <div className="flex flex-wrap gap-1.5">
                   {keywords.map((kw) => (
                     <Link
@@ -657,14 +672,14 @@ export default async function ArticlePage({ params }: PageProps) {
 
             {article.institution_raw?.trim() && (
               <section className="mb-8 min-w-0">
-                <h2 className="text-sm font-medium text-muted-foreground mb-1.5">Kurum</h2>
+                <h2 className="text-sm font-medium text-muted-foreground mb-1.5">{ui.article.institution}</h2>
                 <p className="text-sm text-foreground/80 leading-relaxed">{article.institution_raw}</p>
               </section>
             )}
 
             {article.references_raw?.trim() && (
               <section className="min-w-0">
-                <h2 className="text-lg font-serif font-semibold text-foreground mb-3">Kaynakça</h2>
+                <h2 className="text-lg font-serif font-semibold text-foreground mb-3">{ui.article.references}</h2>
                 <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                   {article.references_raw}
                 </div>
@@ -677,33 +692,33 @@ export default async function ArticlePage({ params }: PageProps) {
               <div className="aside-panel min-w-0">
                 <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary shrink-0" aria-hidden />
-                  Tam metin
+                  {ui.article.fullText}
                 </h3>
                 <div className="space-y-2">
                   <Link
                     href={pdfViewerUrl}
-                    aria-label={`${title} — PDF görüntüle`}
+                    aria-label={`${title} — ${ui.article.viewPdf}`}
                     className={cn(
                       buttonVariants({ size: 'sm' }),
                       'w-full justify-center min-h-[40px] no-underline',
                       linkFocusClass,
                     )}
                   >
-                    PDF Görüntüle
+                    {ui.article.viewPdf}
                   </Link>
                   {pdfDirectUrl && (
                     <a
                       href={pdfDirectUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      aria-label={`${title} — PDF indir`}
+                      aria-label={`${title} — ${ui.article.downloadPdf}`}
                       className={cn(
                         buttonVariants({ variant: 'outline', size: 'sm' }),
                         'w-full justify-center min-h-[40px] no-underline',
                         linkFocusClass,
                       )}
                     >
-                      PDF İndir
+                      {ui.article.downloadPdf}
                     </a>
                   )}
                 </div>
@@ -714,7 +729,7 @@ export default async function ArticlePage({ params }: PageProps) {
               <div className="aside-panel min-w-0">
                 <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-primary shrink-0" aria-hidden />
-                  Dergi
+                  {ui.article.journal}
                 </h3>
                 <Link
                   href={journalHref}
@@ -752,7 +767,7 @@ export default async function ArticlePage({ params }: PageProps) {
               <div className="aside-panel min-w-0">
                 <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-primary shrink-0" aria-hidden />
-                  Bu sayıdaki makaleler
+                  {ui.article.articlesInIssue}
                 </h3>
                 <ul className="space-y-0 divide-y divide-border/60 -mx-4">
                   {issueArticles.slice(0, 5).map((a) => {
@@ -782,7 +797,7 @@ export default async function ArticlePage({ params }: PageProps) {
                       linkFocusClass,
                     )}
                   >
-                    Tüm makaleleri gör ({issueArticles.length})
+                    {ui.article.viewAllInIssue} ({issueArticles.length})
                   </Link>
                 )}
               </div>

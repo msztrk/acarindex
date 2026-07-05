@@ -72,43 +72,52 @@ export function ArticleSocialShare({
   pageUrl,
   title,
   className,
+  labels,
 }: {
   pageUrl: string
   title: string
   className?: string
+  labels?: {
+    share: string
+    facebook: string
+    twitter: string
+    linkedin: string
+    whatsapp: string
+  }
 }) {
+  const shareLabel = labels?.share ?? 'Paylaş'
   const iconClass = 'h-[1.125rem] w-[1.125rem]'
 
   const links: ShareLink[] = [
     {
       id: 'facebook',
       href: buildFacebookShareUrl(pageUrl),
-      label: "Facebook'ta Paylaş",
+      label: labels?.facebook ?? "Facebook'ta Paylaş",
       icon: <FacebookIcon className={iconClass} />,
     },
     {
       id: 'twitter',
       href: buildTwitterShareUrl(pageUrl, title),
-      label: "X'te Paylaş",
+      label: labels?.twitter ?? "X'te Paylaş",
       icon: <XIcon className={iconClass} />,
     },
     {
       id: 'linkedin',
       href: buildLinkedInShareUrl(pageUrl, title),
-      label: "LinkedIn'de Paylaş",
+      label: labels?.linkedin ?? "LinkedIn'de Paylaş",
       icon: <LinkedInIcon className={iconClass} />,
     },
     {
       id: 'whatsapp',
       href: buildWhatsAppShareUrl(pageUrl),
-      label: "WhatsApp'ta Paylaş",
+      label: labels?.whatsapp ?? "WhatsApp'ta Paylaş",
       icon: <WhatsAppIcon className={iconClass} />,
     },
   ]
 
   return (
     <div className={cn('flex flex-wrap items-center gap-3', className)}>
-      <span className="text-xs font-medium text-muted-foreground">Paylaş</span>
+      <span className="text-sm font-medium text-muted-foreground">{shareLabel}</span>
       <ul className="flex flex-wrap items-center gap-2.5 list-none m-0 p-0">
         {links.map((link) => (
           <li key={link.id}>

@@ -1,22 +1,29 @@
+'use client'
+
 import Link from 'next/link'
 import { BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useUi } from '@/components/i18n/LocaleProvider'
+import { pickLocalizedTitle } from '@/lib/seo/hreflang'
 
 export interface FeaturedJournalItem {
   id: number
   slug: string
   title_tr: string | null
+  title_en?: string | null
   issn: string | null
   hit_count: number | null
 }
 
 export function FeaturedJournalsList({ journals }: { journals: FeaturedJournalItem[] }) {
+  const { m, lp, locale } = useUi()
+
   if (journals.length === 0) {
     return (
       <section className="home-surface-card p-4 sm:p-5">
-        <h2 className="text-sm font-semibold text-foreground mb-1">Öne çıkan dergiler</h2>
-        <p className="text-[0.8125rem] text-muted-foreground py-1">
-          Öne çıkan dergi listesi henüz hazır değil.
+        <h2 className="text-base font-semibold text-foreground mb-1">{m.home.featuredJournals}</h2>
+        <p className="text-[0.9375rem] text-muted-foreground py-1">
+          {locale === 'en' ? 'Featured journal list is not ready yet.' : 'Öne çıkan dergi listesi henüz hazır değil.'}
         </p>
       </section>
     )
@@ -25,35 +32,38 @@ export function FeaturedJournalsList({ journals }: { journals: FeaturedJournalIt
   return (
     <section className="home-surface-card p-4 sm:p-5">
       <div className="mb-3">
-        <h2 className="text-sm font-semibold text-foreground">Öne çıkan dergiler</h2>
-        <p className="text-[0.75rem] text-muted-foreground mt-0.5">Sayfa görüntülenmesine göre</p>
+        <h2 className="text-base font-semibold text-foreground">{m.home.featuredJournals}</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">{m.home.featuredJournalsDesc}</p>
       </div>
       <ol className="space-y-2.5">
-        {journals.map((j, i) => (
-          <li key={j.id} className="flex items-start gap-2.5 rounded-lg px-1 py-0.5 hover:bg-brand-primary/5 transition-colors">
-            <span
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-primary/10 text-[0.6875rem] font-bold tabular-nums text-brand-primary"
-              aria-hidden
+        {journals.map((j, i) => {
+          const title =
+            pickLocalizedTitle(j.title_tr, j.title_en, locale) || m.article.untitled
+          return (
+            <li
+              key={j.id}
+              className="flex items-start gap-2.5 rounded-lg px-1 py-0.5 hover:bg-brand-primary/5 transition-colors"
             >
-              {i + 1}
-            </span>
-            <Link
-              href={`/journals/${j.slug}-${j.id}`}
-              title={j.title_tr ?? undefined}
-              className="flex-1 min-w-0 text-[0.9375rem] font-medium text-foreground/90 hover:text-brand-primary transition-colors leading-snug line-clamp-2 no-underline rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            >
-              {j.title_tr ?? 'Başlıksız'}
-            </Link>
-          </li>
-        ))}
+              <span
+                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-primary/10 text-xs font-bold tabular-nums text-brand-primary"
+                aria-hidden
+              >
+                {i + 1}
+              </span>
+              <Link
+                href={lp(`/journals/${j.slug}-${j.id}`)}
+                className={cn(
+                  'min-w-0 text-[0.9375rem] leading-snug text-foreground/85 hover:text-brand-primary no-underline line-clamp-2',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm',
+                )}
+                title={title}
+              >
+                {title}
+              </Link>
+            </li>
+          )
+        })}
       </ol>
-      <Link
-        href="/journals"
-        className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-brand-secondary hover:text-brand-primary transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 no-underline"
-      >
-        <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        Tüm dergiler
-      </Link>
     </section>
   )
 }
