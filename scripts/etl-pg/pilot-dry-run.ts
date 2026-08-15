@@ -10,7 +10,7 @@ import { resolveSourceMysqlConfig } from '../source/mysql-config'
 import { validateEtlEnv, logEtlConnectionSummary } from '../lib/etl-guard'
 import { authorColumnFillSql } from '../../lib/etl/article-author-source'
 
-const PILOT_JOURNAL_COUNT = 15
+const PILOT_JOURNAL_COUNT = parseInt(process.env.ETL_JOURNAL_LIMIT ?? '100', 10)
 const DEFAULT_ARTICLE_LIMIT = 8000
 
 function parseLimit(argv: string[]): number {

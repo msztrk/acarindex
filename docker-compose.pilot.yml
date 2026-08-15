@@ -9,7 +9,7 @@ services:
     env_file:
       - /etc/acarindex/pilot.env
     volumes:
-      - pilot_pg_data:/var/lib/postgresql/data
+      - /mnt/HC_Volume_106247514/acarindex-pilot/postgres-data:/var/lib/postgresql/data
     healthcheck:
       test:
         [
@@ -32,7 +32,7 @@ services:
     env_file:
       - /etc/acarindex/pilot-mysql.env
     volumes:
-      - pilot_mysql_data:/var/lib/mysql
+      - /mnt/HC_Volume_106247514/acarindex-pilot/mysql-data:/var/lib/mysql
     ports:
       # Yalnızca host restore / admin — internete kapalı
       - "127.0.0.1:3308:3306"
@@ -109,6 +109,4 @@ services:
         max-size: "20m"
         max-file: "3"
 
-volumes:
-  pilot_pg_data:
-  pilot_mysql_data:
+

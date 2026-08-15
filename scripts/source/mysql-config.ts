@@ -14,7 +14,7 @@ export interface SourceMysqlConfig {
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1'])
 
 /** Pilot compose iç ağ hostları (internet dışı MariaDB). */
-const PILOT_SOURCE_HOSTS = new Set(['mariadb', 'acarindex_pilot_mysql', 'mysql'])
+const PILOT_SOURCE_HOSTS = new Set(['mariadb', 'acarindex_pilot_mysql', 'mysql', 'acarindex_restore_mysql_v2'])
 
 export function maskMysqlUrl(url: string): string {
   try {

@@ -39,7 +39,7 @@ import {
   resolveArticleSlug,
 } from '../../lib/etl/article-slug-policy'
 
-const PILOT_JOURNAL_COUNT = 15
+const PILOT_JOURNAL_COUNT = parseInt(process.env.ETL_JOURNAL_LIMIT ?? '100', 10)
 const DEFAULT_ARTICLE_LIMIT = 8000
 
 interface PilotArgs {
@@ -51,6 +51,7 @@ interface PilotArgs {
   transactionMaxWaitMs: number
   startAfterId: number
   skipAuthors: boolean
+  onlyInstitutions: boolean
 }
 
 function parseArgs(): PilotArgs {
@@ -59,12 +60,15 @@ function parseArgs(): PilotArgs {
   const limitArg = process.argv.find((a) => a.startsWith('--article-limit='))
   const startAfterArg = process.argv.find((a) => a.startsWith('--start-after-id='))
   const skipAuthors = process.argv.includes('--skip-authors')
+  const onlyInstitutions = process.argv.includes('--only-institutions')
   const runtime = resolvePgEtlRuntimeConfig(process.argv)
   const startAfterId = startAfterArg
     ? Math.max(0, parseInt(startAfterArg.split('=')[1] ?? '', 10) || 0)
     : 0
+  const maxPerRunRaw = process.env.ETL_ARTICLE_MAX_PER_RUN?.trim()
+  const maxPerRun = maxPerRunRaw ? Math.max(1, parseInt(maxPerRunRaw, 10) || 0) : 0
   const articleLimit = full
-    ? Number.MAX_SAFE_INTEGER
+    ? (maxPerRun > 0 ? maxPerRun : Number.MAX_SAFE_INTEGER)
     : limitArg
       ? Math.max(1, parseInt(limitArg.split('=')[1] ?? '', 10) || DEFAULT_ARTICLE_LIMIT)
       : DEFAULT_ARTICLE_LIMIT
@@ -77,6 +81,7 @@ function parseArgs(): PilotArgs {
     transactionMaxWaitMs: runtime.transactionMaxWaitMs,
     startAfterId,
     skipAuthors,
+    onlyInstitutions,
   }
 }
 
@@ -159,6 +164,10 @@ interface LegacyMakale {
 }
 
 async function selectJournalIds(conn: mysql.Connection, full: boolean): Promise<number[]> {
+  const envIds = process.env.ETL_JOURNAL_IDS?.trim()
+  if (envIds) {
+    return envIds.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => n > 0)
+  }
   if (full) {
     const [rows] = await conn.query<mysql.RowDataPacket[]>(
       `SELECT DergiID FROM dergiler ORDER BY DergiID ASC`,
@@ -172,20 +181,85 @@ async function selectJournalIds(conn: mysql.Connection, full: boolean): Promise<
   return rows.map((r) => r.DergiID as number)
 }
 
+
+function parseFirstEmailDomain(mailList: string | null | undefined): string | null {
+  if (!mailList?.trim()) return null
+  const first = mailList.split(',')[0]?.trim().replace(/^@/, '').toLowerCase()
+  if (!first || !first.includes('.')) return null
+  return first
+}
+
+async function migrateInstitutions(
+  conn: mysql.Connection,
+  dryRun: boolean,
+  errors: PgEtlErrorEntry[],
+): Promise<number> {
+  const [rows] = await conn.query<mysql.RowDataPacket[]>(
+    `SELECT id, baslik, mail_adresleri FROM kurumlar ORDER BY id`,
+  )
+  if (dryRun) return rows.length
+
+  let upserted = 0
+  for (const raw of rows as { id: number; baslik: string; mail_adresleri: string }[]) {
+    if (!raw.id) continue
+    const nameTr = raw.baslik?.trim() || null
+    if (!nameTr) {
+      errors.push({
+        sourceTable: 'kurumlar',
+        sourceId: raw.id,
+        errorType: 'validation',
+        errorMessage: 'empty baslik — skipped (no fabricated name)',
+      })
+      continue
+    }
+    const slugBase = urlYap(nameTr) || `kurum-${raw.id}`
+    const slug = `${slugBase}-${raw.id}`
+    try {
+      await prisma.institution.upsert({
+        where: { id: BigInt(raw.id) },
+        create: {
+          id: BigInt(raw.id),
+          slug,
+          nameTr,
+          emailDomain: parseFirstEmailDomain(raw.mail_adresleri),
+          isActive: true,
+        },
+        update: {
+          nameTr,
+          emailDomain: parseFirstEmailDomain(raw.mail_adresleri),
+        },
+      })
+      upserted++
+    } catch (e) {
+      errors.push({
+        sourceTable: 'kurumlar',
+        sourceId: raw.id,
+        errorType: 'upsert',
+        errorMessage: e instanceof Error ? e.message : String(e),
+      })
+    }
+  }
+  return upserted
+}
+
 async function migrateCategories(
   conn: mysql.Connection,
   journalIds: number[],
   dryRun: boolean,
   errors: PgEtlErrorEntry[],
 ): Promise<number> {
-  const placeholders = journalIds.map(() => '?').join(',')
-  const [catRows] = await conn.query<mysql.RowDataPacket[]>(
-    `SELECT DISTINCT k.KategoriID, k.KategoriBASLIKTR, k.KategoriBASLIKEN, k.KategoriURL
-     FROM kategoriler k
-     INNER JOIN dergiler d ON d.KategoriID = k.KategoriID
-     WHERE d.DergiID IN (${placeholders})`,
-    journalIds,
-  )
+  const migrateAll = process.env.ETL_MIGRATE_ALL_CATEGORIES === '1'
+  const [catRows] = migrateAll
+    ? await conn.query<mysql.RowDataPacket[]>(
+        `SELECT KategoriID, KategoriBASLIKTR, KategoriBASLIKEN, KategoriURL FROM kategoriler ORDER BY KategoriID`,
+      )
+    : await conn.query<mysql.RowDataPacket[]>(
+        `SELECT DISTINCT k.KategoriID, k.KategoriBASLIKTR, k.KategoriBASLIKEN, k.KategoriURL
+         FROM kategoriler k
+         INNER JOIN dergiler d ON d.KategoriID = k.KategoriID
+         WHERE d.DergiID IN (${journalIds.map(() => '?').join(',')})`,
+        journalIds,
+      )
   if (dryRun) return catRows.length
 
   let upserted = 0
@@ -355,7 +429,7 @@ async function migrateIssues(
   const placeholders = journalIds.map(() => '?').join(',')
   const [rows] = await conn.query<mysql.RowDataPacket[]>(
     `SELECT ArsivID, DergiID, Yil, Sayi, issue_id, Aktif, Hit
-     FROM dergi_arsiv WHERE DergiID IN (${placeholders}) ORDER BY ArsivID`,
+     FROM dergi_arsiv WHERE DergiID IN (${placeholders}) ORDER BY ArsivID LIMIT ${parseInt(process.env.ETL_ISSUE_LIMIT ?? '999999', 10)}`,
     journalIds,
   )
   if (dryRun) return rows.length
@@ -822,6 +896,7 @@ async function main() {
   let runId: string | null = null
   const counters = {
     categories: 0,
+    institutions: 0,
     journals: 0,
     issues: 0,
     articles: 0,
@@ -888,7 +963,17 @@ async function main() {
       })
     }
 
+    counters.institutions = 0
+    if (args.onlyInstitutions) {
+      counters.institutions = await migrateInstitutions(conn, !args.write, errors)
+      await conn.end()
+      console.log(JSON.stringify({ mode, institutions: counters.institutions, errors: errors.length }, null, 2))
+      await disconnectPrisma()
+      return
+    }
+
     counters.categories = await migrateCategories(conn, journalIds, !args.write, errors)
+    counters.institutions = await migrateInstitutions(conn, !args.write, errors)
     counters.journals = await migrateJournals(conn, journalIds, !args.write, errors)
     counters.issues = await migrateIssues(conn, journalIds, !args.write, errors)
 
